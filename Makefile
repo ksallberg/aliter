@@ -7,16 +7,16 @@ SHA = ${shell git log -1 --pretty=format:%h}
 
 include arch/${OS}/Makefile
 
-all: compile
+all: build
 
-compile:
+build:
 	${CC} ${CFLAGS} ${ARCHFLAGS} -I${ERL_TOP}/usr/include/
 	rebar3 compile
 
-start: compile
+start: build
 	${ERL} -noshell -sname aliter -eval "application:start(sasl), \
                                              application:start(aliter)."
-shell: compile
+shell: build
 	${ERL} -sname aliter
 
 clean:
