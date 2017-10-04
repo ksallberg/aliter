@@ -47,7 +47,7 @@ init({TCP, [DB]}) ->
 locked(
     {connect, AccountID, CharacterID, SessionIDa, _Gender},
     State) ->
-  {char, CharNode} = config:get_env(zone, server.char),
+  {char, CharNode} = config:get_env(zone, 'server.char'),
   Session =
     gen_server:call(
       {char_server, CharNode},
@@ -673,7 +673,7 @@ handle_event(
     }) when GuildID /= 0 ->
   log:debug("Requested second page of guild info."),
 
-  {char, CharNode} = config:get_env(zone, server.char),
+  {char, CharNode} = config:get_env(zone, 'server.char'),
 
   GetMembers =
     gen_server:call(
@@ -854,7 +854,7 @@ terminate(_Reason, _StateName, #zone_state{map_server = MapServer,
     }
   ),
 
-  {char, CharNode} = config:get_env(zone, server.char),
+  {char, CharNode} = config:get_env(zone, 'server.char'),
 
   gen_server:cast(
     {char_server, CharNode},

@@ -42,7 +42,7 @@ load() ->
 
   LoadLogin = load_path("config/login"),
 
-  {host, {LoginHost, LoginName}} = find(server.host, LoadLogin),
+  {host, {LoginHost, LoginName}} = find('server.host', LoadLogin),
   LoginNode = list_to_atom(lists:concat([LoginName, "@", LoginHost])),
 
   Login = [{node, LoginNode} | LoadLogin],
@@ -58,13 +58,13 @@ load() ->
   end, Zone),
 
   CharsFinal = lists:map(fun({Node, Conf}) ->
-    {zone, ZoneNode} = find(server.zone, Conf),
+    {zone, ZoneNode} = find('server.zone', Conf),
     {ZoneNode, ZoneConf} = proplists:lookup(ZoneNode, Zones),
     {Node, Conf ++ [{login, Login}, {zone, ZoneConf}]}
   end, Chars),
 
   ZonesFinal = lists:map(fun({Node, Conf}) ->
-    {char, CharNode} = find(server.char, Conf),
+    {char, CharNode} = find('server.char', Conf),
     {CharNode, CharConf} = proplists:lookup(CharNode, Chars),
     {Node, Conf ++ [{login, Login}, {char, CharConf}]}
   end, Zones),

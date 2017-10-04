@@ -17,8 +17,8 @@ start_link(Config) ->
 
   lists:foreach(
     fun({Node, Conf}) ->
-      {host, {Host, Name}} = config:find(server.host, Conf),
-      {aliter, Aliter} = config:find(server.aliter, Conf),
+      {host, {Host, Name}} = config:find('server.host', Conf),
+      {aliter, Aliter} = config:find('server.aliter', Conf),
       {ok, Node} = slave:start_link(Host, Name, aliter:path(Aliter)),
 
       supervisor:start_child(?MODULE, [Node, char_srv, start_link, [Conf]])

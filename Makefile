@@ -21,4 +21,4 @@ shell: build
 
 clean:
 	@@echo "Removing compiled modules..."
-	rm -f _build
+	rm -rf _build

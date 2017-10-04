@@ -37,7 +37,7 @@ init(Conf) ->
 
   zone_npc:load_all(),
 
-  {zones, Zones} = config:find(server.zones, Conf),
+  {zones, Zones} = config:find('server.zones', Conf),
 
   { ok,
     #state{

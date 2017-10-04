@@ -14,8 +14,8 @@ start_link(Config) ->
     fun({Node, Conf}) ->
       log:info("Starting.", [{server, Node}]),
 
-      {host, {Host, Name}} = config:find(server.host, Conf),
-      {aliter, Aliter} = config:find(server.aliter, Conf),
+      {host, {Host, Name}} = config:find('server.host', Conf),
+      {aliter, Aliter} = config:find('server.aliter', Conf),
 
       {ok, Node} = slave:start_link(Host, Name, aliter:path(Aliter)),
 

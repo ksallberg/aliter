@@ -19,8 +19,8 @@
 start_link(Conf) ->
   config:set_env(char, Conf),
 
-  {name, Name} = config:get_env(char, server.name),
-  {port, Port} = config:get_env(char, server.port),
+  {name, Name} = config:get_env(char, 'server.name'),
+  {port, Port} = config:get_env(char, 'server.port'),
 
   log:info("Starting character server.", [{name, Name}, {port, Port}]),
 

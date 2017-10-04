@@ -1,4 +1,6 @@
--module(zone_packets, [PacketVer]).
+-module(zone_packets).
+
+-include("include/ro.hrl").
 
 -export([
     unpack/1,
@@ -11,15 +13,15 @@ mod_for(Module, Version) ->
 
 
 unpack(Packet) ->
-  call(unpack, PacketVer, [Packet]).
+  call(unpack, ?PACKETVER, [Packet]).
 
 
 pack(Header, Packet) ->
-  call(pack, PacketVer, [Header, Packet]).
+  call(pack, ?PACKETVER, [Header, Packet]).
 
 
 packet_size(Header) ->
-  call("packets", packet_size, PacketVer, [Header]).
+  call("packets", packet_size, ?PACKETVER, [Header]).
 
 
 call(Fun, Version, Args) ->
@@ -43,4 +45,3 @@ call(Module, Fun, Version, Args) ->
     Event ->
       Event
   end.
-

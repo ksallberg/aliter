@@ -12,11 +12,10 @@
      terminate/2,
      code_change/3]).
 
-
 start_link(Conf) ->
   config:set_env(login, Conf),
 
-  {port, Port} = config:get_env(login, server.port),
+  {port, Port} = config:get_env(login, 'server.port'),
 
   log:info("Starting login server.", [{port, Port}]),
 

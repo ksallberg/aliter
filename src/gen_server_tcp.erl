@@ -1,7 +1,5 @@
 -module(gen_server_tcp).
 
--author('i.am@toogeneric.com').
-
 -behaviour(gen_server).
 
 -include("include/records.hrl").
@@ -76,8 +74,6 @@ start(Module, InitArgs, Options) ->
     {gen_server_tcp, Module, InitArgs},
     Options
   ).
-
-
 
 % gen_server callbacks
 
@@ -238,13 +234,9 @@ handle_info(Info, #state{module = Module, module_state = ModState}=St) ->
   end.
 
 
-terminate(Reason, #state{module = Module, module_state = ModState, supervisor = Supervisor}) ->
-  log:debug("Generic TCP server terminating.",
-        [{module, Module},
-         {reason, Reason}]),
-
+terminate(Reason, #state{module = Module, module_state = ModState,
+                         supervisor = _Supervisor}) ->
   %exit(Supervisor, Reason),
-
   Module:terminate(Reason, ModState).
 
 
@@ -263,4 +255,5 @@ listener(Port) ->
 
 
 client_sup(Port) ->
+
   list_to_atom(lists:concat(["client_sup_", Port])).

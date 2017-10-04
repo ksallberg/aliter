@@ -17,7 +17,7 @@ start_link(Conf) ->
 init(Conf) ->
   AllMaps = maps:read_cache("priv/maps"),
 
-  {zones, Zones} = config:find(server.zones, Conf),
+  {zones, Zones} = config:find('server.zones', Conf),
   Specs = lists:map(
     fun({Port, ZoneMaps}) ->
       Names = [list_to_binary(X) || X <- ZoneMaps],
@@ -43,4 +43,4 @@ init(Conf) ->
     Zones
   ),
 
-  {ok, {{one_for_one, 2, 60}, Specs}}.  
+  {ok, {{one_for_one, 2, 60}, Specs}}.

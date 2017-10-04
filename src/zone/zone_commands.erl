@@ -95,7 +95,6 @@ execute(_FSM, Unknown, Args, State) ->
   zone_fsm:say("Unknown command `" ++ Unknown ++ "'.", State),
   ok.
 
-
 warp_to(
     FSM, Map, X, Y,
     State = #zone_state{
@@ -106,7 +105,7 @@ warp_to(
     }) ->
   case gen_server:call(zone_master, {who_serves, Map}) of
     {zone, Port, ZoneServer} ->
-      {ip, IP} = config:get_env(zone, server.ip),
+      {ip, IP} = config:get_env(zone, 'server.ip'),
 
       zone_fsm:say(
         ["Warped to ", Map, " (", integer_to_list(X), ", ", integer_to_list(Y), ")."],

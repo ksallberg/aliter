@@ -34,8 +34,8 @@ path(A) ->
 call_all(Fun) ->
   {Login, Char, Zone} = config:load(),
 
-  {host, {LoginHost, LoginName}} = config:find(server.host, Login),
-  {aliter, LoginAliter} = config:find(server.aliter, Login),
+  {host, {LoginHost, LoginName}} = config:find('server.host', Login),
+  {aliter, LoginAliter} = config:find('server.aliter', Login),
 
   case slave:start_link(LoginHost, LoginName, path(LoginAliter)) of
     {ok, LoginNode} ->
@@ -53,8 +53,8 @@ call_all(Fun) ->
 
   lists:foreach(
     fun({Node, Conf}) ->
-      {host, {Host, Name}} = config:find(server.host, Conf),
-      {aliter, Aliter} = config:find(server.aliter, Conf),
+      {host, {Host, Name}} = config:find('server.host', Conf),
+      {aliter, Aliter} = config:find('server.aliter', Conf),
       case slave:start_link(
         Host, Name, path(Aliter)) of {ok, Node} ->
           CharRes = rpc:block_call(Node, char, Fun, []),
@@ -75,8 +75,8 @@ call_all(Fun) ->
 
   lists:foreach(
     fun({Node, Conf}) ->
-      {host, {Host, Name}} = config:find(server.host, Conf),
-      {aliter, Aliter} = config:find(server.aliter, Conf),
+      {host, {Host, Name}} = config:find('server.host', Conf),
+      {aliter, Aliter} = config:find('server.aliter', Conf),
       case slave:start_link(
         Host, Name, path(Aliter)) of {ok, Node} ->
           ZoneRes = rpc:block_call(Node, zone, Fun, []),
@@ -107,4 +107,3 @@ uninstall() ->
 reinstall() ->
   uninstall(),
   install().
-

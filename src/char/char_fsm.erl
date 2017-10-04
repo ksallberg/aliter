@@ -43,7 +43,7 @@ locked(
     State = #char_state{tcp = TCP, db = DB}) ->
   TCP ! <<AccountID:32/little>>,
 
-  {node, LoginNode} = config:get_env(char, login.node),
+  {node, LoginNode} = config:get_env(char, 'login.node'),
 
   Verify =
     gen_server:call(
@@ -123,8 +123,8 @@ valid(
         [{account, AccountID}, {character, C#char.id}]
       ),
 
-      {ip, ZoneIP} = config:get_env(char, zone.server.ip),
-      {zone, ZoneNode} = config:get_env(char, server.zone),
+      {ip, ZoneIP} = config:get_env(char, 'zone.server.ip'),
+      {zone, ZoneNode} = config:get_env(char, 'server.zone'),
 
       {zone, ZonePort, _ZoneServer} =
         gen_server:call(
@@ -363,7 +363,7 @@ terminate(
   log:debug("Character FSM terminating.", [{account, AccountID}]),
   gen_server:cast(char_server, {remove_session, AccountID}),
 
-  {node, LoginNode} = config:get_env(char, login.node),
+  {node, LoginNode} = config:get_env(char, 'login.node'),
   gen_server:cast({login_server, LoginNode}, {remove_session, AccountID});
 
 terminate(_Reason, _StateName, _StateData) ->
