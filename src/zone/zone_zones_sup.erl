@@ -15,7 +15,7 @@ start_link(Conf) ->
 
 
 init(Conf) ->
-  AllMaps = maps:read_cache("priv/maps"),
+  AllMaps = aliter_maps:read_cache("priv/maps"),
 
   {zones, Zones} = config:find('server.zones', Conf),
   Specs = lists:map(
