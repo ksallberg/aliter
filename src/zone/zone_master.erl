@@ -27,7 +27,7 @@ start_link(Conf) ->
 init(Conf) ->
   process_flag(trap_exit, true),
 
-  application:set_env(zone, started, now()),
+  application:set_env(zone, started, erlang:timestamp()),
 
   config:set_env(zone, Conf),
 
@@ -197,4 +197,4 @@ get_player_by(Pred, [Server | Servers]) ->
 
 tick() ->
   {ok, Started} = application:get_env(zone, started),
-  round(timer:now_diff(now(), Started) / 1000).
+  round(timer:now_diff(erlang:timestamp(), Started) / 1000).

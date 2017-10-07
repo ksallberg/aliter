@@ -218,7 +218,7 @@ valid(
         State#zone_state{
           char = C#char{x = SX, y = SY},
           walk_timer = Timer,
-          walk_prev = {now(), SDir},
+          walk_prev = {erlang:timestamp(), SDir},
           walk_path = Path
         }
       };

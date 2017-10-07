@@ -19,9 +19,7 @@ home() ->
 
 
 home(Path) ->
-  {ok, [[Home]]} = init:get_argument(home),
-
-  lists:concat([Home, "/.aliter/", Path]).
+  lists:concat(["./", "/.aliter/", Path]).
 
 
 db() ->
@@ -75,6 +73,7 @@ load() ->
 
 
 load_path(Base) ->
+
   {ok, Files} = file:list_dir(home(Base)),
 
   lists:map(

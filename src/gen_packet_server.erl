@@ -2,8 +2,6 @@
 
 -author('i.am@toogeneric.com').
 
--behaviour(gen_nb_server).
-
 -include("include/records.hrl").
 
 -export([

@@ -14,7 +14,7 @@ unpack(
       AccountID:32/little,
       CharacterID:32/little,
       LoginIDa:32/little,
-      ClientTick:32,
+      _ClientTick:32,
       Gender:8>>) ->
   {connect, AccountID, CharacterID, LoginIDa, Gender};
 
