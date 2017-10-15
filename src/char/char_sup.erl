@@ -1,4 +1,4 @@
--module(char).
+-module(char_sup).
 
 -behaviour(supervisor).
 

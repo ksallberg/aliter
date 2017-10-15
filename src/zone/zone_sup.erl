@@ -1,4 +1,4 @@
--module(zone).
+-module(zone_sup).
 
 -behaviour(supervisor).
 
@@ -10,7 +10,7 @@
 start_link(Config) ->
   Supervisor = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
 
-  lists:foreach(
+    lists:foreach(
     fun({Node, Conf}) ->
       log:info("Starting.", [{server, Node}]),
 
