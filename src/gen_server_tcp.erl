@@ -11,7 +11,8 @@
     start/3,
     start/4,
     start_link/3,
-    start_link/4]).
+    start_link/4
+        ]).
 
 %% gen_server callbacks
 -export([
@@ -42,7 +43,6 @@ behaviour_info(callbacks) ->
 
 behaviour_info(_) -> undefined.
 
-
 start_link(Name, Module, InitArgs, Options) ->
   gen_server:start_link(
     Name,
@@ -50,7 +50,6 @@ start_link(Name, Module, InitArgs, Options) ->
     {gen_server_tcp, Module, InitArgs},
     Options
   ).
-
 
 start_link(Module, InitArgs, Options) ->
   gen_server:start_link(
@@ -92,12 +91,13 @@ init({gen_server_tcp, Module, InitArgs}) ->
           {handler, PacketHandler}
         ]
       ),
-
+      io:format("hej1\n"),
       {MState, FArgs} =
         case ModState of
           {X, Y} -> {X, Y};
           X -> {X, []}
         end,
+      io:format("hej2\n"),
 
       St = #nb_state{
         port = Port,
@@ -106,8 +106,10 @@ init({gen_server_tcp, Module, InitArgs}) ->
         fsm_args = FArgs,
         server = self()
       },
+      io:format("hej3 ~p ~p\n", [?MODULE, St]),
 
       {ok, Sup} = supervisor:start_link(?MODULE, {all, St}),
+      io:format("hej4\n"),
 
       { ok,
         #state{
@@ -138,37 +140,43 @@ init({gen_server_tcp, Module, InitArgs}) ->
 
 % initialize & supervise both the listener and the FSM
 init({all, #nb_state{port = Port, fsm_module = FSMModule} = St}) ->
-  { ok,
-    { {one_for_one, 2, 60},
-      [ { listener(Port),
-          { gen_nb_server,
-            start_link,
-            [ {local, listener(Port)},
-              gen_packet_server,
-              [St]
-            ]
+    io:format("kommer sedan hit~n"), [],
+    X = { ok,
+      { {one_for_one, 2, 60},
+        [
+         %% gen_nb_server har inte den aritet som forvantas.
+          { listener(Port),
+            { gen_nb_server,
+              start_link,
+              [ {local, listener(Port)},
+                gen_packet_server,
+                [St]
+              ]
+            },
+            permanent,
+            1000,
+            worker,
+            []
           },
-          permanent,
-          1000,
-          worker,
-          []
-        },
-        { client_sup(Port),
-          { supervisor,
-            start_link,
-            [ {local, client_sup(Port)},
-              ?MODULE,
-              {clients, FSMModule}
-            ]
-          },
-          permanent,
-          infinity,
-          supervisor,
-          []
-        }
-      ]
-    }
-  };
+
+          { client_sup(Port),
+            { supervisor,
+              start_link,
+              [ {local, client_sup(Port)},
+                ?MODULE,
+                {clients, FSMModule}
+              ]
+            },
+            permanent,
+            infinity,
+            supervisor,
+            []
+          }
+        ]
+      }
+    },
+    io:format("hej: ~p~n", [X]),
+    X;
 
 % initialize the FSM
 init({clients, FSMModule}) ->
@@ -255,5 +263,4 @@ listener(Port) ->
 
 
 client_sup(Port) ->
-
   list_to_atom(lists:concat(["client_sup_", Port])).

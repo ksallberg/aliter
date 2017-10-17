@@ -2,10 +2,16 @@
 
 -author('i.am@toogeneric.com').
 
+-behaviour(gen_nb_server).
+
 -include("include/records.hrl").
 
 -export([
+         start_link/2,
+         start_link/1,
     init/2,
+    init/1,
+
     handle_call/3,
     handle_cast/2,
     handle_info/2,
@@ -14,15 +20,35 @@
     new_connection/4]).
 
 -export([
-    client_worker/3,
-    parse_loop/3]).
+         client_worker/3,
+         parse_loop/3,
+         new_connection/2]).
 
+new_connection(_, _) ->
+    ok.
+
+start_link( _) ->
+    io:format("ojjjj1 ~n", []),
+
+    ok.
+
+
+start_link(_, _) ->
+    io:format("ojjjj ~n", []),
+
+    ok.
 
 init([St = #nb_state{port = Port}], State) ->
-  gen_nb_server:add_listen_socket(
-    {"0.0.0.0", Port},
-    gen_nb_server:store_cb_state(St, State)
-  ).
+    io:format("hejhajhaj~n", []),
+    gen_nb_server:add_listen_socket(
+      {"0.0.0.0", Port},
+      gen_nb_server:store_cb_state(St, State)
+     );
+init(_, _) ->
+    io:format("ojjjj ~n", []).
+
+init(_) ->
+    io:format("ojjjj 3 ~n", []).
 
 
 handle_call(Msg, _From, State) ->
