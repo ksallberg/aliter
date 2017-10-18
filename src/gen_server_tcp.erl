@@ -78,9 +78,7 @@ start(Module, InitArgs, Options) ->
 
 init({gen_server_tcp, Module, InitArgs}) ->
   process_flag(trap_exit, true),
-
   log:debug("Starting generic TCP server.", [{module, Module}]),
-
   case Module:init(InitArgs) of
     {ok, {Port, FSMModule, PacketHandler}, ModState} ->
       log:debug(
@@ -91,14 +89,11 @@ init({gen_server_tcp, Module, InitArgs}) ->
           {handler, PacketHandler}
         ]
       ),
-      io:format("hej1\n"),
       {MState, FArgs} =
         case ModState of
           {X, Y} -> {X, Y};
           X -> {X, []}
         end,
-      io:format("hej2\n"),
-
       St = #nb_state{
         port = Port,
         packet_handler = PacketHandler,
@@ -106,11 +101,7 @@ init({gen_server_tcp, Module, InitArgs}) ->
         fsm_args = FArgs,
         server = self()
       },
-      io:format("hej3 ~p ~p\n", [?MODULE, St]),
-
       {ok, Sup} = supervisor:start_link(?MODULE, {all, St}),
-      io:format("hej4\n"),
-
       { ok,
         #state{
           module = Module,
@@ -140,8 +131,7 @@ init({gen_server_tcp, Module, InitArgs}) ->
 
 % initialize & supervise both the listener and the FSM
 init({all, #nb_state{port = Port, fsm_module = FSMModule} = St}) ->
-    io:format("kommer sedan hit~n"), [],
-    X = { ok,
+    { ok,
       { {one_for_one, 2, 60},
         [
          %% gen_nb_server har inte den aritet som forvantas.
@@ -174,9 +164,7 @@ init({all, #nb_state{port = Port, fsm_module = FSMModule} = St}) ->
           }
         ]
       }
-    },
-    io:format("hej: ~p~n", [X]),
-    X;
+    };
 
 % initialize the FSM
 init({clients, FSMModule}) ->

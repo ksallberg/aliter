@@ -16,16 +16,13 @@
 
 start_link() ->
     Port = ?LOGIN_PORT,
-    io:format("login_srv... start_link~n"),
     lager:log(info, self(), "Starting login server at port: ~p~n", [Port]),
     gen_server_tcp:start_link({local, login_server}, ?MODULE, Port, []).
 
 init(Port) ->
-    io:format("login_srv... init~n"),
     {ok, DB} = redis:connect(),
     {ok, _Keepalive} =
         timer:apply_interval(timer:seconds(30), redis, ping, [DB]),
-    io:format("login_srv... init2~n"),
     {ok, {Port, login_fsm, login_packets}, {[], [DB]}}.
 
 handle_call({verify_session, AccountID, LoginIDa, LoginIDb}, _From, Sessions) ->
