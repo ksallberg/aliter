@@ -2,7 +2,7 @@
 
 %% Login server
 -define(LOGIN_IP,             {127, 0, 0, 1}).
--define(LOGIN_PORT,           6900).
+-define(LOGIN_PORT,           6941).
 
 %% Char server
 -define(CHAR_SERVER_NAME,     "Aliter").

@@ -52,11 +52,11 @@ setup() ->
 
   {ok, Login} = file:open(home("config/login/server.erl"), write),
 
-  io:format(Login, "~p.~n~p.~n~p.~n~p.~n",
-    [ {host, {list_to_atom(Host), login}},
-      {ip, {127,0,0,1}},
-      {port, 6900},
-      {aliter, Here}]),
+  %% io:format(Login, "~p.~n~p.~n~p.~n~p.~n",
+  %%   [ {host, {list_to_atom(Host), login}},
+  %%     {ip, {127,0,0,1}},
+  %%     {port, 6900},
+  %%     {aliter, Here}]),
 
   file:close(Login),
 
