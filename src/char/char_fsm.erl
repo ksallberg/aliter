@@ -1,7 +1,7 @@
 -module(char_fsm).
 -behaviour(gen_fsm).
 
--include("include/records.hrl").
+-include("records.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
 -export([start_link/1]).
@@ -30,11 +30,15 @@
 
 
 start_link(TCP) ->
+  io:format("iaf hit START LINK...\n"),
+
   gen_fsm:start_link(?MODULE, TCP, []).
 
 
 init({TCP, [DB]}) ->
   process_flag(trap_exit, true),
+  io:format("INIT iaf hit...\n"),
+
   {ok, locked, #char_state{tcp = TCP, db = DB}}.
 
 
@@ -43,13 +47,17 @@ locked(
     State = #char_state{tcp = TCP, db = DB}) ->
   TCP ! <<AccountID:32/little>>,
 
+  io:format("iaf hit...\n"),
+
   {node, LoginNode} = config:get_env(char, 'login.node'),
+  io:format("iaf hit...2\n"),
 
   Verify =
     gen_server:call(
       {login_server, LoginNode},
       {verify_session, AccountID, LoginIDa, LoginIDb}
     ),
+  io:format("iaf hit3...\n"),
 
   log:info(
     "Character connect request.",

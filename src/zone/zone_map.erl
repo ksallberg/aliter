@@ -1,7 +1,7 @@
 -module(zone_map).
 -behaviour(gen_server).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([start_link/1, server_for/1]).
 

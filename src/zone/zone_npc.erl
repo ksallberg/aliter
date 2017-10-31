@@ -1,6 +1,6 @@
 -module(zone_npc).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([load_all/0]).
 
@@ -49,4 +49,3 @@ next(FSM, NPC) ->
 
 close(FSM, NPC) ->
   gen_fsm:send_all_state_event(FSM, {send_packet, dialog_close, NPC}).
-

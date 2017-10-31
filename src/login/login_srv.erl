@@ -2,8 +2,8 @@
 
 -behaviour(gen_server_tcp).
 
--include("include/records.hrl").
--include("include/ro.hrl").
+-include("records.hrl").
+-include("ro.hrl").
 
 -export([start_link/0]).
 
@@ -20,10 +20,15 @@ start_link() ->
     gen_server_tcp:start_link({local, login_server}, ?MODULE, Port, []).
 
 init(Port) ->
-    {ok, DB} = redis:connect(),
-    {ok, _Keepalive} =
-        timer:apply_interval(timer:seconds(30), redis, ping, [DB]),
-    {ok, {Port, login_fsm, login_packets}, {[], [DB]}}.
+    case redis:connect() of
+        {ok, DB} ->
+            {ok, _Keepalive} =
+                timer:apply_interval(timer:seconds(30), redis, ping, [DB]),
+            {ok, {Port, login_fsm, login_packets}, {[], [DB]}};
+        _ ->
+            lager:log(error, self(), "No redis DB found! ~n", []),
+            throw({exit, no_redis})
+    end.
 
 handle_call({verify_session, AccountID, LoginIDa, LoginIDb}, _From, Sessions) ->
   case proplists:lookup(AccountID, Sessions) of

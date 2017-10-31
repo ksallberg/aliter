@@ -1,7 +1,7 @@
 -module(zone_fsm).
 -behaviour(gen_fsm).
 
--include("include/records.hrl").
+-include("records.hrl").
 -include_lib("stdlib/include/qlc.hrl").
 
 -export([start_link/1]).
@@ -237,7 +237,7 @@ valid(
         y = Y
       }
     }) ->
-  log:debug("Sitting down.", []), 
+  log:debug("Sitting down.", []),
   gen_server:cast(
     MapServer,
     { send_to_players_in_sight,
@@ -937,4 +937,3 @@ give_item(TCP, DB, CharacterID, ID, Amount) ->
     { give_item,
       {Slot, Amount, ID, 1, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0}
     }.
-

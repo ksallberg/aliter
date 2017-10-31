@@ -1,7 +1,8 @@
 -module(packets).
 
 -export([packet_size/1]).
--include("include/ro.hrl").
+
+-include("ro.hrl").
 
 mod_for(Version) ->
   list_to_atom(lists:concat(["packets_", Version])).

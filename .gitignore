@@ -9,3 +9,5 @@ _build
 rebar.lock
 
 *.~
+.edts~
+log

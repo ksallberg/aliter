@@ -1,6 +1,6 @@
 -module(zone_commands).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([
   parse/1,
@@ -172,4 +172,3 @@ add_zeny(FSM, State, Zeny) ->
   gen_fsm:send_all_state_event(FSM, {update_state, NewStateFun}),
 
   State#zone_state.tcp ! {param_change_long, {?SP_ZENY, NewZeny}}.
-

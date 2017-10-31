@@ -56,7 +56,7 @@ pack(refuse, {Reason, S}) ->
   ];
 
 pack(Header, Data) ->
-  log:error( 
+  log:error(
     "Cannot pack unknown data.",
     [{header, Header}, {data, Data}]
   ),

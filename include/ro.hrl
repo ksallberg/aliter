@@ -1,4 +1,4 @@
--define(PACKETVER,            20141022).
+-define(PACKETVER,            20090901).
 
 %% Login server
 -define(LOGIN_IP,             {127, 0, 0, 1}).

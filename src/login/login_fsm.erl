@@ -2,7 +2,8 @@
 
 -behaviour(gen_fsm).
 
--include("include/records.hrl").
+-include("records.hrl").
+-include("ro.hrl").
 
 -export([start_link/1]).
 
@@ -25,13 +26,14 @@ start_link(TCP) ->
     gen_fsm:start_link(?MODULE, TCP, []).
 
 init({TCP, [DB]}) ->
-    io:format("login_fsm... init"),
+    io:format("\nlogin_fsm... init~p\n", [TCP]),
     process_flag(trap_exit, true),
     {ok, locked, #login_state{tcp = TCP, db = DB}}.
 
 locked(
     {login, PacketVer, RawLogin, Password, Region},
     State = #login_state{tcp = TCP, db = DB}) ->
+
   log:info(
     "Received login request.",
     [ {packetver, PacketVer},
@@ -91,27 +93,8 @@ successful_login(A, State) ->
     login_server,
     {add_session, {A#account.id, self(), LoginIDa, LoginIDb}}
   ),
-
-  {chars, CharServers} = config:get_env(login, chars),
-  Servers =
-    lists:map(
-      fun({_Node, Conf}) ->
-        {name, Name} = config:find('server.name', Conf),
-
-        {ip, IP} = config:find('server.ip', Conf),
-        {port, Port} = config:find('server.port', Conf),
-
-        {maintenance, Maintenance} =
-          config:find('server.maintenance', Conf),
-
-        {new, New} = config:find('server.new', Conf),
-
-        {IP, Port, Name, 0, Maintenance, New}
-      end,
-
-      CharServers
-    ),
-
+  Servers = [{?CHAR_IP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
+              0, _Maint = 0, _New = 0}],
   State#login_state.tcp !
     { accept,
       { LoginIDa,

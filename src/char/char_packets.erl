@@ -5,7 +5,7 @@
     pack/2,
     packet_size/1]).
 
--include("include/ro.hrl").
+-include("ro.hrl").
 
 mod_for(Module, Version) ->
   list_to_atom(lists:concat([Module, "_", Version])).

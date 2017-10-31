@@ -2,7 +2,7 @@
 
 -behaviour(supervisor).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([start_link/1, init/1, install/0, uninstall/0, stop/0]).
 

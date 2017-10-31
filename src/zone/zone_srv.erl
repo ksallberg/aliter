@@ -1,7 +1,7 @@
 -module(zone_srv).
 
 -behaviour(gen_server_tcp).
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([start_link/2, server_for/1]).
 

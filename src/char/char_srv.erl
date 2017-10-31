@@ -1,7 +1,8 @@
 -module(char_srv).
 -behaviour(gen_server_tcp).
 
--include("include/records.hrl").
+-include("records.hrl").
+-include("ro.hrl").
 
 -export([start_link/1]).
 
@@ -16,15 +17,9 @@
 -record(state, {db, sessions}).
 
 
-start_link(Conf) ->
-  config:set_env(char, Conf),
-
-  {name, Name} = config:get_env(char, 'server.name'),
-  {port, Port} = config:get_env(char, 'server.port'),
-
-  log:info("Starting character server.", [{name, Name}, {port, Port}]),
-
-  gen_server_tcp:start_link({local, char_server}, ?MODULE, Port, []).
+start_link(_Conf) ->
+  io:format("starting char server!!!!!!\n", []),
+  gen_server_tcp:start_link({local, char_server}, ?MODULE, ?CHAR_PORT, []).
 
 
 init(Port) ->
@@ -33,8 +28,8 @@ init(Port) ->
   {ok, _Keepalive} =
     timer:apply_interval(timer:seconds(30), redis, ping, [DB]),
 
-  { ok,
-    {Port, char_fsm, char_packets:new(24)},
+  {ok,
+    {Port, char_fsm, char_packets_24},
     {#state{db = DB, sessions = []}, [DB]}
   }.
 
@@ -105,12 +100,9 @@ handle_info(Info, State) ->
   log:debug("Character server got info.", [{info, Info}]),
   {noreply, State}.
 
-
 terminate(_Reason, _State) ->
   log:info("Character server terminating."),
   ok.
 
-
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
-

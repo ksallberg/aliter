@@ -2,17 +2,14 @@
 
 -behaviour(supervisor).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([start_link/1]).
-
 -export([init/1]).
-
 
 start_link(Conf) ->
   log:debug("Starting master supervisor."),
   supervisor:start_link({local, ?MODULE}, ?MODULE, Conf).
-
 
 init(Conf) ->
   { ok,

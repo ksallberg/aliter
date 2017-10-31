@@ -1,6 +1,6 @@
 -module(aliter_maps).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([read_cache/1]).
 

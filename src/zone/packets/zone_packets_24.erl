@@ -1,6 +1,6 @@
 -module(zone_packets_24).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([unpack/1, pack/2]).
 

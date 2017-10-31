@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([behaviour_info/1]).
 

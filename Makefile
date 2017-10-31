@@ -8,7 +8,7 @@ include arch/${OS}/Makefile
 all: build
 
 build:
-	${CC} ${CFLAGS} ${ARCHFLAGS} -I${ERL_TOP}usr/include/
+	${CC} ${CFLAGS} ${ARCHFLAGS} -I${ERL_TOP}/erts/emulator/beam/ -I${ERL_TOP}/erts/include/x86_64-apple-darwin16.7.0
 	rebar3 compile
 
 start: build

@@ -1,10 +1,8 @@
 -module(gen_packet_server).
 
--author('i.am@toogeneric.com').
-
 -behaviour(gen_nb_server).
 
--include("include/records.hrl").
+-include("records.hrl").
 
 -export([ start_link/2
         , start_link/1
