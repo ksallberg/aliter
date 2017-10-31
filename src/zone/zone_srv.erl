@@ -15,7 +15,6 @@
 
 -record(state, {port, maps}).
 
-
 start_link(Port, MapPairs) ->
   log:info("Starting zone server.", [{port, Port}]),
 
@@ -28,6 +27,7 @@ start_link(Port, MapPairs) ->
 
 
 init(State) ->
+  io:format("zone_srv init! ~p ~n", [State]),
   {ok, DB} = redis:connect(), % TODO: config
 
   {ok, _Keepalive} =
@@ -109,7 +109,7 @@ handle_info(Info, State) ->
 
 
 terminate(_Reason, _State) ->
-  log:info("Zone server terminating."),
+  log:info("!!!!!!!!!!!!!!!!!!!!!!!!!!Zone server terminating."),
   ok.
 
 

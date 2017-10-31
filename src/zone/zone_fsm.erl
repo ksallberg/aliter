@@ -2,6 +2,8 @@
 -behaviour(gen_fsm).
 
 -include("records.hrl").
+-include("ro.hrl").
+
 -include_lib("stdlib/include/qlc.hrl").
 
 -export([start_link/1]).
@@ -36,21 +38,27 @@ send(State, Packet) ->
 
 
 start_link(TCP) ->
+    io:format("START_LINK!!!!!!!!!!!!!!!!~n", []),
+
   gen_fsm:start_link(?MODULE, TCP, []).
 
 
 init({TCP, [DB]}) ->
   process_flag(trap_exit, true),
+    io:format("INIT!!!!!!!!!!!!!!!!~n", []),
+
   {ok, locked, #zone_state{db = DB, tcp = TCP}}.
 
 
 locked(
     {connect, AccountID, CharacterID, SessionIDa, _Gender},
     State) ->
-  {char, CharNode} = config:get_env(zone, 'server.char'),
+
+    io:format("LOCKET!!!!!!!!!!!!!!!!~n", []),
+
   Session =
     gen_server:call(
-      {char_server, CharNode},
+      {char_server, ?CHAR_PORT},
       {verify_session, AccountID, CharacterID, SessionIDa}
     ),
 
@@ -135,10 +143,14 @@ locked(
 
 
 locked(Event, State) ->
+    io:format("LOCKET2!!!!!!!!!!!!!!!!~n", []),
+
   ?MODULE:handle_event(Event, locked, State).
 
 
 locked(Event, From, State) ->
+    io:format("LOCKET3!!!!!!!!!!!!!!!!~n", []),
+
   ?MODULE:handle_sync_event(Event, From, locked, State).
 
 

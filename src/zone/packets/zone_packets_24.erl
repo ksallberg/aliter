@@ -16,34 +16,51 @@ unpack(
       LoginIDa:32/little,
       _ClientTick:32,
       Gender:8>>) ->
+  io:format("unpack!!~n", []),
   {connect, AccountID, CharacterID, LoginIDa, Gender};
 
 unpack(<<16#7d:16/little>>) ->
+  io:format("unpack!!~n", []),
+
   map_loaded;
 
 unpack(<<16#85:16/little, _:16, Head:16/little, _:24, Body:8>>) ->
+  io:format("unpack!!~n", []),
+
   {change_direction, Head, Body};
 
 unpack(<<16#89:16/little, _:5/binary, Tick:32/little>>) ->
+  io:format("unpack!!~n", []),
+
   {tick, Tick};
 
 unpack(<<16#90:16/little, NPCID:32/little, _:8>>) ->
   {npc_activate, NPCID};
 
 unpack(<<16#8c:16/little, _:8/binary, ActorID:32/little>>) ->
+  io:format("unpack!!~n", []),
+
   {request_name, ActorID};
 
 unpack(<<16#99:16/little, Length:16/little, Message/binary>>)
     when byte_size(Message) == (Length - 4) ->
+  io:format("unpack!!~n", []),
+
   {broadcast, string:strip(binary_to_list(Message), right, 0)};
 
 unpack(<<16#a7:16/little, _:32, Position:3/little-binary-unit:8>>) ->
+  io:format("unpack!!~n", []),
+
   {walk, decode_position(Position)};
 
 unpack(<<16#b2:16/little, Type:8>>) ->
+  io:format("unpack!!~n", []),
+
   {char_select, Type};
 
 unpack(<<16#b8:16/little, ActorID:32/little, Selection:8>>) ->
+  io:format("unpack!!~n", []),
+
   {npc_menu_select, ActorID, Selection};
 
 unpack(<<16#b9:16/little, ActorID:32/little>>) ->
@@ -69,9 +86,13 @@ unpack(<<16#14f:16/little, Page:32/little>>) ->
   {request_guild_info, Page};
 
 unpack(<<16#18a:16/little, _:16>>) ->
+  io:format("unpack!!~n", []),
+
   quit;
 
 unpack(<<16#21d:16/little, IsLess:32/little>>) ->
+  io:format("unpack!!~n", []),
+
   {less_effect, IsLess};
 
 %unpack(<<16#399:16/little, _Unknown:8>>) ->
@@ -79,6 +100,8 @@ unpack(<<16#21d:16/little, IsLess:32/little>>) ->
   %unknown;
 
 unpack(Unknown) ->
+  io:format("unpack!!~n", []),
+
   log:warning("Got unknown data.", [{data, Unknown}]),
   unknown.
 

@@ -17,3 +17,4 @@ start: build
 clean:
 	@@echo "Removing compiled modules..."
 	rm -rf _build
+	rm -f priv/nif.so

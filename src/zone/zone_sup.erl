@@ -11,7 +11,7 @@ start_link(Config) ->
   supervisor:start_child(?MODULE, [node(), zone_master_sup, start_link, [Config]]),
   Supervisor.
 
-init([]) ->
+init(_Ok) ->
     SupFlags = {simple_one_for_one, 2, 60},
     ZoneMasterSup = { undefined,
                       {rpc, block_call, []},

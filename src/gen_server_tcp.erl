@@ -233,6 +233,9 @@ handle_info(Info, #state{module = Module, module_state = ModState}=St) ->
 terminate(Reason, #state{module = Module, module_state = ModState,
                          supervisor = _Supervisor}) ->
   %exit(Supervisor, Reason),
+  io:format("!!!!!!!!!!!! TIME TO KILL!!!!! ~p Module ~p ModState ~p ~n", [Reason, Module, ModState]),
+  Trace = try throw(42) catch 42 -> erlang:get_stacktrace() end,
+  erlang:display(Trace),
   Module:terminate(Reason, ModState).
 
 

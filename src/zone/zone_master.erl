@@ -5,7 +5,6 @@
 -include("records.hrl").
 
 -export([start_link/1]).
-
 -export([
     init/1,
     handle_call/3,
@@ -24,21 +23,22 @@ start_link(Conf) ->
   gen_server:start_link({local, ?MODULE}, ?MODULE, Conf, []).
 
 
-init(Conf) ->
+init(_Conf) ->
   process_flag(trap_exit, true),
+  io:format("master zone1"),
 
   application:set_env(zone, started, erlang:timestamp()),
-
-  config:set_env(zone, Conf),
-
-  ok = elixir:start_app(),
+io:format("master zone2"),
+  %% config:set_env(zone, Conf),
+io:format("master zone3"),
+  %% ok = elixir:start_app(),
 
   nif:init(),
-
+io:format("master zone4"),
   zone_npc:load_all(),
-
-  {zones, Zones} = config:find('server.zones', Conf),
-
+io:format("master zone5"),
+  {zones, Zones} = zone_map:zones(),
+io:format("master zone6"),
   { ok,
     #state{
       npc_id = 5000000,
@@ -135,7 +135,7 @@ handle_info(Info, State) ->
 
 
 terminate(_Reason, _State) ->
-  log:info("Zone master server terminating."),
+  log:info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1Zone master server terminating."),
   ok.
 
 
@@ -197,4 +197,5 @@ get_player_by(Pred, [Server | Servers]) ->
 
 tick() ->
   {ok, Started} = application:get_env(zone, started),
+  io:format("klarar tick!\n"),
   round(timer:now_diff(erlang:timestamp(), Started) / 1000).

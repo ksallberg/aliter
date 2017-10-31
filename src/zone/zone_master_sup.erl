@@ -12,6 +12,7 @@ start_link(Conf) ->
   supervisor:start_link({local, ?MODULE}, ?MODULE, Conf).
 
 init(Conf) ->
+  io:format("!!!!!!!!!!!!!MASTER SUP INIT\n"),
   { ok,
     { {one_for_all, 0, 60},
       [ { zone_zones_sup,

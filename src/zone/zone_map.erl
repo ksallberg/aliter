@@ -14,8 +14,7 @@
          code_change/3]).
 
 start_link(Map) ->
-  log:debug("Starting map server.", [{map, Map#map.name}]),
-
+  log:debug("Starting map server.", [{map, Map#map.name}, {local, server_for(Map)}, ?MODULE]),
   gen_server:start_link(
     {local, server_for(Map)},
     ?MODULE,
@@ -23,11 +22,10 @@ start_link(Map) ->
     []
   ).
 
-
 init(State) ->
+  io:format("TIME TO INIT! ~p~n", [State]),
   process_flag(trap_exit, true),
   {ok, State}.
-
 
 handle_call(
     {get_actor, ActorID},
@@ -36,6 +34,8 @@ handle_call(
       players = Players,
       npcs = NPCs
     }) ->
+  log:debug("handle call 1.", []),
+
   case proplists:lookup(ActorID, Players) of
     {ActorID, FSM} ->
       {reply, {player, FSM}, State};
@@ -53,15 +53,21 @@ handle_call(
     {get_player_by, Pred},
     _From,
     State = #map_state{players = Players}) ->
+  log:debug("handle call 2.", []),
+
   {reply, get_player_by(Pred, Players), State};
 
 handle_call(
     player_count,
     _From,
     State = #map_state{players = Players}) ->
+  log:debug("handle call 3.", []),
+
   {reply, length(Players), State};
 
 handle_call(Request, _From, State) ->
+  log:debug("handle call 4.", []),
+
   log:debug("Zone map server got call.", [{call, Request}]),
   {reply, {illegal_request, Request}, State}.
 
@@ -69,11 +75,14 @@ handle_call(Request, _From, State) ->
 handle_cast( {add_player, Player}, State = #map_state{players = Players}) ->
   log:debug("Zone map server adding player.",
         [{player, Player}]),
+  log:debug("handle cast 1.", []),
 
   {noreply, State#map_state{players = [Player | Players]}};
 
 handle_cast({register_npc, NPC}, State = #map_state{npcs = NPCs}) ->
   log:warning("Registering NPC.", [{npc, NPC}]),
+
+  log:debug("handle cast 2.", []),
 
   % TODO: make it appear on screen for anyone around it
   {noreply, State#map_state{npcs = [NPC | NPCs]}};
@@ -90,6 +99,8 @@ handle_cast(
   };
 
 handle_cast({send_to_players, Packet, Data}, State) ->
+  log:debug("handle cast x.", []),
+
   lists:foreach(
     fun({_ID, FSM}) ->
       gen_fsm:send_all_state_event(
@@ -103,6 +114,8 @@ handle_cast({send_to_players, Packet, Data}, State) ->
   {noreply, State};
 
 handle_cast({send_to_other_players, Self, Packet, Data}, State) ->
+  log:debug("handle cast y.", []),
+
   lists:foreach(
     fun({_ID, FSM}) ->
       gen_fsm:send_all_state_event(
@@ -122,6 +135,8 @@ handle_cast({send_to_other_players, Self, Packet, Data}, State) ->
   {noreply, State};
 
 handle_cast({send_to_players_in_sight, {X, Y}, Packet, Data}, State) ->
+  log:debug("handle cast z.", []),
+
   lists:foreach(
     fun({_ID, FSM}) ->
       gen_fsm:send_all_state_event(
@@ -206,6 +221,14 @@ handle_info(Info, State) ->
 
 
 terminate(Reason, State) ->
+
+    io:format("terminating!!!~n", []),
+    try
+        throw(a)
+    catch throw:a ->
+        io:format("hej: ~p~n", [erlang:get_stacktrace()])
+    end,
+
   log:info(
     "Zone map server terminating.",
     [{reason, Reason}, {map, (State#map_state.map)#map.name}]
