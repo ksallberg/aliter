@@ -130,9 +130,9 @@ valid({npc_activate, ActorID}, State = #zone_state{map_server = MapServer}) ->
 
       Env = [{x, NPC#npc.main}, {p, self()}, {i, NPC#npc.id}],
 
-      Pid = spawn(fun() ->
-        elixir:eval("x.new(p, i).main", Env)
-      end),
+          Pid = spawn(fun() ->
+                          elixir:eval("x.new(p, i).main", Env)
+                  end),
 
       log:debug("NPC initialized.", [{id, Pid}]),
 
@@ -173,7 +173,12 @@ valid(
       }
     }) ->
 
+    io:format("Time to walk!!~n", []),
+
   PathFound = nif:pathfind(Map#map.id, [X | Y], [ToX | ToY]),
+
+    io:format("Time to walk2!!~n", []),
+
 
   case PathFound of
     [{SX, SY, SDir} | Path] ->
