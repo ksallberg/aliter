@@ -1,31 +1,30 @@
 -module(char_packets).
 
--export([
-    unpack/1,
-    pack/2,
-    packet_size/1]).
+-export([ unpack/1
+        , pack/2
+        , packet_size/1
+        , new/1 ]).
 
 -include("ro.hrl").
+
+%% FIXME: WHat should new do?
+new(_Whatever) ->
+    char_packets_24.
 
 mod_for(Module, Version) ->
   list_to_atom(lists:concat([Module, "_", Version])).
 
-
 unpack(Packet) ->
   call(unpack, ?PACKETVER, [Packet]).
-
 
 pack(Header, Packet) ->
   call(pack, ?PACKETVER, [Header, Packet]).
 
-
 packet_size(Header) ->
   call("packets", packet_size, ?PACKETVER, [Header]).
 
-
 call(Fun, Version, Args) ->
   call("char_packets", Fun, Version, Args).
-
 
 call(_Module, _Fun, 0, _Args) ->
   undefined;

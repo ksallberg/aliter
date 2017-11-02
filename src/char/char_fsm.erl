@@ -2,6 +2,8 @@
 -behaviour(gen_fsm).
 
 -include("records.hrl").
+-include("ro.hrl").
+
 -include_lib("stdlib/include/qlc.hrl").
 
 -export([start_link/1]).
@@ -43,26 +45,21 @@ init({TCP, [DB]}) ->
 
 
 locked(
-    {connect, AccountID, LoginIDa, LoginIDb, _Gender},
-    State = #char_state{tcp = TCP, db = DB}) ->
-  TCP ! <<AccountID:32/little>>,
+  {connect, AccountID, LoginIDa, LoginIDb, _Gender},
+  State = #char_state{tcp = TCP, db = DB}) ->
+    TCP ! <<AccountID:32/little>>,
 
-  io:format("iaf hit...\n"),
+    Verify =
+        gen_server:call(
+          login_server,
+          {verify_session, AccountID, LoginIDa, LoginIDb}
+         ),
+    io:format("iaf hit3...\n"),
 
-  {node, LoginNode} = config:get_env(char, 'login.node'),
-  io:format("iaf hit...2\n"),
-
-  Verify =
-    gen_server:call(
-      {login_server, LoginNode},
-      {verify_session, AccountID, LoginIDa, LoginIDb}
-    ),
-  io:format("iaf hit3...\n"),
-
-  log:info(
-    "Character connect request.",
-    [{account, AccountID}, {ids, {LoginIDa, LoginIDb}}, {verified, Verify}]
-  ),
+    log:info(
+      "Character connect request.",
+      [{account, AccountID}, {ids, {LoginIDa, LoginIDb}}, {verified, Verify}]
+     ),
 
   case Verify of
     {ok, FSM} ->
@@ -89,8 +86,8 @@ locked(
       TCP !
         {characters, {Chars, ?MAX_SLOTS, ?AVAILABLE_SLOTS, ?PREMIUM_SLOTS}},
 
-      % TODO
-      TCP ! {pin_code, AccountID},
+      %% % TODO
+      %% TCP ! {pin_code, AccountID},
 
       { next_state, valid,
         State#char_state{

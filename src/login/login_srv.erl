@@ -24,6 +24,13 @@ init(Port) ->
         {ok, DB} ->
             {ok, _Keepalive} =
                 timer:apply_interval(timer:seconds(30), redis, ping, [DB]),
+
+            %% try
+            %%     erlang:register(loginserv, self())
+            %% catch _:Reas ->
+            %%         io:format("why~p ~p ~n", [Reas, erlang:registered()])
+            %% end,
+
             {ok, {Port, login_fsm, login_packets}, {[], [DB]}};
         _ ->
             lager:log(error, self(), "No redis DB found! ~n", []),

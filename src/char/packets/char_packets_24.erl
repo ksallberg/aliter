@@ -2,11 +2,13 @@
 
 -include("records.hrl").
 
--export([unpack/1, pack/2]).
+-export([unpack/1, pack/2, packet_size/1]).
 
 -define(WALKSPEED, 150).
 -define(CHAR_BLOCK_SIZE, 136).
 
+packet_size(X) ->
+    packets:packet_size(X).
 
 unpack(<<16#65:16/little,
          AccountID:32/little,
@@ -74,16 +76,14 @@ unpack(Unknown) ->
   unknown.
 
 
-pack(
-    characters,
-    {Characters, MaxSlots, AvailableSlots, PremiumSlots}) ->
-  [ <<16#6b:16/little,
-      (length(Characters) * ?CHAR_BLOCK_SIZE + 27):16/little,
-      MaxSlots:8/little,
-      AvailableSlots:8/little,
-      PremiumSlots:8/little>>,
-    binary:copy(<<0>>, 20)
-  ] ++ [character(C) || C <- Characters];
+pack(characters, {Characters, MaxSlots, AvailableSlots, PremiumSlots}) ->
+    [ <<16#6b:16/little,
+        (length(Characters) * ?CHAR_BLOCK_SIZE + 27):16/little,
+        MaxSlots:8/little,
+        AvailableSlots:8/little,
+        PremiumSlots:8/little>>,
+      binary:copy(<<0>>, 20)
+    ] ++ [character(C) || C <- Characters];
 
 pack(pin_code, AccountID) ->
   <<16#8B9:16/little,

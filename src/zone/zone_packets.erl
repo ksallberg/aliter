@@ -7,6 +7,7 @@
         , packet_size/1
         , new/1 ]).
 
+%% FIXME: WHat should new do?
 new(_Whatever) ->
     zone_packets_24.
 
