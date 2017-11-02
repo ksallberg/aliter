@@ -12,34 +12,34 @@ new(_Whatever) ->
     zone_packets_24.
 
 mod_for(Module, Version) ->
-  list_to_atom(lists:concat([Module, "_", Version])).
+    list_to_atom(lists:concat([Module, "_", Version])).
 
 unpack(Packet) ->
-  call(unpack, ?PACKETVER, [Packet]).
+    call(unpack, ?PACKETVER, [Packet]).
 
 pack(Header, Packet) ->
-  call(pack, ?PACKETVER, [Header, Packet]).
+    call(pack, ?PACKETVER, [Header, Packet]).
 
 packet_size(Header) ->
-  call("packets", packet_size, ?PACKETVER, [Header]).
+    call("packets", packet_size, ?PACKETVER, [Header]).
 
 call(Fun, Version, Args) ->
-  call("zone_packets", Fun, Version, Args).
+    call("zone_packets", Fun, Version, Args).
 
 call(_Module, _Fun, 0, _Args) ->
-  undefined;
+    undefined;
 
 call(Module, Fun, Version, Args) ->
-  case apply(mod_for(Module, Version), Fun, Args) of
-    undefined ->
-      if
-        Version == 24 ->
-          undefined;
+    case apply(mod_for(Module, Version), Fun, Args) of
+        undefined ->
+            if
+                Version == 24 ->
+                    undefined;
 
-        true ->
-          call(Module, Fun, Version - 1, Args)
-      end;
+                true ->
+                    call(Module, Fun, Version - 1, Args)
+            end;
 
-    Event ->
-      Event
-  end.
+        Event ->
+            Event
+    end.

@@ -2,15 +2,30 @@
 
 -include("records.hrl").
 
--export([unpack/1, pack/2]).
+-export([ unpack/1
+        , pack/2
+        , packet_size/1 ]).
 
 -define(WALKSPEED, 150).
 
+packet_size(X) ->
+    packets:packet_size(X).
 
 % NOTE: put all connection packets here as 24 gets tried first
 % might be fixable later
+%% unpack(
+%%     <<16#436:16/little,
+%%       AccountID:32/little,
+%%       CharacterID:32/little,
+%%       LoginIDa:32/little,
+%%       _ClientTick:32,
+%%       Gender:8>>) ->
+%%   io:format("unpack!!~n", []),
+%%   {connect, AccountID, CharacterID, LoginIDa, Gender};
+
+%% FIXME: what is 60, 8?
 unpack(
-    <<16#436:16/little,
+    <<60,8,
       AccountID:32/little,
       CharacterID:32/little,
       LoginIDa:32/little,
@@ -21,7 +36,6 @@ unpack(
 
 unpack(<<16#7d:16/little>>) ->
   io:format("unpack!!~n", []),
-
   map_loaded;
 
 unpack(<<16#85:16/little, _:16, Head:16/little, _:24, Body:8>>) ->
@@ -100,11 +114,9 @@ unpack(<<16#21d:16/little, IsLess:32/little>>) ->
   %unknown;
 
 unpack(Unknown) ->
-  io:format("unpack!!~n", []),
-
-  log:warning("Got unknown data.", [{data, Unknown}]),
+  io:format("zone zone unpack!!~n", []),
+  log:warning("zone packets Got unknown data.", [{data, Unknown}]),
   unknown.
-
 
 pack(accept, {Tick, {X, Y, D}}) ->
   <<16#73:16/little,

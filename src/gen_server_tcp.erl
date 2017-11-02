@@ -7,30 +7,25 @@
 -export([behaviour_info/1]).
 
 %% API
--export([
-    start/3,
-    start/4,
-    start_link/3,
-    start_link/4
-        ]).
+-export([ start/3
+        , start/4
+        , start_link/3
+        , start_link/4 ]).
 
 %% gen_server callbacks
--export([
-    init/1,
-    handle_call/3,
-    handle_cast/2,
-    handle_info/2,
-    terminate/2,
-    code_change/3]).
+-export([ init/1
+        , handle_call/3
+        , handle_cast/2
+        , handle_info/2
+        , terminate/2
+        , code_change/3 ]).
 
 %% helpers
--export([
-    listener/1,
-    client_sup/1]).
+-export([ listener/1
+        , client_sup/1 ]).
 
 % State for the outer manager, wrapping the callback.
 -record(state, {module, module_state, supervisor}).
-
 
 behaviour_info(callbacks) ->
   [ {init, 1},

@@ -2,7 +2,9 @@
 
 -include("records.hrl").
 
--export([unpack/1, pack/2, packet_size/1]).
+-export([ unpack/1
+        , pack/2
+        , packet_size/1 ]).
 
 -define(WALKSPEED, 150).
 -define(CHAR_BLOCK_SIZE, 136).

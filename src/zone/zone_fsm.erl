@@ -49,110 +49,77 @@ init({TCP, [DB]}) ->
 
   {ok, locked, #zone_state{db = DB, tcp = TCP}}.
 
-
-locked(
-    {connect, AccountID, CharacterID, SessionIDa, _Gender},
-    State) ->
-
+locked({connect, AccountID, CharacterID, SessionIDa, _Gender},
+       State) ->
     io:format("LOCKET!!!!!!!!!!!!!!!!~n", []),
+    Session =
+        gen_server:call(char_server, {verify_session, AccountID, CharacterID, SessionIDa}),
+    case Session of
+        {ok, FSM} ->
+            {ok, C = #char_state{char = Char}} = gen_fsm:sync_send_event(FSM,
+                                                                         switch_zone),
+            log:debug("Switched to Zone server.", [{char_state, C}]),
+            {ok, Map, MapServer} =
+                gen_server:call(State#zone_state.server, {add_player,
+                                                          Char#char.map,
+                                                          {AccountID, self()}}),
+            send(State, {parse, zone_packets:new(C#char_state.packet_ver)}),
+            send(State, {account_id, AccountID}),
+            send(State, {accept, {zone_master:tick(),
+                                  {Char#char.x, Char#char.y, 0}}}),
+            Items = db:get_player_items(State#zone_state.db, Char#char.id),
+            send(State, {inventory, Items}),
+            WorldItems = db:get_world_items(State#zone_state.db, Char#char.map),
+            lists:foreach(
+              fun(Item) ->
+                      log:debug("Showing item.", [{item, Item}]),
+                      send(
+                        State,
+                        { item_on_ground,
+                          { Item#world_item.slot,
+                            Item#world_item.item,
+                            1, % TODO: identified
 
-  Session =
-    gen_server:call(
-      {char_server, ?CHAR_PORT},
-      {verify_session, AccountID, CharacterID, SessionIDa}
-    ),
+                                                % TODO
+                            Char#char.x + 1,
+                            Char#char.y + 1,
+                            1,
+                            2,
 
-  case Session of
-    {ok, FSM} ->
-      {ok, C = #char_state{char = Char}} =
-        gen_fsm:sync_send_event(FSM, switch_zone),
+                            Item#world_item.amount
+                          }
+                        })
+              end,
+              WorldItems),
 
-      log:debug("Switched to Zone server.",
-                [{char_state, C}]),
+            say("Welcome to Aliter.", State),
 
-      {ok, Map, MapServer} =
-        gen_server:call(
-          State#zone_state.server,
-          { add_player,
-            Char#char.map,
-            {AccountID, self()}
-          }
-        ),
+            { next_state,
+              valid,
+              State#zone_state{
+                map = Map,
+                map_server = MapServer,
+                account = C#char_state.account,
+                char = C#char_state.char,
+                id_a = C#char_state.id_a,
+                id_b = C#char_state.id_b,
+                packet_ver = C#char_state.packet_ver,
+                char_fsm = FSM
+               }
+            };
 
-      send(State, {parse, zone_packets:new(C#char_state.packet_ver)}),
-
-      send(State, {account_id, AccountID}),
-
-      send(
-        State,
-        { accept,
-          { zone_master:tick(),
-            {Char#char.x, Char#char.y, 0}
-          }
-        }
-      ),
-
-      Items = db:get_player_items(State#zone_state.db, Char#char.id),
-      send(State, {inventory, Items}),
-
-      WorldItems = db:get_world_items(State#zone_state.db, Char#char.map),
-      lists:foreach(
-        fun(Item) ->
-          log:debug("Showing item.", [{item, Item}]),
-          send(
-            State,
-            { item_on_ground,
-              { Item#world_item.slot,
-                Item#world_item.item,
-                1, % TODO: identified
-
-                % TODO
-                Char#char.x + 1,
-                Char#char.y + 1,
-                1,
-                2,
-
-                Item#world_item.amount
-              }
-            })
-        end,
-        WorldItems),
-
-      say("Welcome to Aliter.", State),
-
-      { next_state,
-        valid,
-        State#zone_state{
-          map = Map,
-          map_server = MapServer,
-          account = C#char_state.account,
-          char = C#char_state.char,
-          id_a = C#char_state.id_a,
-          id_b = C#char_state.id_b,
-          packet_ver = C#char_state.packet_ver,
-          char_fsm = FSM
-        }
-      };
-
-    invalid ->
-      log:warning("Invalid zone login attempt caught.",
-                  [{account_id, AccountID},
-                    {character_id, CharacterID}]),
-      {next_state, locked, State}
-  end;
-
-
+        invalid ->
+            log:warning("Invalid zone login attempt caught.",
+                        [{account_id, AccountID},
+                         {character_id, CharacterID}]),
+            {next_state, locked, State}
+    end;
 locked(Event, State) ->
-    io:format("LOCKET2!!!!!!!!!!!!!!!!~n", []),
-
-  ?MODULE:handle_event(Event, locked, State).
-
-
+    io:format("LOCKET2!!!!!!!!!!!!!!!! ~p ~n", [Event]),
+    ?MODULE:handle_event(Event, locked, State).
 locked(Event, From, State) ->
     io:format("LOCKET3!!!!!!!!!!!!!!!!~n", []),
-
-  ?MODULE:handle_sync_event(Event, From, locked, State).
-
+    ?MODULE:handle_sync_event(Event, From, locked, State).
 
 valid({npc_activate, ActorID}, State = #zone_state{map_server = MapServer}) ->
   log:warning("Activating NPC.", [{id, ActorID}]),
