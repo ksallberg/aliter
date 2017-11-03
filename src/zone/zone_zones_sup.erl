@@ -9,14 +9,11 @@
 -export([init/1]).
 
 start_link(Conf) ->
-    log:debug("Starting zones supervisor."),
     supervisor:start_link({local, ?MODULE}, ?MODULE, Conf).
 
 init(_Conf) ->
     {zones, Zones} = zone_map:zones(),
-    io:format("kommer hit1\n"),
     AllMaps = aliter_maps:read_cache("priv/maps"),
-    io:format("kommer hit2\n"),
     Specs = lists:map(
               fun({Port, ZoneMaps}) ->
                       Names = [list_to_binary(X) || X <- ZoneMaps],

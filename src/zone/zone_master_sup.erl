@@ -8,28 +8,26 @@
 -export([init/1]).
 
 start_link(Conf) ->
-  log:debug("Starting master supervisor."),
-  supervisor:start_link({local, ?MODULE}, ?MODULE, Conf).
+    log:debug("Starting master supervisor."),
+    supervisor:start_link({local, ?MODULE}, ?MODULE, Conf).
 
 init(Conf) ->
-  io:format("!!!!!!!!!!!!!MASTER SUP INIT\n"),
-  { ok,
-    { {one_for_all, 0, 60},
-      [ { zone_zones_sup,
-          {zone_zones_sup, start_link, [Conf]},
-          permanent,
-          infinity,
-          supervisor,
-          [zone_zones_sup]
-        },
+    {ok, {{one_for_all, 0, 60},
+          [{zone_zones_sup,
+            {zone_zones_sup, start_link, [Conf]},
+            permanent,
+            infinity,
+            supervisor,
+            [zone_zones_sup]
+           },
 
-        { zone_master,
-          {zone_master, start_link, [Conf]},
-          permanent,
-          5000,
-          worker,
-          [zone_master]
-        }
-      ]
-    }
-  }.
+           {zone_master,
+            {zone_master, start_link, [Conf]},
+            permanent,
+            5000,
+            worker,
+            [zone_master]
+           }
+          ]
+         }
+    }.

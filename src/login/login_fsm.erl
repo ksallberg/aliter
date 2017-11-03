@@ -22,172 +22,158 @@
 -define(MALE, 1).
 
 start_link(TCP) ->
-    io:format("login_fsm start_link..."),
     gen_fsm:start_link(?MODULE, TCP, []).
 
 init({TCP, [DB]}) ->
-    io:format("\nlogin_fsm... init~p\n", [TCP]),
     process_flag(trap_exit, true),
     {ok, locked, #login_state{tcp = TCP, db = DB}}.
 
 locked(
-    {login, PacketVer, RawLogin, Password, Region},
-    State = #login_state{tcp = TCP, db = DB}) ->
+  {login, PacketVer, RawLogin, Password, Region},
+  State = #login_state{tcp = TCP, db = DB}) ->
+    log:info(
+      "Received login request.",
+      [ {packetver, PacketVer},
+        {login, RawLogin},
+        {password, erlang:md5(Password)},
+        {region, Region}
+      ]
+     ),
+    %% Create new account if username ends with _M or _F.
+    GenderS = string:sub_string(RawLogin, length(RawLogin)-1, length(RawLogin)),
+    Login = register_account(DB, RawLogin, Password, GenderS),
+    Versioned = State#login_state{packet_ver = PacketVer},
+    log:info("Pre-auth.", [{login, Login}]),
+    case Login of
+        A = #account{} ->
+            successful_login(A, Versioned);
 
-  log:info(
-    "Received login request.",
-    [ {packetver, PacketVer},
-      {login, RawLogin},
-      {password, erlang:md5(Password)},
-      {region, Region}
-    ]
-  ),
+        _ ->
+            GetID = db:get_account_id(DB, Login),
+            case GetID of
+                                                % Bad login
+                nil ->
+                    TCP ! {refuse, {0, ""}},
+                    {next_state, locked, State};
 
-  % Create new account if username ends with _M or _F.
-  GenderS = string:sub_string(RawLogin, length(RawLogin)-1, length(RawLogin)),
-  Login = register_account(DB, RawLogin, Password, GenderS),
+                ID ->
+                    Account = db:get_account(DB, ID),
 
-  Versioned = State#login_state{packet_ver = PacketVer},
+                    Hashed = erlang:md5(Password),
 
-  log:info("Pre-auth.", [{login, Login}]),
+                    if
+                                                % Bad password
+                        Account#account.password /= Hashed ->
+                            TCP ! {refuse, {1, ""}},
+                            {next_state, locked, State};
 
-  case Login of
-    A = #account{} ->
-      successful_login(A, Versioned);
-
-    _ ->
-    GetID = db:get_account_id(DB, Login),
-    case GetID of
-      % Bad login
-      nil ->
-        TCP ! {refuse, {0, ""}},
-        {next_state, locked, State};
-
-      ID ->
-        Account = db:get_account(DB, ID),
-
-        Hashed = erlang:md5(Password),
-
-        if
-          % Bad password
-          Account#account.password /= Hashed ->
-            TCP ! {refuse, {1, ""}},
-            {next_state, locked, State};
-
-          % Successful auth
-          true ->
-            successful_login(Account, Versioned)
-        end
-    end
-  end.
+                                                % Successful auth
+                        true ->
+                            successful_login(Account, Versioned)
+                    end
+            end
+    end.
 
 successful_login(A, State) ->
-  % Generate random IDs using current time as initial seed
-  {A1, A2, A3} = erlang:timestamp(),
-  random:seed(A1, A2, A3),
-
-  {LoginIDa, LoginIDb} =
-    {random:uniform(16#FFFFFFFF), random:uniform(16#FFFFFFFF)},
-
-  gen_server:cast(
-    login_server,
-    {add_session, {A#account.id, self(), LoginIDa, LoginIDb}}
-  ),
-  Servers = [{?CHAR_IP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
-              0, _Maint = 0, _New = 0}],
-  State#login_state.tcp !
-    { accept,
-      { LoginIDa,
-        LoginIDb,
-        A#account.id,
-        A#account.gender,
-        Servers
-      }
-    },
-
-  State#login_state.tcp ! close,
-
-  valid(
-    stop,
-    State#login_state{
-      account = A,
-      id_a = LoginIDa,
-      id_b = LoginIDb
-    }
-  ).
+    %% Generate random IDs using current time as initial seed
+    {A1, A2, A3} = erlang:timestamp(),
+    random:seed(A1, A2, A3),
+    {LoginIDa, LoginIDb} =
+        {random:uniform(16#FFFFFFFF), random:uniform(16#FFFFFFFF)},
+    gen_server:cast(
+      login_server,
+      {add_session, {A#account.id, self(), LoginIDa, LoginIDb}}
+     ),
+    Servers = [{?CHAR_IP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
+                0, _Maint = 0, _New = 0}],
+    State#login_state.tcp !
+        { accept,
+          { LoginIDa,
+            LoginIDb,
+            A#account.id,
+            A#account.gender,
+            Servers
+          }
+        },
+    State#login_state.tcp ! close,
+    valid(
+      stop,
+      State#login_state{
+        account = A,
+        id_a = LoginIDa,
+        id_b = LoginIDb
+       }
+     ).
 
 %% Create account when username ends with _M or _F
 register_account(C, RawLogin, Password, "_M") ->
-  create_new_account(C, RawLogin, Password, ?MALE);
+    create_new_account(C, RawLogin, Password, ?MALE);
 register_account(C, RawLogin, Password, "_F") ->
-  create_new_account(C, RawLogin, Password, ?FEMALE);
+    create_new_account(C, RawLogin, Password, ?FEMALE);
 register_account(_, Login, _Password, _) ->
-  Login.
+    Login.
 
 create_new_account(C, RawLogin, Password, Gender) ->
-  Login = string:sub_string(RawLogin, 1, length(RawLogin)-2),
+    Login = string:sub_string(RawLogin, 1, length(RawLogin)-2),
+    Check = db:get_account_id(C, Login),
+    log:info("Check.", [{check, Check}]),
+    case Check of
+        nil ->
+            log:info("Created account", [{login, Login}]),
 
-  Check = db:get_account_id(C, Login),
+            db:save_account(
+              C,
+              #account{
+                 login = Login,
+                 password = erlang:md5(Password),
+                 gender = Gender
+                }
+             );
 
-  log:info("Check.", [{check, Check}]),
-
-  case Check of
-    nil ->
-      log:info("Created account", [{login, Login}]),
-
-      db:save_account(
-        C,
-        #account{
-          login = Login,
-          password = erlang:md5(Password),
-          gender = Gender
-        }
-      );
-
-    _ ->
-      log:info("Account already exists; ignore.", [{login, Login}]),
-      Login
-  end.
+        _ ->
+            log:info("Account already exists; ignore.", [{login, Login}]),
+            Login
+    end.
 
 valid(stop, State) ->
-  log:debug("Login FSM waiting 5 minutes to exit."),
-  {next_state,
-   valid,
-   State#login_state{die = gen_fsm:send_event_after(5 * 60 * 1000, exit)}};
+    log:debug("Login FSM waiting 5 minutes to exit."),
+    {next_state,
+     valid,
+     State#login_state{die = gen_fsm:send_event_after(5 * 60 * 1000, exit)}};
 valid(exit, State) ->
-  log:debug("Login FSM exiting."),
-  {stop, normal, State};
+    log:debug("Login FSM exiting."),
+    {stop, normal, State};
 valid(Event, State) ->
-  ?MODULE:handle_event(Event, chosen, State).
+    ?MODULE:handle_event(Event, chosen, State).
 valid(switch_char, _From, State) ->
-  gen_fsm:cancel_timer(State#login_state.die),
-  {reply, {ok, State}, valid, State}.
+    gen_fsm:cancel_timer(State#login_state.die),
+    {reply, {ok, State}, valid, State}.
 
 handle_event(stop, _StateName, StateData) ->
-  log:info("Login FSM stopping."),
-  {stop, normal, StateData};
+    log:info("Login FSM stopping."),
+    {stop, normal, StateData};
 handle_event({set_server, Server}, StateName, StateData) ->
-  {next_state, StateName, StateData#login_state{server = Server}};
+    {next_state, StateName, StateData#login_state{server = Server}};
 handle_event(Event, StateName, StateData) ->
-  log:debug("Login FSM got event.", [{even, Event}, {state, StateName}, {state_data, StateData}]),
-  {next_state, StateName, StateData}.
+    log:debug("Login FSM got event.", [{even, Event}, {state, StateName}, {state_data, StateData}]),
+    {next_state, StateName, StateData}.
 
 handle_sync_event(_Event, _From, StateName, StateData) ->
-  log:debug("Login FSM got sync event."),
-  {next_state, StateName, StateData}.
+    log:debug("Login FSM got sync event."),
+    {next_state, StateName, StateData}.
 
 handle_info({'EXIT', From, Reason}, _StateName, StateData) ->
-  log:error("Login FSM got EXIT signal.", [{from, From}, {reason, Reason}]),
-  {stop, normal, StateData};
+    log:error("Login FSM got EXIT signal.", [{from, From}, {reason, Reason}]),
+    {stop, normal, StateData};
 handle_info(Info, StateName, StateData) ->
-  log:debug("Login FSM got info.", [{info, Info}]),
-  {next_state, StateName, StateData}.
+    log:debug("Login FSM got info.", [{info, Info}]),
+    {next_state, StateName, StateData}.
 
 terminate(_Reason, _StateName, #login_state{account = #account{id = AccountID}}) ->
-  log:debug("Login FSM terminating.", [{account, AccountID}]),
-  gen_server:cast(login_server, {remove_session, AccountID});
+    log:debug("Login FSM terminating.", [{account, AccountID}]),
+    gen_server:cast(login_server, {remove_session, AccountID});
 terminate(_Reason, _StateName, _StateData) ->
-  ok.
+    ok.
 
 code_change(_OldVsn, StateName, StateData, _Extra) ->
-  {ok, StateName, StateData}.
+    {ok, StateName, StateData}.

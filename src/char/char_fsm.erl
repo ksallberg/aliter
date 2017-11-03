@@ -6,7 +6,7 @@
 
 -include_lib("stdlib/include/qlc.hrl").
 
--export([start_link/1]).
+-export([ start_link/1 ]).
 
 -export([ handle_event/3
         , handle_sync_event/4
@@ -29,12 +29,10 @@
 -define(PREMIUM_SLOTS, 9).
 
 start_link(TCP) ->
-    io:format("iaf hit START LINK...\n"),
     gen_fsm:start_link(?MODULE, TCP, []).
 
 init({TCP, [DB]}) ->
     process_flag(trap_exit, true),
-    io:format("INIT iaf hit...\n"),
     {ok, locked, #char_state{tcp = TCP, db = DB}}.
 
 locked({connect, AccountID, LoginIDa, LoginIDb, _Gender},
@@ -43,7 +41,6 @@ locked({connect, AccountID, LoginIDa, LoginIDb, _Gender},
     Verify =
         gen_server:call(login_server,
                         {verify_session, AccountID, LoginIDa, LoginIDb}),
-    io:format("iaf hit3...\n"),
     log:info("Character connect request.",
              [{account, AccountID},
               {ids, {LoginIDa, LoginIDb}},

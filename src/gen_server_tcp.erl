@@ -24,229 +24,216 @@
 -export([ listener/1
         , client_sup/1 ]).
 
-% State for the outer manager, wrapping the callback.
+%% State for the outer manager, wrapping the callback.
 -record(state, {module, module_state, supervisor}).
 
 behaviour_info(callbacks) ->
-  [ {init, 1},
-    {handle_call, 3},
-    {handle_cast, 2},
-    {handle_info, 2},
-    {terminate, 2},
-    {code_change, 3}
-  ];
+    [ {init, 1},
+      {handle_call, 3},
+      {handle_cast, 2},
+      {handle_info, 2},
+      {terminate, 2},
+      {code_change, 3}
+    ];
 
 behaviour_info(_) -> undefined.
 
 start_link(Name, Module, InitArgs, Options) ->
-  gen_server:start_link(
-    Name,
-    ?MODULE,
-    {gen_server_tcp, Module, InitArgs},
-    Options
-  ).
+    gen_server:start_link(
+      Name,
+      ?MODULE,
+      {gen_server_tcp, Module, InitArgs},
+      Options
+     ).
 
 start_link(Module, InitArgs, Options) ->
-  gen_server:start_link(
-    ?MODULE,
-    {gen_server_tcp, Module, InitArgs},
-    Options
-  ).
+    gen_server:start_link(
+      ?MODULE,
+      {gen_server_tcp, Module, InitArgs},
+      Options
+     ).
 
 start(Name, Module, InitArgs, Options) ->
-  gen_server:start(
-    Name,
-    ?MODULE,
-    {gen_server_tcp, Module, InitArgs},
-    Options
-  ).
-
+    gen_server:start(
+      Name,
+      ?MODULE,
+      {gen_server_tcp, Module, InitArgs},
+      Options
+     ).
 
 start(Module, InitArgs, Options) ->
-  gen_server:start(
-    ?MODULE,
-    {gen_server_tcp, Module, InitArgs},
-    Options
-  ).
-
-% gen_server callbacks
+    gen_server:start(
+      ?MODULE,
+      {gen_server_tcp, Module, InitArgs},
+      Options
+     ).
 
 init({gen_server_tcp, Module, InitArgs}) ->
-  process_flag(trap_exit, true),
-  log:debug("Starting generic TCP server.", [{module, Module}]),
-  case Module:init(InitArgs) of
-    {ok, {Port, FSMModule, PacketHandler}, ModState} ->
-      log:debug(
-        "TCP server started.",
-        [ {module, Module},
-          {port, Port},
-          {fsm, FSMModule},
-          {handler, PacketHandler}
-        ]
-      ),
-      {MState, FArgs} =
-        case ModState of
-          {X, Y} -> {X, Y};
-          X -> {X, []}
-        end,
-      St = #nb_state{
-        port = Port,
-        packet_handler = PacketHandler,
-        fsm_module = FSMModule,
-        fsm_args = FArgs,
-        server = self()
-      },
-      {ok, Sup} = supervisor:start_link(?MODULE, {all, St}),
-      { ok,
-        #state{
-          module = Module,
-          module_state = MState,
-          supervisor = Sup
-        }
-      };
+    process_flag(trap_exit, true),
+    log:debug("Starting generic TCP server.", [{module, Module}]),
+    case Module:init(InitArgs) of
+        {ok, {Port, FSMModule, PacketHandler}, ModState} ->
+            log:debug(
+              "TCP server started.",
+              [ {module, Module},
+                {port, Port},
+                {fsm, FSMModule},
+                {handler, PacketHandler}
+              ]
+             ),
+            {MState, FArgs} =
+                case ModState of
+                    {X, Y} -> {X, Y};
+                    X -> {X, []}
+                end,
+            St = #nb_state{
+                    port = Port,
+                    packet_handler = PacketHandler,
+                    fsm_module = FSMModule,
+                    fsm_args = FArgs,
+                    server = self()
+                   },
+            {ok, Sup} = supervisor:start_link(?MODULE, {all, St}),
+            { ok,
+              #state{
+                 module = Module,
+                 module_state = MState,
+                 supervisor = Sup
+                }
+            };
 
-    ignore ->
-      log:error("TCP server got ignore init result.", [{module, Module}]),
-      ignore;
+        ignore ->
+            log:error("TCP server got ignore init result.", [{module, Module}]),
+            ignore;
 
-    {stop, Reason} ->
-      log:error(
-        "TCP server got stop init result.",
-        [{module, Module}, {reason, Reason}]
-      ),
-      {stop, Reason};
+        {stop, Reason} ->
+            log:error(
+              "TCP server got stop init result.",
+              [{module, Module}, {reason, Reason}]
+             ),
+            {stop, Reason};
 
-    Other ->
-      log:error(
-        "TCP server got unknown init result.",
-        [{module, Module}, {result, Other}]
-      ),
-      {stop, Other}
-  end;
+        Other ->
+            log:error(
+              "TCP server got unknown init result.",
+              [{module, Module}, {result, Other}]
+             ),
+            {stop, Other}
+    end;
 
-% initialize & supervise both the listener and the FSM
+%% initialize & supervise both the listener and the FSM
 init({all, #nb_state{port = Port, fsm_module = FSMModule} = St}) ->
     { ok,
       { {one_for_one, 2, 60},
         [
          %% gen_nb_server har inte den aritet som forvantas.
-          { listener(Port),
-            { gen_nb_server,
-              start_link,
-              [ {local, listener(Port)},
-                gen_packet_server,
-                [St]
-              ]
-            },
-            permanent,
-            1000,
-            worker,
-            []
-          },
+         { listener(Port),
+           { gen_nb_server,
+             start_link,
+             [ {local, listener(Port)},
+               gen_packet_server,
+               [St]
+             ]
+           },
+           permanent,
+           1000,
+           worker,
+           []
+         },
 
-          { client_sup(Port),
-            { supervisor,
-              start_link,
-              [ {local, client_sup(Port)},
-                ?MODULE,
-                {clients, FSMModule}
-              ]
-            },
-            permanent,
-            infinity,
-            supervisor,
-            []
-          }
+         { client_sup(Port),
+           { supervisor,
+             start_link,
+             [ {local, client_sup(Port)},
+               ?MODULE,
+               {clients, FSMModule}
+             ]
+           },
+           permanent,
+           infinity,
+           supervisor,
+           []
+         }
         ]
       }
     };
 
-% initialize the FSM
+%% initialize the FSM
 init({clients, FSMModule}) ->
-  { ok,
-    { {simple_one_for_one, 2, 60},
-      [ { undefined,
-          {FSMModule, start_link, []},
-          temporary,
-          301000, % FSMs wait <=5 mins for a signal to keep the login IDs.
-          worker,
-          [FSMModule]
-        }
-      ]
-    }
-  }.
+    { ok,
+      { {simple_one_for_one, 2, 60},
+        [ { undefined,
+            {FSMModule, start_link, []},
+            temporary,
+            301000, % FSMs wait <=5 mins for a signal to keep the login IDs.
+            worker,
+            [FSMModule]
+          }
+        ]
+      }
+    }.
 
+handle_call(Request, From,
+            #state{module = Module, module_state = ModState} = St) ->
+    case Module:handle_call(Request, From, ModState) of
+        {reply, Reply, NewModState} ->
+            {reply, Reply, St#state{module_state = NewModState}};
 
-handle_call(Request, From, #state{module = Module, module_state = ModState} = St) ->
-  case Module:handle_call(Request, From, ModState) of
-    {reply, Reply, NewModState} ->
-      {reply, Reply, St#state{module_state = NewModState}};
+        {reply, Reply, NewModState, Timeout} ->
+            {reply, Reply, St#state{module_state = NewModState}, Timeout};
 
-    {reply, Reply, NewModState, Timeout} ->
-      {reply, Reply, St#state{module_state = NewModState}, Timeout};
+        {noreply, NewModState} ->
+            {noreply, St#state{module_state = NewModState}};
 
-    {noreply, NewModState} ->
-      {noreply, St#state{module_state = NewModState}};
+        {noreply, NewModState, Timeout} ->
+            {noreply, St#state{module_state = NewModState}, Timeout};
 
-    {noreply, NewModState, Timeout} ->
-      {noreply, St#state{module_state = NewModState}, Timeout};
+        {stop, Reason, NewModState} ->
+            {stop, Reason, St#state{module_state = NewModState}};
 
-    {stop, Reason, NewModState} ->
-      {stop, Reason, St#state{module_state = NewModState}};
-
-    {stop, Reason, Reply, NewModState} ->
-      {stop, Reason, Reply, St#state{module_state = NewModState}}
-  end.
-
+        {stop, Reason, Reply, NewModState} ->
+            {stop, Reason, Reply, St#state{module_state = NewModState}}
+    end.
 
 handle_cast(Request, #state{module = Module, module_state = ModState}=St) ->
-  case Module:handle_cast(Request, ModState) of
-    {noreply, NewModState} ->
-      {noreply, St#state{module_state = NewModState}};
+    case Module:handle_cast(Request, ModState) of
+        {noreply, NewModState} ->
+            {noreply, St#state{module_state = NewModState}};
 
-    {noreply, NewModState, Timeout} ->
-      {noreply, St#state{module_state = NewModState}, Timeout};
+        {noreply, NewModState, Timeout} ->
+            {noreply, St#state{module_state = NewModState}, Timeout};
 
-    {stop, Reason, NewModState} ->
-      {stop, Reason, St#state{module_state = NewModState}}
-  end.
-
+        {stop, Reason, NewModState} ->
+            {stop, Reason, St#state{module_state = NewModState}}
+    end.
 
 handle_info(Info, #state{module = Module, module_state = ModState}=St) ->
-  case Module:handle_info(Info, ModState) of
-    {noreply, NewModState} ->
-      {noreply, St#state{module_state = NewModState}};
+    case Module:handle_info(Info, ModState) of
+        {noreply, NewModState} ->
+            {noreply, St#state{module_state = NewModState}};
 
-    {noreply, NewModState, Timeout} ->
-      {noreply, St#state{module_state = NewModState}, Timeout};
+        {noreply, NewModState, Timeout} ->
+            {noreply, St#state{module_state = NewModState}, Timeout};
 
-    {stop, Reason, NewModState} ->
-      {stop, Reason, St#state{module_state = NewModState}}
-  end.
-
+        {stop, Reason, NewModState} ->
+            {stop, Reason, St#state{module_state = NewModState}}
+    end.
 
 terminate(Reason, #state{module = Module, module_state = ModState,
                          supervisor = _Supervisor}) ->
-  %exit(Supervisor, Reason),
-  io:format("!!!!!!!!!!!! TIME TO KILL!!!!! ~p Module ~p ModState ~p ~n", [Reason, Module, ModState]),
-  Trace = try throw(42) catch 42 -> erlang:get_stacktrace() end,
-  erlang:display(Trace),
-  Module:terminate(Reason, ModState).
+    Module:terminate(Reason, ModState).
 
+code_change(OldVsn, #state{module = Module,
+                           module_state = ModState} = St, Extra) ->
+    case Module:code_change(OldVsn, ModState, Extra) of
+        {ok, NewModState} ->
+            {ok, St#state{module_state = NewModState}};
 
-code_change(OldVsn, #state{module = Module, module_state = ModState}=St, Extra) ->
-  case Module:code_change(OldVsn, ModState, Extra) of
-    {ok, NewModState} ->
-      {ok, St#state{module_state = NewModState}};
+        Other -> Other
+    end.
 
-    Other -> Other
-  end.
-
-
-% Helpers
 listener(Port) ->
-  list_to_atom(lists:concat(["listener_", Port])).
-
+    list_to_atom(lists:concat(["listener_", Port])).
 
 client_sup(Port) ->
-  list_to_atom(lists:concat(["client_sup_", Port])).
+    list_to_atom(lists:concat(["client_sup_", Port])).

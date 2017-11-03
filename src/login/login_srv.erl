@@ -22,15 +22,10 @@ start_link() ->
 init(Port) ->
     case redis:connect() of
         {ok, DB} ->
-            {ok, _Keepalive} =
-                timer:apply_interval(timer:seconds(30), redis, ping, [DB]),
-
-            %% try
-            %%     erlang:register(loginserv, self())
-            %% catch _:Reas ->
-            %%         io:format("why~p ~p ~n", [Reas, erlang:registered()])
-            %% end,
-
+            {ok, _Keepalive} = timer:apply_interval(timer:seconds(30),
+                                                    redis,
+                                                    ping,
+                                                    [DB]),
             {ok, {Port, login_fsm, login_packets}, {[], [DB]}};
         _ ->
             lager:log(error, self(), "No redis DB found! ~n", []),
@@ -38,38 +33,38 @@ init(Port) ->
     end.
 
 handle_call({verify_session, AccountID, LoginIDa, LoginIDb}, _From, Sessions) ->
-  case proplists:lookup(AccountID, Sessions) of
-    {AccountID, FSM, LoginIDa, LoginIDb} ->
-      {reply, {ok, FSM}, Sessions};
-    _ ->
-      {reply, invalid, Sessions}
-  end;
+    case proplists:lookup(AccountID, Sessions) of
+        {AccountID, FSM, LoginIDa, LoginIDb} ->
+            {reply, {ok, FSM}, Sessions};
+        _ ->
+            {reply, invalid, Sessions}
+    end;
 handle_call({get_session, AccountID}, _From, Sessions) ->
-  {reply, proplists:lookup(AccountID, Sessions), Sessions};
+    {reply, proplists:lookup(AccountID, Sessions), Sessions};
 handle_call(Request, _From, Sessions) ->
-  log:debug("Login server got call.", [{call, Request}]),
-  {reply, {illegal_request, Request}, Sessions}.
+    log:debug("Login server got call.", [{call, Request}]),
+    {reply, {illegal_request, Request}, Sessions}.
 
 handle_cast({add_session, Session}, Sessions) ->
-  log:debug("Login server adding session.", [{session, Session}]),
-  {noreply, [Session | Sessions]};
+    log:debug("Login server adding session.", [{session, Session}]),
+    {noreply, [Session | Sessions]};
 handle_cast({remove_session, AccountID}, Sessions) ->
-  log:debug("Login server removing session.", [{account, AccountID}]),
-  {noreply, lists:keydelete(AccountID, 1, Sessions)};
+    log:debug("Login server removing session.", [{account, AccountID}]),
+    {noreply, lists:keydelete(AccountID, 1, Sessions)};
 handle_cast(Cast, Sessions) ->
-  log:debug("Login server got cast.", [{cast, Cast}]),
-  {noreply, Sessions}.
+    log:debug("Login server got cast.", [{cast, Cast}]),
+    {noreply, Sessions}.
 
 handle_info({'EXIT', From, Reason}, Sessions) ->
-  log:error("Login server got EXIT signal.", [{from, From}, {reason, Reason}]),
-  {stop, normal, Sessions};
+    log:error("Login server got EXIT signal.", [{from, From}, {reason, Reason}]),
+    {stop, normal, Sessions};
 handle_info(Info, Sessions) ->
-  log:debug("Login server got info.", [{info, Info}]),
-  {noreply, Sessions}.
+    log:debug("Login server got info.", [{info, Info}]),
+    {noreply, Sessions}.
 
 terminate(_Reason, _Sessions) ->
-  log:info("Login server terminating.", [{node, node()}]),
-  ok.
+    log:info("Login server terminating.", [{node, node()}]),
+    ok.
 
 code_change(_OldVsn, Sessions, _Extra) ->
-  {ok, Sessions}.
+    {ok, Sessions}.

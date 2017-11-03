@@ -1,17 +1,15 @@
 -module(zone_commands).
 
+-include("ro.hrl").
 -include("records.hrl").
 
--export([
-  parse/1,
-  execute/4]).
+-export([ parse/1
+        , execute/4 ]).
 
 -define(SP_ZENY, 20).
 
-
 parse(String) ->
   string:tokens(String, " ").
-
 
 execute(
     _FSM, "caps", Args,
@@ -105,8 +103,6 @@ warp_to(
     }) ->
   case gen_server:call(zone_master, {who_serves, Map}) of
     {zone, Port, ZoneServer} ->
-      {ip, IP} = config:get_env(zone, 'server.ip'),
-
       zone_fsm:say(
         ["Warped to ", Map, " (", integer_to_list(X), ", ", integer_to_list(Y), ")."],
         State
@@ -143,7 +139,7 @@ warp_to(
 
       gen_fsm:send_all_state_event(FSM, {switch_zones, NewStateFun}),
 
-      TCP ! {warp_zone, {Map, X, Y, IP, Port}};
+      TCP ! {warp_zone, {Map, X, Y, ?ZONE_IP, Port}};
     none ->
       zone_fsm:say("Invalid map provided.", State),
       ok
