@@ -78,7 +78,8 @@ unpack(<<16#21d:16/little, IsLess:32/little>>) ->
     {less_effect, IsLess};
 
 unpack(Unknown) ->
-    log:warning("zone packets Got unknown data.", [{data, Unknown}]),
+    lager:log(warning, self(), "zone packets Got unknown data ~p",
+              [{data, Unknown}]),
     unknown.
 
 pack(accept, {Tick, {X, Y, D}}) ->
@@ -521,10 +522,8 @@ pack(item_on_ground, {ObjectID, ItemID, Identified, X, Y, SubX, SubY, Amount}) -
       Amount:16/little>>;
 
 pack(Header, Data) ->
-    log:error(
-      "Cannot pack unknown data.",
-      [{header, Header}, {data, Data}]
-     ),
+    lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
+              [{header, Header}, {data, Data}]),
     <<>>.
 
 decode_position(<<XNum, YNum, DNum>>) ->

@@ -8,7 +8,7 @@
 -export([init/1]).
 
 start_link(Conf) ->
-    log:debug("Starting master supervisor."),
+    lager:log(info, self(), "Starting master supervisor", []),
     supervisor:start_link({local, ?MODULE}, ?MODULE, Conf).
 
 init(Conf) ->

@@ -35,19 +35,18 @@ init([St = #nb_state{port = Port}], State) ->
      ).
 
 handle_call(Msg, _From, State) ->
-    log:warning("Got unknown call.", [{msg, Msg}]),
+    lager:log(warning, self(), "Got unknown call ~p", [{msg, Msg}]),
     {reply, ignored, State}.
 
 handle_cast(Msg, State) ->
-    log:warning("Got unknown cast.", [{msg, Msg}]),
+    lager:log(warning, self(), "Got unknown cast ~p", [{msg, Msg}]),
     {noreply, State}.
 
 handle_info(Msg, State) ->
-    log:warning("Got unknown info.", [{msg, Msg}]),
+    lager:log(warning, self(), "Got unknown info ~p", [{msg, Msg}]),
     {noreply, State}.
 
-terminate(Reason, _State) ->
-    log:warning("Packet server terminating.", [{reason, Reason}]),
+terminate(_Reason, _State) ->
     ok.
 
 sock_opts() ->
@@ -60,10 +59,8 @@ new_connection(_ClientIP, _ClientPort, Sock, State) ->
        fsm_args = FArgs,
        server = Server
       } = gen_nb_server:get_cb_state(State),
-    log:info(
-      "Client connected.",
-      [{client, element(2, inet:peername(Sock))}]
-     ),
+    lager:log(info, self(), "Client connected ~p",
+              [{client, element(2, inet:peername(Sock))}]),
     Pid = spawn(fun() ->
                         Args =
                             case FArgs of
@@ -84,30 +81,21 @@ new_connection(_ClientIP, _ClientPort, Sock, State) ->
 client_worker(Socket, FSM, PacketHandler) ->
     receive
         {tcp, Socket, Packet} ->
-            log:debug("Received packet.", [{packet, Packet}]),
             Event = PacketHandler:unpack(Packet),
             gen_fsm:send_event(FSM, Event),
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
 
         {tcp_closed, Socket} ->
-            log:info("Client disconnected."),
             gen_fsm:send_event(FSM, stop);
 
         {parse, NewHandler} ->
-            log:debug("Changing to parse mode with packet handler.",
-                      [{handler, NewHandler}]),
             Loop = self(),
             Parser =
-                spawn(
-                  ?MODULE,
-                  parse_loop,
-                  [Socket, NewHandler, Loop]
-                 ),
+                spawn(?MODULE, parse_loop, [Socket, NewHandler, Loop]),
             gen_tcp:controlling_process(Socket, Parser),
             ?MODULE:client_worker(Socket, FSM, NewHandler);
 
         {send_packets, Packets} ->
-            log:warning("Sending multiple packets.", [{packets, Packets}]),
             Binaries = lists:map(
                          fun(Packet) ->
                                  case verify(Packet, PacketHandler) of
@@ -122,29 +110,27 @@ client_worker(Socket, FSM, PacketHandler) ->
             Packed = iolist_to_binary(PacketHandler:pack(Packet, Data)),
             case verify({Packet, Data}, PacketHandler) of
                 {ok, Binary} ->
-                    log:debug("Sending data.", [{data, Data}, {packet, Packed}]),
                     gen_tcp:send(Socket, Binary);
                 {badsize, Wanted} ->
-                    log:error("Ignored attempt to send packet of invalid length.",
-                              [ {packet, Packet},
-                                {data, Data},
-                                {wanted, Wanted},
-                                {got, byte_size(Packed)}])
+                    lager:log(error, self(),
+                              "Ignored attempt to send packet "
+                              "of invalid length. ~p ~p ~p ~p ",
+                              [{packet, Packet},
+                               {data, Data},
+                               {wanted, Wanted},
+                               {got, byte_size(Packed)}])
             end,
-
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
 
         Packet when is_binary(Packet) ->
-            log:debug("Sending raw packet.", [{packet, Packet}]),
             gen_tcp:send(Socket, Packet),
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
 
         close ->
-            log:debug("Closing TCP server from call."),
             gen_tcp:close(Socket);
 
-        Other ->
-            log:warning("Generic TCP server got unknown data.", [{data, Other}])
+        _Other ->
+            ok
     end.
 
 %% @hidden Pack and verify a packet size.
@@ -170,11 +156,17 @@ parse_loop(Socket, PacketHandler, Loop) ->
                     <<Header:16/little>> = <<H1, H2>>,
                     case PacketHandler:packet_size(Header) of
                         undefined ->
-                            log:warning("Received unknown packet.",
-                                        [{header, Header}]),
+                            lager:log(error, self(),
+                                      "Received unknown packet ~p",
+                                      [{header, Header}]),
                             ?MODULE:parse_loop(Socket, PacketHandler, Loop);
                         %% Variable-length packet
                         0 ->
+                            Next = fun() ->
+                                           ?MODULE:parse_loop(Socket,
+                                                              PacketHandler,
+                                                              Loop)
+                                   end,
                             case gen_tcp:recv(Socket, 2) of
                                 {ok, <<Length:16/little>>} ->
                                     case gen_tcp:recv(Socket, Length - 4) of
@@ -198,8 +190,7 @@ parse_loop(Socket, PacketHandler, Loop) ->
                                                 closed ->
                                                     Loop ! {tcp_closed, Socket};
                                                 _ ->
-                                                    ?MODULE:parse_loop(Socket,
-                                                                       PacketHandler, Loop)
+                                                    Next()
                                             end
                                     end;
 
@@ -245,7 +236,8 @@ parse_loop(Socket, PacketHandler, Loop) ->
                             end
                     end;
                 {error, timeout} ->
-                    log:error("Ignoring rest.", [{got, H1}]),
+                    lager:log(error, self(), "Ignore rest ~p",
+                              [{got, H1}]),
                     ?MODULE:parse_loop(Socket, PacketHandler, Loop);
 
                 {error, closed} ->
@@ -257,8 +249,8 @@ parse_loop(Socket, PacketHandler, Loop) ->
     end.
 
 failed_remainder(Header, Size, Reason) ->
-    log:warning("Failed to receive the remainder.",
-                [ {header, Header},
-                  {needed, Size},
-                  {reason, Reason}
-                ]).
+    lager:log(warning, self(), "Failed to receive the remainder ~p ~p ~p",
+              [ {header, Header},
+                {needed, Size},
+                {reason, Reason}
+              ]).

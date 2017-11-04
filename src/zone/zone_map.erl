@@ -14,14 +14,14 @@
          code_change/3]).
 
 start_link(Map) ->
-    log:debug("Starting map server.", [{map, Map#map.name},
-                                       {local, server_for(Map)}, ?MODULE]),
-    gen_server:start_link(
-      {local, server_for(Map)},
-      ?MODULE,
-      #map_state{map = Map},
-      []
-     ).
+    lager:log(info, self(), "Starting map server ~p ~p ~p",
+              [{map, Map#map.name},
+               {local, server_for(Map)},
+               ?MODULE]),
+    gen_server:start_link({local, server_for(Map)},
+                          ?MODULE,
+                          #map_state{map = Map},
+                          []).
 
 init(State) ->
     process_flag(trap_exit, true),
@@ -60,29 +60,19 @@ handle_call(
     {reply, length(Players), State};
 
 handle_call(Request, _From, State) ->
-    log:debug("Zone map server got call.", [{call, Request}]),
     {reply, {illegal_request, Request}, State}.
 
-
 handle_cast( {add_player, Player}, State = #map_state{players = Players}) ->
-    log:debug("Zone map server adding player.",
-              [{player, Player}]),
     {noreply, State#map_state{players = [Player | Players]}};
 
 handle_cast({register_npc, NPC}, State = #map_state{npcs = NPCs}) ->
-    log:warning("Registering NPC.", [{npc, NPC}]),
     %% TODO: make it appear on screen for anyone around it
     {noreply, State#map_state{npcs = [NPC | NPCs]}};
 
 handle_cast({remove_player, AccountID},
             State = #map_state{players = Players}) ->
-    log:debug(
-      "Zone map server removing player.",
-      [{account, AccountID}]
-     ),
-    { noreply,
-      State#map_state{players = lists:keydelete(AccountID, 1, Players)}
-    };
+    {noreply,
+     State#map_state{players = lists:keydelete(AccountID, 1, Players)}};
 
 handle_cast({send_to_players, Packet, Data}, State) ->
     lists:foreach(
@@ -167,7 +157,6 @@ handle_cast({show_actors, {SelfID, SelfFSM}}, State) ->
 
     lists:foreach(
       fun(N) ->
-              log:error("Showing NPC."),
               gen_fsm:send_all_state_event(
                 SelfFSM,
                 {send_packet, show_npc, N}
@@ -178,26 +167,20 @@ handle_cast({show_actors, {SelfID, SelfFSM}}, State) ->
 
     {noreply, State};
 
-handle_cast(Cast, State) ->
-    log:debug("Zone map server got cast.", [{cast, Cast}]),
+handle_cast(_Cast, State) ->
     {noreply, State}.
 
 handle_info({'EXIT', From, Reason}, State) ->
-    log:error(
-      "Zone map server got EXIT signal.",
-      [{from, From}, {reason, Reason}]
-     ),
+    lager:log(error, self(), "Zone map server got EXIT signal ~p ~p",
+              [{from, From}, {reason, Reason}]),
     {stop, normal, State};
 
-handle_info(Info, State) ->
-    log:debug("Zone map server got info.", [{info, Info}]),
+handle_info(_Info, State) ->
     {noreply, State}.
 
 terminate(Reason, State) ->
-    log:info(
-      "Zone map server terminating.",
-      [{reason, Reason}, {map, (State#map_state.map)#map.name}]
-     ),
+    lager:log(info, "Zone map server terminating ~p ~p",
+              [{reason, Reason}, {map, (State#map_state.map)#map.name}]),
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -213,10 +196,6 @@ get_player_by(_Pred, []) ->
     none;
 
 get_player_by(Pred, [{_ID, FSM} | Players]) ->
-    log:debug(
-      "Looking for player from zone_map.",
-      [{server, FSM}, {pred, Pred}]
-     ),
     case gen_fsm:sync_send_all_state_event(FSM, get_state) of
         {ok, State} ->
             case Pred(State) of

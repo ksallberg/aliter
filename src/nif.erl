@@ -6,4 +6,4 @@ init() ->
     true.
 
 pathfind(_, _, _) ->
-    log:error("NIF pathfinder not loaded.").
+    lager:log(error, self(), "NIF pathfinder not loaded", []).

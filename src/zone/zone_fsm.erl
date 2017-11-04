@@ -47,12 +47,12 @@ init({TCP, [DB]}) ->
 locked({connect, AccountID, CharacterID, SessionIDa, _Gender},
        State) ->
     Session =
-        gen_server:call(char_server, {verify_session, AccountID, CharacterID, SessionIDa}),
+        gen_server:call(char_server,
+                        {verify_session, AccountID, CharacterID, SessionIDa}),
     case Session of
         {ok, FSM} ->
-            {ok, C = #char_state{char = Char}} = gen_fsm:sync_send_event(FSM,
-                                                                         switch_zone),
-            log:debug("Switched to Zone server.", [{char_state, C}]),
+            {ok, C = #char_state{char = Char}} =
+                gen_fsm:sync_send_event(FSM, switch_zone),
             {ok, Map, MapServer} =
                 gen_server:call(State#zone_state.server, {add_player,
                                                           Char#char.map,
@@ -66,7 +66,6 @@ locked({connect, AccountID, CharacterID, SessionIDa, _Gender},
             WorldItems = db:get_world_items(State#zone_state.db, Char#char.map),
             lists:foreach(
               fun(Item) ->
-                      log:debug("Showing item.", [{item, Item}]),
                       send(
                         State,
                         { item_on_ground,
@@ -103,9 +102,9 @@ locked({connect, AccountID, CharacterID, SessionIDa, _Gender},
             };
 
         invalid ->
-            log:warning("Invalid zone login attempt caught.",
-                        [{account_id, AccountID},
-                         {character_id, CharacterID}]),
+            lager:log(warning, "Invalid zone login attempt caught ~p ~p",
+                      [{account_id, AccountID},
+                       {character_id, CharacterID}]),
             {next_state, locked, State}
     end;
 locked(Event, State) ->
@@ -114,28 +113,19 @@ locked(Event, From, State) ->
     ?MODULE:handle_sync_event(Event, From, locked, State).
 
 valid({npc_activate, ActorID}, State = #zone_state{map_server = MapServer}) ->
-    log:warning("Activating NPC.", [{id, ActorID}]),
-
     case gen_server:call(MapServer, {get_actor, ActorID}) of
         {npc, NPC} ->
-            log:warning("NPC found.", [{id, ActorID}, {module, NPC#npc.main}]),
-
             Env = [{x, NPC#npc.main}, {p, self()}, {i, NPC#npc.id}],
-
             Pid = spawn(fun() ->
                                 elixir:eval("x.new(p, i).main", Env)
                         end),
-
-            log:debug("NPC initialized.", [{id, Pid}]),
-
             {next_state, valid, State#zone_state{npc = {Pid, NPC}}};
         _Invalid ->
-            log:error("NPC not found.", [{id, ActorID}]),
-
+            lager:log(error, self(), "NPC not found ~p", [{id, ActorID}]),
             {next_state, valid, State}
     end;
 
-                                                % TODO: handle selecting 255 (Cancel button)
+%% TODO: handle selecting 255 (Cancel button)
 valid(
   {npc_menu_select, _ActorID, Selection},
   State = #zone_state{npc = {Pid, _NPC}}) ->
@@ -206,7 +196,6 @@ valid(
                        y = Y
                       }
             }) ->
-    log:debug("Sitting down.", []),
     gen_server:cast(
       MapServer,
       { send_to_players_in_sight,
@@ -232,7 +221,6 @@ sitting(
                        y = Y
                       }
             }) ->
-    log:debug("Standing up.", []),
     gen_server:cast(
       MapServer,
       { send_to_players_in_sight,
@@ -272,7 +260,6 @@ walking(
     case Path of
         [] ->
             timer:cancel(Timer),
-            log:debug("Done walking."),
             { next_state,
               valid,
               State#zone_state{
@@ -328,18 +315,11 @@ walking(Event, State) ->
 walking(Event, From, State) ->
     ?MODULE:handle_sync_event(Event, From, walking, State).
 
-handle_event(
-  quit,
-  StateName,
-  State = #zone_state{account = #account{id = AccountID}}) ->
-    log:info("Player quitting.", [{account, AccountID}]),
-
+handle_event(quit, StateName, State) ->
     send(State, {quit_response, 0}),
-
     {next_state, StateName, State};
 
-handle_event({char_select, Type}, StateName, State) ->
-    log:debug("User requesting to go back to char screen.", [{type, Type}]),
+handle_event({char_select, _Type}, StateName, State) ->
     send(State, {confirm_back_to_char, {1}}),
     {next_state, StateName, State};
 
@@ -351,8 +331,6 @@ handle_event(
              char = #char{name = CharacterName},
              map_server = MapServer
             }) ->
-    log:debug("Sending actor name.", [{actor, ActorID}]),
-
     Name =
         if
             ActorID == AccountID ->
@@ -367,7 +345,8 @@ handle_event(
             true ->
                 case gen_server:call(MapServer, {get_actor, ActorID}) of
                     {player, FSM} ->
-                        {ok, Z} = gen_fsm:sync_send_all_state_event(FSM, get_state),
+                        {ok, Z} = gen_fsm:sync_send_all_state_event(FSM,
+                                                                    get_state),
                         { actor_name_full,
                           { ActorID,
                             (Z#zone_state.char)#char.name,
@@ -389,7 +368,6 @@ handle_event(
 
 handle_event(player_count, StateName, State) ->
     Num = gen_server:call(zone_master, player_count),
-    log:debug("Player count.", [{count, Num}]),
     send(State, {player_count, Num}),
     {next_state, StateName, State};
 
@@ -405,8 +383,6 @@ handle_event(
                        y = Y
                       }
             }) ->
-    log:debug("Emotion.", [{id, Id}]),
-
     gen_server:cast(
       MapServer,
       { send_to_other_players_in_sight,
@@ -416,9 +392,7 @@ handle_event(
         {AccountID, Id}
       }
      ),
-
     send(State, {emotion, {AccountID, Id}}),
-
     {next_state, StateName, State};
 
 handle_event(
@@ -433,15 +407,8 @@ handle_event(
                        y = Y
                       }
             }) ->
-    [Name | Rest] = re:split(Message, " : ", [{return, list}]),
+    [_Name | Rest] = re:split(Message, " : ", [{return, list}]),
     Said = lists:concat(Rest),
-
-    log:debug("Speaking.",
-              [{message, Message},
-               {name, Name},
-               {rest, Rest},
-               {first, hd(Said)}]),
-
     if
         (hd(Said) == 92) and (length(Said) > 1) -> % GM command
             [Command | Args] = zone_commands:parse(tl(Said)),
@@ -451,7 +418,6 @@ handle_event(
                       zone_commands:execute(FSM, Command, Args, State)
               end
              );
-
         true ->
             gen_server:cast(
               MapServer,
@@ -465,7 +431,6 @@ handle_event(
 
             send(State, {message, Message})
     end,
-
     {next_state, StateName, State};
 
 handle_event({broadcast, Message}, StateName, State) ->
@@ -484,7 +449,6 @@ handle_event({broadcast, Message}, StateName, State) ->
     {next_state, StateName, State};
 
 handle_event({switch_zones, Update}, _StateName, State) ->
-    log:info("Changing zones; stopping FSM."),
     {stop, normal, Update(State)};
 
 handle_event(
@@ -501,12 +465,10 @@ handle_event(
   stop,
   _StateName,
   State = #zone_state{char_fsm = Char}) ->
-    log:info("Zone FSM stopping."),
     gen_fsm:send_event(Char, exit),
     {stop, normal, State};
 
-handle_event({tick, Tick}, StateName, State) when StateName /= locked ->
-    log:debug("Got tick; syncing.", [{tick, Tick}]),
+handle_event({tick, _Tick}, StateName, State) when StateName /= locked ->
     send(State, {tick, zone_master:tick()}),
     {next_state, StateName, State};
 
@@ -514,12 +476,12 @@ handle_event({set_server, Server}, StateName, State) ->
     {next_state, StateName, State#zone_state{server = Server}};
 
 handle_event({send_packet, Packet, Data}, StateName, State) ->
-    log:warning("Send packet.", [{packet, Packet}, {data, Data}]),
+    lager:log(info, self(), "Send packet ~p ~p", [{packet, Packet},
+                                                  {data, Data}]),
     send(State, {Packet, Data}),
     {next_state, StateName, State};
 
 handle_event({send_packets, Packets}, StateName, State) ->
-    log:error("Send multiple packets.", []),
     send(State, {send_packets, Packets}),
     {next_state, StateName, State};
 
@@ -574,7 +536,6 @@ handle_event(
                        guild_id = GuildID
                       }
             }) ->
-    log:debug("Requested guild status."),
     if
         GuildID /= 0 ->
             GetGuildMaster = db:get_guild_master(DB, GuildID),
@@ -596,7 +557,6 @@ handle_event(
              db = DB,
              char = #char{guild_id = GuildID}
             }) when GuildID /= 0 ->
-    log:debug("Requested first page of guild info."),
     GetGuild = db:get_guild(DB, GuildID),
     case GetGuild of
         %% TODO?
@@ -614,7 +574,6 @@ handle_event(
              db = DB,
              char = #char{guild_id = GuildID}
             }) when GuildID /= 0 ->
-    log:debug("Requested second page of guild info."),
     GetMembers = gen_server:call(char_server,
                                  {get_chars, db:get_guild_members(DB, GuildID)}),
     case GetMembers of
@@ -627,11 +586,9 @@ handle_event(
     {next_state, StateName, State};
 
 handle_event({request_guild_info, 2}, StateName, State) ->
-    log:debug("Requested third page of guild info."),
     {next_state, StateName, State};
 
-handle_event({less_effect, IsLess}, StateName, State) ->
-    log:debug("Setting less effect state.", [{is_less, IsLess}]),
+handle_event({less_effect, _IsLess}, StateName, State) ->
     {next_state, StateName, State};
 
 handle_event({drop, Slot, Amount}, StateName,
@@ -643,7 +600,6 @@ handle_event({drop, Slot, Amount}, StateName,
                                   map = Map,
                                   x = X,
                                   y = Y}}) ->
-    log:debug("Dropping item.", [{slot, Slot}, {amount, Amount}]),
     send(State, {drop_item, {Slot, Amount}}),
     case db:get_player_item(DB, CharacterID, Slot) of
         nil ->
@@ -685,7 +641,6 @@ handle_event({pick_up, ObjectID}, StateName,
                                   y = Y
                                  }
                        }) ->
-    log:debug("Picking up item.", [{object_id, ObjectID}]),
     gen_server:cast(
       MapServer,
       {send_to_players, item_disappear, ObjectID}
@@ -713,7 +668,8 @@ handle_event({pick_up, ObjectID}, StateName,
 
         Item ->
             db:remove_world_item(DB, Map, ObjectID),
-            give_item(TCP, DB, CharacterID, Item#world_item.item, Item#world_item.amount)
+            give_item(TCP, DB, CharacterID,
+                      Item#world_item.item, Item#world_item.amount)
     end,
     {next_state, StateName, State};
 
@@ -741,30 +697,25 @@ handle_event(
     {next_state, StateName, State};
 
 handle_event(Event, StateName, State) ->
-    log:warning(
-      "Zone FSM received unknown event.",
-      [{event, Event}, {state, StateName}]
-     ),
+    lager:log(warning, self(), "Zone FSM received unknown event ~p ~p",
+              [{event, Event}, {state, StateName}]),
     {next_state, StateName, State}.
 
 handle_sync_event(get_state, _From, StateName, State) ->
-    log:debug("Handling get_state handle_sync_event."),
     {reply, {ok, State}, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
-    log:debug("Zone FSM got sync event."),
     {next_state, StateName, State}.
 
 handle_info({'EXIT', From, Reason}, _StateName, State) ->
-    log:error("Zone FSM got EXIT signal.", [{from, From}, {reason, Reason}]),
+    lager:log(error, self(), "Zone FSM got EXIT signal ~p ~p",
+              [{from, From}, {reason, Reason}]),
     {stop, normal, State};
-handle_info(Info, StateName, State) ->
-    log:debug("Zone FSM got info.", [{info, Info}]),
+handle_info(_Info, StateName, State) ->
     {next_state, StateName, State}.
 
 terminate(_Reason, _StateName, #zone_state{map_server = MapServer,
                                            account = #account{id = AccountID},
                                            char = Character}) ->
-    log:info("Zone FSM terminating.", [{account, AccountID}]),
     gen_server:cast(
       MapServer,
       { send_to_other_players,
@@ -777,7 +728,6 @@ terminate(_Reason, _StateName, #zone_state{map_server = MapServer,
     gen_server:cast(MapServer, {remove_player, AccountID});
 
 terminate(_Reason, _StateName, _State) ->
-    log:debug("Zone FSM terminating."),
     ok.
 
 code_change(_OldVsn, StateName, State, _Extra) ->
@@ -833,17 +783,10 @@ show_actors(
       }
      ).
 
-
 say(Message, State) ->
     send(State, {message, Message}).
 
-
 give_item(TCP, DB, CharacterID, ID, Amount) ->
-    log:info("Giving item.", [{id, ID}, {amount, Amount}]),
-
     Slot = db:give_player_item(DB, CharacterID, ID, Amount),
-
     TCP !
-        {give_item,
-         {Slot, Amount, ID, 1, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0}
-        }.
+        {give_item, {Slot, Amount, ID, 1, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0}}.

@@ -11,20 +11,13 @@ unpack(<<16#64:16/little,
   Version =
     case PacketVer of
       20090901 -> 24;
-      _ -> PacketVer
+      _        -> PacketVer
     end,
-
-  { login,
-    Version,
-    binary_to_string(Login),
-    binary_to_string(Password),
-    Region
-  };
+  {login, Version, binary_to_string(Login), binary_to_string(Password), Region};
 
 unpack(Unknown) ->
-  log:warning("Got unknown data.", [{data, Unknown}]),
+  lager:log(warning, self(), "Got unknown data ~p", [{data, Unknown}]),
   unknown.
-
 
 pack(accept, {LoginIDa, LoginIDb, AccountID, Gender, Servers}) ->
   [ <<16#69:16/little,
@@ -56,17 +49,13 @@ pack(refuse, {Reason, S}) ->
   ];
 
 pack(Header, Data) ->
-  log:error(
-    "Cannot pack unknown data.",
-    [{header, Header}, {data, Data}]
-  ),
-
+  lager:log(error, self(),
+            "Cannot pack unknown data.",
+            [{header, Header}, {data, Data}]),
   <<>>.
-
 
 packet_size(Header) ->
   packets_24:packet_size(Header).
-
 
 % Util functions
 binary_to_string(Binary) ->

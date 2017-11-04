@@ -5,23 +5,19 @@
 -include("records.hrl").
 
 -export([start_link/1]).
--export([
-         init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
-
+-export([ init/1
+        , handle_call/3
+        , handle_cast/2
+        , handle_info/2
+        , terminate/2
+        , code_change/3 ]).
 -export([tick/0]).
 
 -record(state, {npc_id, servers}).
 
-
 start_link(Conf) ->
-    log:debug("Starting master zone server."),
+    lager:log(info, self(), "Starting master zone server.", []),
     gen_server:start_link({local, ?MODULE}, ?MODULE, Conf, []).
-
 
 init(_Conf) ->
     process_flag(trap_exit, true),
@@ -37,54 +33,31 @@ init(_Conf) ->
         }
     }.
 
-
 handle_call({who_serves, Map}, _From, State) ->
-    log:debug("Zone master server got who_serves call.", [{map, Map}]),
-    { reply,
-      who_serves(Map, State#state.servers),
-      State
-    };
+    {reply, who_serves(Map, State#state.servers), State};
 
 handle_call({get_player, ActorID}, _From, State) ->
-    log:debug("Zone master server got get_player call.", [{actor, ActorID}]),
-
-    { reply,
-      get_player(
-        ActorID,
-        State#state.servers
-       ),
-      State
-    };
+    Player = get_player(ActorID, State#state.servers),
+    {reply, Player, State};
 
 handle_call({get_player_by, Pred}, _From, State) ->
-    log:debug("Zone master got get_player_by call."),
-    { reply,
-      get_player_by(
-        Pred,
-        State#state.servers
-       ),
-      State
-    };
+    Player = get_player_by(
+               Pred,
+               State#state.servers
+              ),
+    {reply, Player, State};
 
 handle_call(player_count, _from, State) ->
-    { reply,
-      player_count(State#state.servers),
-      State
-    };
+    {reply, player_count(State#state.servers), State};
 
 handle_call(Request, _From, State) ->
-    log:debug("Zone master server got call.", [{call, Request}]),
     {reply, {illegal_request, Request}, State}.
-
 
 handle_cast({send_to_all, Msg}, State) ->
     lists:foreach(
       fun(Server) ->
               gen_server:cast(Server, Msg)
-      end,
-      State#state.servers
-     ),
-
+      end, State#state.servers),
     {noreply, State};
 
 handle_cast(
@@ -111,28 +84,22 @@ handle_cast(
 
     {noreply, State#state{npc_id = Id + 1}};
 
-handle_cast(Cast, State) ->
-    log:debug("Zone master server got cast.", [{cast, Cast}]),
+handle_cast(_Cast, State) ->
     {noreply, State}.
-
 
 handle_info({'EXIT', From, Reason}, State) ->
-    log:error("Zone master got EXIT signal.", [{from, From}, {reason, Reason}]),
+    lager:log(error, self(), "Zone master got EXIT signal ~p ~p",
+              [{from, From}, {reason, Reason}]),
     {stop, normal, State};
 
-handle_info(Info, State) ->
-    log:debug("Zone master server got info.", [{info, Info}]),
+handle_info(_Info, State) ->
     {noreply, State}.
 
-
 terminate(_Reason, _State) ->
-    log:info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1Zone master server terminating."),
     ok.
-
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
 
 who_serves(_Map, []) ->
     none;
@@ -167,16 +134,10 @@ get_player(ActorID, [Server | Servers]) ->
             get_player(ActorID, Servers)
     end.
 
-
 get_player_by(_Pred, []) ->
     none;
 
 get_player_by(Pred, [Server | Servers]) ->
-    log:debug(
-      "Looking for player from zone_master.",
-      [{server, Server}, {pred, Pred}]
-     ),
-
     case gen_server:call(Server, {get_player_by, Pred}) of
         {ok, State} ->
             {ok, State};
@@ -184,7 +145,6 @@ get_player_by(Pred, [Server | Servers]) ->
         none ->
             get_player_by(Pred, Servers)
     end.
-
 
 tick() ->
     {ok, Started} = application:get_env(zone, started),

@@ -18,17 +18,13 @@ init(_Conf) ->
               fun({Port, ZoneMaps}) ->
                       Names = [list_to_binary(X) || X <- ZoneMaps],
 
-                      log:debug("Starting slave.", [{port, Port},
-                                                    {maps, Names}]),
-
-                      Maps =
-                          lists:filter(
-                            fun(M) ->
+                      lager:log(info, self(), "Starting slave ~p ~p",
+                                [{port, Port}, {maps, Names}]),
+                      FiltFun = fun(M) ->
                                     lists:member(M#map.name, Names)
-                            end,
-                            AllMaps
-                           ),
-
+                                end,
+                      Maps =
+                          lists:filter(FiltFun, AllMaps),
                       { zone_srv_sup:server_for(Port),
                         {zone_srv_sup, start_link, [Port, Maps]},
                         permanent,

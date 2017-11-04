@@ -70,17 +70,17 @@ start(Module, InitArgs, Options) ->
 
 init({gen_server_tcp, Module, InitArgs}) ->
     process_flag(trap_exit, true),
-    log:debug("Starting generic TCP server.", [{module, Module}]),
+    lager:log(info, self(), "Starting generic TCP server ~p",
+              [{module, Module}]),
     case Module:init(InitArgs) of
         {ok, {Port, FSMModule, PacketHandler}, ModState} ->
-            log:debug(
-              "TCP server started.",
-              [ {module, Module},
-                {port, Port},
-                {fsm, FSMModule},
-                {handler, PacketHandler}
-              ]
-             ),
+            lager:log(info, self(),
+                      "TCP server started. ~p ~p ~p ~p",
+                      [ {module, Module},
+                        {port, Port},
+                        {fsm, FSMModule},
+                        {handler, PacketHandler}
+                      ]),
             {MState, FArgs} =
                 case ModState of
                     {X, Y} -> {X, Y};
@@ -103,21 +103,12 @@ init({gen_server_tcp, Module, InitArgs}) ->
             };
 
         ignore ->
-            log:error("TCP server got ignore init result.", [{module, Module}]),
             ignore;
 
         {stop, Reason} ->
-            log:error(
-              "TCP server got stop init result.",
-              [{module, Module}, {reason, Reason}]
-             ),
             {stop, Reason};
 
         Other ->
-            log:error(
-              "TCP server got unknown init result.",
-              [{module, Module}, {result, Other}]
-             ),
             {stop, Other}
     end;
 

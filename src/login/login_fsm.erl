@@ -31,19 +31,17 @@ init({TCP, [DB]}) ->
 locked(
   {login, PacketVer, RawLogin, Password, Region},
   State = #login_state{tcp = TCP, db = DB}) ->
-    log:info(
-      "Received login request.",
-      [ {packetver, PacketVer},
-        {login, RawLogin},
-        {password, erlang:md5(Password)},
-        {region, Region}
-      ]
-     ),
+    lager:log(info, self(),
+              "Received login request ~p ~p ~p ~p",
+              [ {packetver, PacketVer},
+                {login, RawLogin},
+                {password, erlang:md5(Password)},
+                {region, Region}
+              ]),
     %% Create new account if username ends with _M or _F.
     GenderS = string:sub_string(RawLogin, length(RawLogin)-1, length(RawLogin)),
     Login = register_account(DB, RawLogin, Password, GenderS),
     Versioned = State#login_state{packet_ver = PacketVer},
-    log:info("Pre-auth.", [{login, Login}]),
     case Login of
         A = #account{} ->
             successful_login(A, Versioned);
@@ -116,32 +114,25 @@ register_account(_, Login, _Password, _) ->
 create_new_account(C, RawLogin, Password, Gender) ->
     Login = string:sub_string(RawLogin, 1, length(RawLogin)-2),
     Check = db:get_account_id(C, Login),
-    log:info("Check.", [{check, Check}]),
     case Check of
         nil ->
-            log:info("Created account", [{login, Login}]),
-
-            db:save_account(
-              C,
-              #account{
-                 login = Login,
-                 password = erlang:md5(Password),
-                 gender = Gender
-                }
-             );
-
+            lager:log(info, self(), "Created account ~p", [{login, Login}]),
+            db:save_account(C,
+                            #account{
+                               login = Login,
+                               password = erlang:md5(Password),
+                               gender = Gender});
         _ ->
-            log:info("Account already exists; ignore.", [{login, Login}]),
+            lager:log(warning, self(),
+                      "Account already exists; ignore ~p",
+                      [{login, Login}]),
             Login
     end.
 
 valid(stop, State) ->
-    log:debug("Login FSM waiting 5 minutes to exit."),
-    {next_state,
-     valid,
+    {next_state, valid,
      State#login_state{die = gen_fsm:send_event_after(5 * 60 * 1000, exit)}};
 valid(exit, State) ->
-    log:debug("Login FSM exiting."),
     {stop, normal, State};
 valid(Event, State) ->
     ?MODULE:handle_event(Event, chosen, State).
@@ -150,27 +141,23 @@ valid(switch_char, _From, State) ->
     {reply, {ok, State}, valid, State}.
 
 handle_event(stop, _StateName, StateData) ->
-    log:info("Login FSM stopping."),
     {stop, normal, StateData};
 handle_event({set_server, Server}, StateName, StateData) ->
     {next_state, StateName, StateData#login_state{server = Server}};
-handle_event(Event, StateName, StateData) ->
-    log:debug("Login FSM got event.", [{even, Event}, {state, StateName}, {state_data, StateData}]),
+handle_event(_Event, StateName, StateData) ->
     {next_state, StateName, StateData}.
 
 handle_sync_event(_Event, _From, StateName, StateData) ->
-    log:debug("Login FSM got sync event."),
     {next_state, StateName, StateData}.
 
 handle_info({'EXIT', From, Reason}, _StateName, StateData) ->
-    log:error("Login FSM got EXIT signal.", [{from, From}, {reason, Reason}]),
+    lager:log(error, self(), "Login FSM got EXIT signal. ~p ~p",
+              [{from, From}, {reason, Reason}]),
     {stop, normal, StateData};
-handle_info(Info, StateName, StateData) ->
-    log:debug("Login FSM got info.", [{info, Info}]),
+handle_info(_Info, StateName, StateData) ->
     {next_state, StateName, StateData}.
 
 terminate(_Reason, _StateName, #login_state{account = #account{id = AccountID}}) ->
-    log:debug("Login FSM terminating.", [{account, AccountID}]),
     gen_server:cast(login_server, {remove_session, AccountID});
 terminate(_Reason, _StateName, _StateData) ->
     ok.

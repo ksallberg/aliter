@@ -31,5 +31,5 @@ install() -> ok.
 uninstall() -> ok.
 
 stop() ->
-  log:info("Stopping Char server."),
+  lager:log(info, self(), "Stopping Char server."),
   ok.

@@ -41,15 +41,13 @@ locked({connect, AccountID, LoginIDa, LoginIDb, _Gender},
     Verify =
         gen_server:call(login_server,
                         {verify_session, AccountID, LoginIDa, LoginIDb}),
-    log:info("Character connect request.",
-             [{account, AccountID},
-              {ids, {LoginIDa, LoginIDb}},
-              {verified, Verify}]
-            ),
+    lager:log(info, self(), "Character connect request. ~p ~p ~p",
+              [{account,AccountID},
+               {ids, {LoginIDa, LoginIDb}},
+               {verified, Verify}]),
     case Verify of
         {ok, FSM} ->
             {ok, L} = gen_fsm:sync_send_event(FSM, switch_char),
-            log:debug("Switched to Character server.", [{login_state, L}]),
             gen_server:cast(char_server,
                             {add_session, {AccountID,
                                            self(),
@@ -83,11 +81,12 @@ valid({choose, Num},
     GetChar = db:get_account_char(DB, AccountID, Num),
     case GetChar of
         nil ->
-            log:warning("Selected invalid character.", [{account, AccountID}]),
+            lager:log(warning, self(), "Selected invalid character. ~p",
+                      [{account,AccountID}]),
             State#char_state.tcp ! {refuse, 1},
             {next_state, valid, State};
         C ->
-            log:debug("Player selected character.",
+            lager:log(info, self(), "Player selected character. ~p ~p",
                       [{account, AccountID}, {character, C#char.id}]),
             {zone, ZonePort, _ZoneServer} =
                 gen_server:call(zone_master, {who_serves, C#char.map}),
@@ -114,12 +113,10 @@ valid({create, Name, Str, Agi, Vit, Int, Dex, Luk, Num, HairColour, HairStyle},
                                       account_id = Account#account.id
                                      }
                                ),
-            log:info("Created character.", [{account, Account}, {char, Char}]),
+            lager:log(info, self(), "Created character. ~p~p",
+                      [{account, Account}, {char, Char}]),
             State#char_state.tcp ! {character_created, Char};
         _ ->
-            log:info("Character creation denied (name already in use).",
-                     [{account, Account}]
-                    ),
             State#char_state.tcp ! {creation_failed, 0}
     end,
     {next_state, valid, State};
@@ -137,26 +134,21 @@ valid({delete, CharacterID, EMail},
         AccountEMail ->
             case db:get_char(DB, CharacterID) of
                 nil ->
-                    log:warning(
-                      "Character deletion failed.",
-                      [ {char_id, CharacterID},
-                        {account_id, AccountID},
-                        {email, EMail}
-                      ]
-                     ),
+                    lager:log(warning,
+                              self(),
+                              "Character deletion failed. ~p~p~p",
+                              [{char_id, CharacterID},
+                               {account_id, AccountID},
+                               {email, EMail}
+                              ]),
                     State#char_state.tcp ! {deletion_failed, 0};
                 Char ->
                     db:delete_char(DB, Char),
-                    log:info("Character deleted.", [{char, Char}]),
+                    lager:log(info, self(), "Character deleted ~p",
+                              [{char, Char}]),
                     State#char_state.tcp ! {character_deleted, ok}
             end;
         _Invalid ->
-            log:warning(
-              "Character deletion attempted with wrong e-mail address.",
-              [ {email, EMail},
-                {wanted, AccountEMail}
-              ]
-             ),
             State#char_state.tcp ! {deletion_failed, 0}
     end,
     {next_state, valid, State};
@@ -179,12 +171,11 @@ valid(Event, From, State) ->
     ?MODULE:handle_sync_event(Event, From, valid, State).
 
 chosen(stop, State) ->
-    log:debug("Character FSM waiting 5 minutes to exit."),
     NewState = State#char_state{die = gen_fsm:send_event_after(5 * 60 * 1000,
                                                                exit)},
     {next_state, valid, NewState};
 chosen(exit, State = #char_state{login_fsm = Login}) ->
-    log:debug("Character FSM exiting."),
+    lager:log(info, self(), "Character FSM exiting."),
     gen_fsm:send_event(Login, exit),
     {stop, normal, State};
 chosen(Event, State) ->
@@ -218,7 +209,7 @@ renaming(Event, From, State) ->
     ?MODULE:handle_sync_event(Event, From, renaming, State).
 
 handle_event(stop, _StateName, StateData) ->
-    log:info("Character FSM stopping."),
+    lager:log(info, self(), "Character FSM stopping."),
     {stop, normal, StateData};
 handle_event({set_server, Server}, StateName, StateData) ->
     {next_state, StateName, StateData#char_state{server = Server}};
@@ -230,32 +221,29 @@ handle_event(
   StateData = #char_state{account = #account{id = AccountID}}) ->
     {next_state, StateName, StateData};
 handle_event(Event, StateName, StateData) ->
-    log:warning(
-      "Character FSM got unhandled event.",
-      [{event, Event}, {state, StateName}, {state_data, StateData}]
-     ),
+    lager:log(warning, self(),
+              "Character FSM got unhanadled event. ~p ~p ~p",
+              [{event, Event}, {state, StateName}, {state_data, StateData}]),
     {next_state, StateName, StateData}.
 
 handle_sync_event(switch_zone, _From, _StateName, StateData) ->
     gen_fsm:cancel_timer(StateData#char_state.die),
     {reply, {ok, StateData}, chosen, StateData};
 handle_sync_event(_Event, _From, StateName, StateData) ->
-    log:debug("Character FSM got unhandled sync event."),
     {next_state, StateName, StateData}.
 
 handle_info({'EXIT', From, Reason}, _StateName, StateData) ->
-    log:error("Character FSM got EXIT.", [{from, From}, {reason, Reason}]),
+    lager:log(error, self(), "Character FSM got EXIT ~p~p.",
+              [{from, From}, {reason, Reason}]),
     {stop, normal, StateData};
 handle_info(Info, StateName, StateData) ->
-    log:debug("Character FSM got info.", [{info, Info}]),
+    lager:log(info, "Character FSM got info: ~p", [{info, Info}]),
     {next_state, StateName, StateData}.
 
 terminate(_Reason, _StateName, #char_state{account=#account{id=AccountID}}) ->
-    log:debug("Character FSM terminating.", [{account, AccountID}]),
     gen_server:cast(char_server, {remove_session, AccountID}),
     gen_server:cast(login_server, {remove_session, AccountID});
 terminate(_Reason, _StateName, _StateData) ->
-    log:debug("Character FSM terminating."),
     ok.
 
 code_change(_OldVsn, StateName, StateData, _Extra) ->

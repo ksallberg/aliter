@@ -27,9 +27,5 @@ init(_) ->
     {ok, {SupFlags, [LoginServ]}}.
 
 install() -> ok.
-
 uninstall() -> ok.
-
-stop() ->
-    log:info("Stopping Login server."),
-    ok.
+stop() -> ok.
