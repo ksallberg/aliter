@@ -12,7 +12,7 @@ build:
 	rebar3 compile
 
 start: build
-	erl start_sasl -pa _build/default/lib/*/ebin -sname aliternode -eval "application:start(aliter)."
+	erl start_sasl -pa _build/default/lib/*/ebin -sname aliternode -eval "application:start(aliter)." -config priv/app.config
 
 clean:
 	@@echo "Removing compiled modules..."
