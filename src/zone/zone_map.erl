@@ -178,9 +178,7 @@ handle_info({'EXIT', From, Reason}, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-terminate(Reason, State) ->
-    lager:log(info, "Zone map server terminating ~p ~p",
-              [{reason, Reason}, {map, (State#map_state.map)#map.name}]),
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
