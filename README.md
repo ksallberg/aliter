@@ -49,7 +49,7 @@ var ROConfig = {
         display:       'aliter',
         desc:          'aliter',
         address:       '127.0.0.1',
-        port:          6941,
+        port:          6900,
         version:       24,
         langtype:      20,
         packetver:     20111116
