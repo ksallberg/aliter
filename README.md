@@ -1,6 +1,6 @@
 # Project Aliter
 
-This is an Erlang based ragnarok online server.
+This is an Erlang/OTP based ragnarok online server.
 
 ## Dependencies
 
@@ -9,7 +9,7 @@ TL;DR: Erlang/OTP, and the redis kv-store.
 ### Erlang/OTP
 This branch of Aliter has been tested only with Erlang/OTP 18.3.4.
 The main motivation of branching off from the main Aliter branch
-was that it did not build using modern Erlang/TOP versions.
+was that it did not build using modern Erlang/OTP versions.
 
 Requirements: Erlang/OTP 18.3.4+, rebar3.
 
@@ -41,7 +41,7 @@ var ROConfig = {
     development: true,
     width:       1000,
     height:      800,
-    packetver: 20111116,
+    packetver:   20111116,
     servers: [{
         disableKorean: true,
         display:       'aliter',
@@ -50,7 +50,7 @@ var ROConfig = {
         port:          6941,
         version:       24,
         langtype:      20,
-        packetver: 20111116
+        packetver:     20111116
     }]
 };
 ```
