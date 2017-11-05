@@ -20,7 +20,17 @@ mod_char() ->
     redis:quit(Conn).
 
 mod_upd(#char{map = _OldMap} = Ch) ->
-    %% NewMap = <<"new_1-1">>,
-    NewMap = <<"prontera">>,
+    _NewMap = <<"prontera">>,
+    NewMap = <<"prt_fild00">>,
     Ch#char{map = NewMap,
-            save_map=NewMap}.
+            save_map = NewMap,
+            str = 1,
+            agi = 1,
+            vit = 1,
+            int = 2,
+            dex = 1,
+            luk = 1,
+            base_level = 20,
+            max_hp = 9999,
+            job = 14
+           }.
