@@ -2,47 +2,41 @@
 
 -include("records.hrl").
 
--export([
-         save_account/2,
-         get_account/2,
-         get_account_id/2]).
+-export([ save_account/2
+        , get_account/2
+        , get_account_id/2 ]).
 
--export([
-         save_char/2,
-         delete_char/2,
-         get_char/2,
-         get_account_chars/2,
-         get_account_char/3,
-         get_char_id/2,
-         rename_char/4]).
+-export([ save_char/2
+        , delete_char/2
+        , get_char/2
+        , get_account_chars/2
+        , get_account_char/3
+        , get_char_id/2
+        , rename_char/4 ]).
 
--export([
-         save_guild/2,
-         delete_guild/2,
-         get_guild/2,
-         get_guild_id/2,
-         get_guild_master/2,
-         get_guild_members/2,
-         add_char_to_guild/3,
-         delete_char_from_guild/3,
-         get_guild_relationships/2]).
+-export([ save_guild/2
+        , delete_guild/2
+        , get_guild/2
+        , get_guild_id/2
+        , get_guild_master/2
+        , get_guild_members/2
+        , add_char_to_guild/3
+        , delete_char_from_guild/3
+        , get_guild_relationships/2 ]).
 
--export([
-         save_guild_relationship/4,
-         delete_guild_relationship/3,
-         get_guild_relationship/3]).
+-export([ save_guild_relationship/4
+        , delete_guild_relationship/3
+        , get_guild_relationship/3 ]).
 
--export([
-         give_world_item/4,
-         get_world_items/2,
-         get_world_item/2,
-         remove_world_item/3]).
+-export([ give_world_item/4
+        , get_world_items/2
+        , get_world_item/2
+        , remove_world_item/3 ]).
 
--export([
-         give_player_item/4,
-         get_player_items/2,
-         get_player_item/3,
-         remove_player_item/3]).
+-export([ give_player_item/4
+        , get_player_items/2
+        , get_player_item/3
+        , remove_player_item/3 ]).
 
 save_account(C, Account) ->
     ID =

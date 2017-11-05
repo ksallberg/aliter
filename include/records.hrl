@@ -67,15 +67,14 @@
          mobs = []}).
 
 -record(
-  nb_state,
-  { port,
-    packet_handler,
-    fsm_module,
-    fsm_args,
-    server
-  }
-).
-
+   nb_state,
+   { port,
+     packet_handler,
+     fsm_module,
+     fsm_args,
+     server
+   }
+  ).
 
 %%% Login tables
 -record(account,
@@ -88,7 +87,6 @@
          last_login = 0,
          last_ip = "",
          gm_level = 0}).
-
 
 %%% Character tables
 -record(char,
@@ -167,6 +165,7 @@
          script = "",
          equip_script = "",
          unequip_script = ""}).
+
 -record(monster,
         {id,
          name,
@@ -202,6 +201,7 @@
          mvp_exp = 0,
          mvp_bonus = 0,
          mvp_drops = []}).
+
 -record(guild,
         {id,
          name = "",
@@ -238,16 +238,19 @@
          guardian_f = 0,
          guardian_g = 0,
          guardian_h = 0}).
+
 -record(guild_expulsion,
         {account_id,
          character_id,
          name = "",
          reason = ""}).
+
 -record(guild_position,
         {id,
          name = "",
          mode = 0,
          exp_mode = 0}).
+
 -record(guild_relationship,
         {a_id,
          b_id,
