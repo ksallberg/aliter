@@ -2,7 +2,9 @@
 
 -include("records.hrl").
 
--compile(export_all).
+-export([ show_char/0
+        , mod_char/0
+        , mod_upd/1 ]).
 
 show_char() ->
     {ok, Conn} = redis:connect(),

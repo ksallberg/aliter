@@ -75,9 +75,9 @@ locked(
 successful_login(A, State) ->
     %% Generate random IDs using current time as initial seed
     {A1, A2, A3} = erlang:timestamp(),
-    random:seed(A1, A2, A3),
+    rand:seed(exs1024, {A1, A2, A3}),
     {LoginIDa, LoginIDb} =
-        {random:uniform(16#FFFFFFFF), random:uniform(16#FFFFFFFF)},
+        {rand:uniform(16#FFFFFFFF), rand:uniform(16#FFFFFFFF)},
     gen_server:cast(
       login_server,
       {add_session, {A#account.id, self(), LoginIDa, LoginIDb}}
@@ -157,7 +157,8 @@ handle_info({'EXIT', From, Reason}, _StateName, StateData) ->
 handle_info(_Info, StateName, StateData) ->
     {next_state, StateName, StateData}.
 
-terminate(_Reason, _StateName, #login_state{account = #account{id = AccountID}}) ->
+terminate(_Reason, _StateName,
+          #login_state{account = #account{id = AccountID}}) ->
     gen_server:cast(login_server, {remove_session, AccountID});
 terminate(_Reason, _StateName, _StateData) ->
     ok.
