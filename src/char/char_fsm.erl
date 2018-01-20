@@ -226,8 +226,14 @@ handle_event(Event, StateName, StateData) ->
               [{event, Event}, {state, StateName}, {state_data, StateData}]),
     {next_state, StateName, StateData}.
 
-handle_sync_event(switch_zone, _From, _StateName, StateData) ->
-    gen_fsm:cancel_timer(StateData#char_state.die),
+handle_sync_event(switch_zone, _From, _StateName,
+                  StateData = #char_state{die = Die}) ->
+    case Die of
+        undefined ->
+            ok;
+        _ ->
+            erlang:cancel_timer(Die)
+    end,
     {reply, {ok, StateData}, chosen, StateData};
 handle_sync_event(_Event, _From, StateName, StateData) ->
     {next_state, StateName, StateData}.

@@ -136,8 +136,13 @@ valid(exit, State) ->
     {stop, normal, State};
 valid(Event, State) ->
     ?MODULE:handle_event(Event, chosen, State).
-valid(switch_char, _From, State) ->
-    gen_fsm:cancel_timer(State#login_state.die),
+valid(switch_char, _From, State = #login_state{die = Die}) ->
+    case Die of
+        undefined ->
+            ok;
+        _ ->
+            erlang:cancel_timer(Die)
+    end,
     {reply, {ok, State}, valid, State}.
 
 handle_event(stop, _StateName, StateData) ->
