@@ -1,35 +1,37 @@
 -module(login_fsm).
 
--behaviour(gen_fsm).
+-behaviour(gen_statem).
 
 -include("records.hrl").
 -include("ro.hrl").
 
 -export([start_link/1]).
 
--export([ handle_event/3
-        , handle_sync_event/4
-        , handle_info/3
-        , terminate/3
-        , code_change/4 ]).
-
 -export([ init/1
-        , locked/2
-        , valid/2
-        , valid/3 ]).
+        , locked/3
+        , valid/3
+        , callback_mode/0 ]).
 
 -define(FEMALE, 0).
 -define(MALE, 1).
 
+callback_mode() ->
+    state_functions.
+
 start_link(TCP) ->
-    gen_fsm:start_link(?MODULE, TCP, []).
+    gen_statem:start_link(?MODULE, TCP, []).
 
 init({TCP, [DB]}) ->
     process_flag(trap_exit, true),
     {ok, locked, #login_state{tcp = TCP, db = DB}}.
 
-locked(
-  {login, PacketVer, RawLogin, Password, Region},
+locked(_,
+       {_, {set_server, Server}},
+       State) ->
+    {next_state, locked, State#login_state{server = Server}};
+
+locked(_Type,
+  {_, {login, PacketVer, RawLogin, Password, Region}},
   State = #login_state{tcp = TCP, db = DB}) ->
     lager:log(info, self(),
               "Received login request ~p ~p ~p ~p",
@@ -49,7 +51,7 @@ locked(
         _ ->
             GetID = db:get_account_id(DB, Login),
             case GetID of
-                                                % Bad login
+                % Bad login
                 nil ->
                     TCP ! {refuse, {0, ""}},
                     {next_state, locked, State};
@@ -60,12 +62,11 @@ locked(
                     Hashed = erlang:md5(Password),
 
                     if
-                                                % Bad password
+                        % Bad password
                         Account#account.password /= Hashed ->
                             TCP ! {refuse, {1, ""}},
                             {next_state, locked, State};
-
-                                                % Successful auth
+                        % Successful auth
                         true ->
                             successful_login(Account, Versioned)
                     end
@@ -80,8 +81,7 @@ successful_login(A, State) ->
         {rand:uniform(16#FFFFFFFF), rand:uniform(16#FFFFFFFF)},
     gen_server:cast(
       login_server,
-      {add_session, {A#account.id, self(), LoginIDa, LoginIDb}}
-     ),
+      {add_session, {A#account.id, self(), LoginIDa, LoginIDb}}),
     Servers = [{?CHAR_IP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
                 0, _Maint = 0, _New = 0}],
     State#login_state.tcp !
@@ -129,6 +129,17 @@ create_new_account(C, RawLogin, Password, Gender) ->
             Login
     end.
 
+valid({call, From}, switch_char, State = #login_state{die = Die}) ->
+    case Die of
+        undefined ->
+            ok;
+        _ ->
+            erlang:cancel_timer(Die)
+    end,
+    {next_state, valid, State, [{reply, From, {ok, State}}]};
+valid(cast, exit, State) ->
+    {stop, normal, State}.
+
 valid(stop, State) ->
     {next_state, valid,
      State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
@@ -136,37 +147,3 @@ valid(exit, State) ->
     {stop, normal, State};
 valid(Event, State) ->
     ?MODULE:handle_event(Event, chosen, State).
-valid(switch_char, _From, State = #login_state{die = Die}) ->
-    case Die of
-        undefined ->
-            ok;
-        _ ->
-            erlang:cancel_timer(Die)
-    end,
-    {reply, {ok, State}, valid, State}.
-
-handle_event(stop, _StateName, StateData) ->
-    {stop, normal, StateData};
-handle_event({set_server, Server}, StateName, StateData) ->
-    {next_state, StateName, StateData#login_state{server = Server}};
-handle_event(_Event, StateName, StateData) ->
-    {next_state, StateName, StateData}.
-
-handle_sync_event(_Event, _From, StateName, StateData) ->
-    {next_state, StateName, StateData}.
-
-handle_info({'EXIT', From, Reason}, _StateName, StateData) ->
-    lager:log(error, self(), "Login FSM got EXIT signal. ~p ~p",
-              [{from, From}, {reason, Reason}]),
-    {stop, normal, StateData};
-handle_info(_Info, StateName, StateData) ->
-    {next_state, StateName, StateData}.
-
-terminate(_Reason, _StateName,
-          #login_state{account = #account{id = AccountID}}) ->
-    gen_server:cast(login_server, {remove_session, AccountID});
-terminate(_Reason, _StateName, _StateData) ->
-    ok.
-
-code_change(_OldVsn, StateName, StateData, _Extra) ->
-    {ok, StateName, StateData}.

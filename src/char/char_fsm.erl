@@ -47,7 +47,7 @@ locked({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                {verified, Verify}]),
     case Verify of
         {ok, FSM} ->
-            {ok, L} = gen_fsm:sync_send_event(FSM, switch_char),
+            {ok, L} = gen_statem:call(FSM, switch_char),
             gen_server:cast(char_server,
                             {add_session, {AccountID,
                                            self(),
@@ -176,7 +176,7 @@ chosen(stop, State) ->
     {next_state, valid, NewState};
 chosen(exit, State = #char_state{login_fsm = Login}) ->
     lager:log(info, self(), "Character FSM exiting."),
-    gen_fsm:send_event(Login, exit),
+    gen_statem:cast(Login, exit),
     {stop, normal, State};
 chosen(Event, State) ->
     ?MODULE:handle_event(Event, chosen, State).
