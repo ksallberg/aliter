@@ -6,8 +6,7 @@
 
 -export([ start/2
         , shutdown/0
-        , stop/1
-        , reload/0 ]).
+        , stop/1 ]).
 
 start(_Type, StartArgs) ->
     lager:start(),
@@ -18,14 +17,3 @@ shutdown() ->
 
 stop(_State) ->
     ok.
-
-reload() ->
-    {ok, Files} = file:list_dir("_build/default/lib/aliter/ebin"),
-    Beams = [string:substr(F, 1, length(F) - 5)
-             || F <- Files, string:str(F, ".beam") /= 0],
-    LoadFun = fun(File) ->
-                      code:purge(list_to_atom(File)),
-                      code:load_abs("_build/default/lib/aliter/ebin/"
-                                    ++ File)
-              end,
-    lists:foreach(LoadFun, Beams).

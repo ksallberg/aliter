@@ -131,7 +131,7 @@ create_new_account(C, RawLogin, Password, Gender) ->
 
 valid(stop, State) ->
     {next_state, valid,
-     State#login_state{die = gen_fsm:send_event_after(5 * 60 * 1000, exit)}};
+     State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
 valid(exit, State) ->
     {stop, normal, State};
 valid(Event, State) ->

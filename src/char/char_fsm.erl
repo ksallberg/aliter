@@ -171,8 +171,8 @@ valid(Event, From, State) ->
     ?MODULE:handle_sync_event(Event, From, valid, State).
 
 chosen(stop, State) ->
-    NewState = State#char_state{die = gen_fsm:send_event_after(5 * 60 * 1000,
-                                                               exit)},
+    NewState = State#char_state{
+                 die = erlang:send_after(5 * 60 * 1000, self(), exit)},
     {next_state, valid, NewState};
 chosen(exit, State = #char_state{login_fsm = Login}) ->
     lager:log(info, self(), "Character FSM exiting."),
