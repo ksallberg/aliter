@@ -8,7 +8,6 @@
 -include_lib("stdlib/include/qlc.hrl").
 
 -export([ start_link/1
-        , handle_event/3
         , init/1
         , locked/3
         , valid/3
@@ -30,9 +29,7 @@ init({TCP, [DB]}) ->
     process_flag(trap_exit, true),
     {ok, locked, #char_state{tcp = TCP, db = DB}}.
 
-locked(_,
-       {_, {set_server, Server}},
-       State) ->
+locked(_, {_, {set_server, Server}}, State) ->
     {next_state, locked, State#char_state{server = Server}};
 locked(_, {_, {connect, AccountID, LoginIDa, LoginIDb, _Gender}},
        State = #char_state{tcp = TCP, db = DB}) ->
@@ -69,9 +66,7 @@ locked(_, {_, {connect, AccountID, LoginIDa, LoginIDb, _Gender}},
         invalid ->
             TCP ! {refuse, 0},
             {next_state, locked, State}
-    end;
-locked(_, Event, State) ->
-    ?MODULE:handle_event(Event, locked, State).
+    end.
 
 valid(_, {_, {choose, Num}},
       #char_state{db = DB, account = #account{id = AccountID}} = State) ->
@@ -164,8 +159,7 @@ valid(_, {_, {check_name, AccountID, CharacterID, NewName}},
             State#char_state.tcp ! {name_check_result, 0},
             {next_state, valid, State}
     end;
-valid(_, {_, From, switch_zone},
-       StateData = #char_state{die = Die}) ->
+valid({call, From}, switch_zone, StateData = #char_state{die = Die}) ->
     case Die of
         undefined ->
             ok;
@@ -175,15 +169,24 @@ valid(_, {_, From, switch_zone},
     {next_state, valid, StateData, [{reply, From, {ok, StateData}}]};
 valid(_, {_, {keepalive, _AccountID}}, State) ->
     {keep_state, State};
+valid(info, {_, stop}, State) ->
+    NewState = State#char_state{
+                 die = erlang:send_after(5 * 60 * 1000, self(), exit)},
+    {next_state, valid, NewState};
+valid(cast, exit, State = #char_state{login_fsm = Login,
+                                      account=#account{id=AccountID}}) ->
+    lager:log(info, self(), "Character FSM exiting."),
+    gen_server:cast(char_server, {remove_session, AccountID}),
+    gen_server:cast(login_server, {remove_session, AccountID}),
+    gen_statem:cast(Login, exit),
+    {stop, normal, State};
 valid(info, {_, exit}, State = #char_state{login_fsm = Login,
                                            account=#account{id=AccountID}}) ->
     lager:log(info, self(), "Character FSM exiting."),
     gen_server:cast(char_server, {remove_session, AccountID}),
     gen_server:cast(login_server, {remove_session, AccountID}),
     gen_statem:cast(Login, exit),
-    {stop, normal, State};
-valid(_, Event, State) ->
-    ?MODULE:handle_event(Event, valid, State).
+    {stop, normal, State}.
 
 chosen(info, {_, stop}, State) ->
     NewState = State#char_state{
@@ -196,10 +199,7 @@ chosen({call, From}, switch_zone, StateData = #char_state{die = Die}) ->
         _ ->
             erlang:cancel_timer(Die)
     end,
-    {next_state, chosen, StateData, [{reply, From, {ok, StateData}}]};
-
-chosen(_, Event, State) ->
-    ?MODULE:handle_event(Event, chosen, State).
+    {next_state, chosen, StateData, [{reply, From, {ok, StateData}}]}.
 
 renaming(_, {_, {rename, CharacterID}},
          #char_state{db = DB,
@@ -221,14 +221,4 @@ renaming(_, {_, {rename, CharacterID}},
 renaming(_, {_, {rename, _CharacterID}},
          State = #char_state{rename = {#char{renamed = 1}, _NewName}}) ->
     State#char_state.tcp ! {rename_result, 1},
-    {next_state, valid, State};
-renaming(_, Event, State) ->
-    ?MODULE:handle_event(Event, renaming, State).
-
-handle_event({update_state, Fun}, StateName, StateData) ->
-    {next_state, StateName, Fun(StateData)};
-handle_event(Event, StateName, StateData) ->
-    lager:log(warning, self(),
-              "Character FSM got unhanadled event. ~p ~p ~p",
-              [{event, Event}, {state, StateName}, {state_data, StateData}]),
-    {next_state, StateName, StateData}.
+    {next_state, valid, State}.
