@@ -95,6 +95,7 @@ successful_login(A, State) ->
         },
     State#login_state.tcp ! close,
     valid(
+      info,
       stop,
       State#login_state{
         account = A,
@@ -138,12 +139,12 @@ valid({call, From}, switch_char, State = #login_state{die = Die}) ->
     end,
     {next_state, valid, State, [{reply, From, {ok, State}}]};
 valid(cast, exit, State) ->
-    {stop, normal, State}.
+    {stop, normal, State};
 
-valid(stop, State) ->
+valid(info, stop, State) ->
     {next_state, valid,
      State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
-valid(exit, State) ->
+valid(info, exit, State) ->
     {stop, normal, State};
-valid(Event, State) ->
+valid(_, Event, State) ->
     ?MODULE:handle_event(Event, chosen, State).

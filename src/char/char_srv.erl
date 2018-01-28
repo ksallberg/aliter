@@ -45,7 +45,8 @@ handle_call(
             {reply, invalid, State}
     end;
 
-handle_call({get_session, AccountID}, _From, State = #state{sessions = Sessions}) ->
+handle_call({get_session, AccountID}, _From,
+            State = #state{sessions = Sessions}) ->
     {reply, proplists:lookup(AccountID, Sessions), State};
 
 handle_call(Request, _From, State) ->
@@ -62,7 +63,7 @@ handle_cast({save_char, C}, State = #state{db = DB, sessions = Sessions}) ->
     case proplists:lookup(C#char.account_id, Sessions) of
         {_AccountID, FSM, _SessionIDa, _SessionIDb} ->
             ChF = fun(St) ->St#char_state{char = C} end,
-            gen_fsm:send_all_state_event(FSM, {update_state, ChF});
+            gen_statem:cast(FSM, {update_state, ChF});
         _ ->
             ok
     end,

@@ -52,7 +52,7 @@ locked({connect, AccountID, CharacterID, SessionIDa, _Gender},
     case Session of
         {ok, FSM} ->
             {ok, C = #char_state{char = Char}} =
-                gen_fsm:sync_send_event(FSM, switch_zone),
+                gen_statem:call(FSM, switch_zone),
             {ok, Map, MapServer} =
                 gen_server:call(State#zone_state.server, {add_player,
                                                           Char#char.map,
@@ -465,7 +465,7 @@ handle_event(
   stop,
   _StateName,
   State = #zone_state{char_fsm = Char}) ->
-    gen_fsm:send_event(Char, exit),
+    gen_statem:cast(Char, exit),
     {stop, normal, State};
 
 handle_event({tick, _Tick}, StateName, State) when StateName /= locked ->

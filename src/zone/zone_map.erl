@@ -142,29 +142,21 @@ handle_cast({send_to_other_players_in_sight, {X, Y}, Self, Packet, Data},
 
 handle_cast({show_actors, {SelfID, SelfFSM}}, State) ->
     lists:foreach(
-      fun
-          ({ID, _FSM}) when ID == SelfID ->
-                         ok;
-
-          ({_ID, FSM}) ->
-                         gen_fsm:send_all_state_event(
-                           FSM,
-                           {show_to, SelfFSM}
-                          )
-                 end,
-      State#map_state.players
-     ),
-
+      fun({ID, _FSM}) when ID == SelfID ->
+              ok;
+         ({_ID, FSM}) ->
+              gen_fsm:send_all_state_event(
+                FSM,
+                {show_to, SelfFSM})
+      end,
+      State#map_state.players),
     lists:foreach(
       fun(N) ->
               gen_fsm:send_all_state_event(
                 SelfFSM,
-                {send_packet, show_npc, N}
-               )
+                {send_packet, show_npc, N})
       end,
-      State#map_state.npcs
-     ),
-
+      State#map_state.npcs),
     {noreply, State};
 
 handle_cast(_Cast, State) ->
