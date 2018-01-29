@@ -7,7 +7,7 @@ This is an Erlang/OTP based ragnarok online server.
 TL;DR: Erlang/OTP, and the redis kv-store.
 
 ### Erlang/OTP
-This branch of Aliter has been tested only with Erlang/OTP 18.3.4.
+This branch of Aliter has been tested only with Erlang/OTP 20.2.2.
 The main motivation of branching off from the main Aliter branch
 was that it did not build using modern Erlang/OTP versions.
 
