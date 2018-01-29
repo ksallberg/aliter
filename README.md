@@ -56,3 +56,11 @@ var ROConfig = {
     }]
 };
 ```
+
+## Using / In-game
+
+### Commands
+
+```
+\item 1228 - You got Combat Knife (1).
+```
