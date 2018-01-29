@@ -95,7 +95,9 @@ locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             {next_state, locked, State}
     end;
 locked(cast, {set_server, Server}, State) ->
-    {next_state, locked, State#zone_state{server = Server}}.
+    {next_state, locked, State#zone_state{server = Server}};
+locked(Type, Event, State) ->
+    event(locked, Type, Event, State).
 
 valid(_,
       {npc_activate, ActorID}, State = #zone_state{map_server = MapServer}) ->
@@ -182,336 +184,8 @@ valid(_, {action_request, _Target, 2},
       }
      ),
     {next_state, sitting, State};
-valid(_, {send_packet_if, Pred, Packet, Data}, State) ->
-    case Pred(State) of
-        true ->
-            send(State, {Packet, Data});
-
-        false ->
-            ok
-    end,
-    {next_state, valid, State};
-valid(_, quit, State) ->
-    send(State, {quit_response, 0}),
-    {next_state, valid, State};
-valid(_, {char_select, _Type}, State) ->
-    send(State, {confirm_back_to_char, {1}}),
-    {next_state, valid, State};
-valid(_, {request_name, ActorID}, State = #zone_state{
-                                             account = #account{id = AccountID},
-                                             char = #char{name = CharacterName},
-                                             map_server = MapServer
-                                            }) ->
-    Name =
-        if
-            ActorID == AccountID ->
-                { actor_name_full,
-                  {ActorID,
-                   CharacterName,
-                   "Party Name",
-                   "Guild Name",
-                   "Tester"}
-                };
-            true ->
-                case gen_server:call(MapServer, {get_actor, ActorID}) of
-                    {player, FSM} ->
-                        {ok, Z} = gen_statem:call(FSM, get_state),
-                        { actor_name_full,
-                          { ActorID,
-                            (Z#zone_state.char)#char.name,
-                            "Other Party Name",
-                            "Other Guild Name",
-                            "Other Tester"
-                          }
-                        };
-                    {npc, NPC} ->
-                        {actor_name, {ActorID, NPC#npc.name}};
-                    none ->
-                        "Unknown"
-                end
-        end,
-    send(State, Name),
-    {next_state, valid, State};
-valid(_, player_count, State) ->
-    Num = gen_server:call(zone_master, player_count),
-    send(State, {player_count, Num}),
-    {next_state, valid, State};
-valid(_, {emotion, Id},
-      State = #zone_state{
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
-    gen_server:cast(
-      MapServer,
-      { send_to_other_players_in_sight,
-        {X, Y},
-        CharacterID,
-        emotion,
-        {AccountID, Id}
-      }
-     ),
-    send(State, {emotion, {AccountID, Id}}),
-    {next_state, valid, State};
-valid(_, {speak, Message},
-      State = #zone_state{
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
-    [_Name | Rest] = re:split(Message, " : ", [{return, list}]),
-    Said = lists:concat(Rest),
-    if
-        (hd(Said) == 92) and (length(Said) > 1) -> % GM command
-            [Command | Args] = zone_commands:parse(tl(Said)),
-            FSM = self(),
-            spawn(
-              fun() ->
-                      zone_commands:execute(FSM, Command, Args, State)
-              end
-             );
-        true ->
-            gen_server:cast(
-              MapServer,
-              { send_to_other_players_in_sight,
-                {X, Y},
-                CharacterID,
-                actor_message,
-                {AccountID, Message}
-              }
-             ),
-
-            send(State, {message, Message})
-    end,
-    {next_state, valid, State};
-valid(_, {broadcast, Message}, State) ->
-    gen_server:cast(
-      zone_master,
-      %% i love how this looks like noise waves or something
-      { send_to_all,
-        { send_to_all,
-          { send_to_players,
-            broadcast,
-            Message
-          }
-        }
-      }
-     ),
-    {next_state, valid, State};
-valid(_, {switch_zones, Update}, State) ->
-    {stop, normal, Update(State)};
-valid(_, {give_item, ID, Amount},
-      State = #zone_state{
-                 tcp = TCP,
-                 db = DB,
-                 char = #char{id = CharacterID}}) ->
-    give_item(TCP, DB, CharacterID, ID, Amount),
-    {next_state, valid, State};
-valid(_, stop, State = #zone_state{char_fsm = Char}) ->
-    gen_statem:cast(Char, exit),
-    {stop, normal, State};
-valid(_, {tick, _Tick}, State) ->
-    send(State, {tick, zone_master:tick()}),
-    {next_state, valid, State};
-valid(_, {send_packet, Packet, Data}, State) ->
-    lager:log(info, self(), "Send packet ~p ~p", [{packet, Packet},
-                                                  {data, Data}]),
-    send(State, {Packet, Data}),
-    {next_state, valid, State};
-valid(_, {send_packets, Packets}, State) ->
-    send(State, {send_packets, Packets}),
-    {next_state, valid, State};
-valid(_, {show_to, FSM},
-      State = #zone_state{
-                 account = A,
-                 char = C
-                }) ->
-    gen_statem:cast(FSM, {send_packet,
-                          change_look,
-                          C
-                         }),
-    gen_statem:cast(FSM, {send_packet,
-                          actor,
-                          {normal, A, C}
-                         }),
-    {next_state, valid, State};
-valid(_, {get_state, From}, State) ->
-    From ! {ok, State},
-    {next_state, valid, State};
-valid(_, {update_state, Fun}, State) ->
-    {next_state, valid, Fun(State)};
-valid(_, crash, _) ->
-    exit('crash induced');
-valid(_, request_guild_status,
-      State = #zone_state{
-                 db = DB,
-                 char = #char{
-                           id = CharacterID,
-                           guild_id = GuildID
-                          }
-                }) ->
-    if
-        GuildID /= 0 ->
-            GetGuildMaster = db:get_guild_master(DB, GuildID),
-            case GetGuildMaster of
-                CharacterID ->
-                    send(State, {guild_status, master});
-                _ ->
-                    send(State, {guild_status, member})
-            end;
-        true ->
-            send(State, {guild_status, none})
-    end,
-    {next_state, valid, State};
-valid(_, {request_guild_info, 0},
-      State = #zone_state{
-                 db = DB,
-                 char = #char{guild_id = GuildID}
-                }) when GuildID /= 0 ->
-    GetGuild = db:get_guild(DB, GuildID),
-    case GetGuild of
-        %% TODO?
-        nil -> ok;
-        G ->
-            send(State, {guild_info, G}),
-            send(State, {guild_relationships, G#guild.relationships})
-    end,
-    {next_state, valid, State};
-valid(_, {request_guild_info, 1},
-  State = #zone_state{
-             db = DB,
-             char = #char{guild_id = GuildID}
-            }) when GuildID /= 0 ->
-    GetMembers =
-        gen_server:call(char_server,
-                        {get_chars, db:get_guild_members(DB, GuildID)}),
-    case GetMembers of
-        {atomic, Members} ->
-            send(State, {guild_members, Members});
-
-        _Error ->
-            ok
-    end,
-    {next_state, valid, State};
-valid(_, {request_guild_info, 2}, State) ->
-    {next_state, valid, State};
-valid(_, {less_effect, _IsLess}, State) ->
-    {next_state, valid, State};
-valid(_, {drop, Slot, Amount},
-      State = #zone_state{
-                 db = DB,
-                 map_server = MapServer,
-                 char = #char{
-                           id = CharacterID,
-                           map = Map,
-                           x = X,
-                           y = Y}}) ->
-    send(State, {drop_item, {Slot, Amount}}),
-    case db:get_player_item(DB, CharacterID, Slot) of
-        nil ->
-            say("Invalid item.", State);
-        Item ->
-            if
-                Amount == Item#world_item.amount ->
-                    db:remove_player_item(DB, CharacterID, Slot);
-
-                true ->
-                    %% TODO: update amount
-                    ok
-            end,
-            %% TODO
-            ObjectID = db:give_world_item(DB, Map, Item#world_item.item,
-                                          Amount),
-            gen_server:cast(
-              MapServer,
-              { send_to_players_in_sight,
-                {X, Y},
-                item_on_ground,
-                %% TODO: actual item ID
-                %% TODO: randomize positions
-                {ObjectID, Item#world_item.item, 1, X + 1, Y + 1, 1, 2, Amount}
-              })
-    end,
-    {next_state, valid, State};
-valid(_, {pick_up, ObjectID},
-      State = #zone_state{
-                 tcp = TCP,
-                 db = DB,
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           map = Map,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
-    gen_server:cast(
-      MapServer,
-      {send_to_players, item_disappear, ObjectID}
-     ),
-    gen_server:cast(
-      MapServer,
-      { send_to_players_in_sight,
-        {X, Y},
-        actor_effect,
-        { AccountID,
-          ObjectID,
-          zone_master:tick(),
-          0,
-          0,
-          0,
-          0,
-          1,
-          0
-        }
-      }
-     ),
-    case db:get_world_item(DB, ObjectID) of
-        nil ->
-            say("Item already picked up!", State);
-
-        Item ->
-            db:remove_world_item(DB, Map, ObjectID),
-            give_item(TCP, DB, CharacterID,
-                      Item#world_item.item, Item#world_item.amount)
-    end,
-    {next_state, valid, State};
-valid(_, {change_direction, Head, Body},
-      State = #zone_state{
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
-    gen_server:cast(
-      MapServer,
-      { send_to_other_players_in_sight,
-        {X, Y},
-        CharacterID,
-        change_direction,
-        {AccountID, Head, Body}
-      }
-     ),
-    {next_state, valid, State};
-valid(_, exit, State) ->
-    lager:log(error, self(), "Zone FSM got EXIT signal", []),
-    {stop, normal, State};
-valid(_, Event, State) ->
-    lager:log(warning, self(), "Zone FSM received unknown event ~p ~p",
-              [{event, Event}, {state, valid}]),
-    {next_state, valid, State}.
+valid(Type, Event, State) ->
+    event(valid, Type, Event, State).
 
 sitting(_,
         {action_request, _Target, 3},
@@ -531,7 +205,9 @@ sitting(_,
         {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}
       }
      ),
-    {next_state, valid, State}.
+    {next_state, valid, State};
+sitting(Type, Event, State) ->
+    event(sitting, Type, Event, State).
 
 walking(_, {walk, {ToX, ToY, _ToD}},
         State = #zone_state{map = Map,
@@ -609,7 +285,341 @@ walking(_, {_, step},
                 walk_changed = false
                }
             }
-    end.
+    end;
+walking(Type, Event, State) ->
+    event(walking, Type, Event, State).
+
+event(CurEvent, _, {send_packet_if, Pred, Packet, Data}, State) ->
+    case Pred(State) of
+        true ->
+            send(State, {Packet, Data});
+
+        false ->
+            ok
+    end,
+    {next_state, CurEvent, State};
+event(CurEvent, _, quit, State) ->
+    send(State, {quit_response, 0}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {char_select, _Type}, State) ->
+    send(State, {confirm_back_to_char, {1}}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {request_name, ActorID},
+      State = #zone_state{
+                 account = #account{id = AccountID},
+                 char = #char{name = CharacterName},
+                 map_server = MapServer
+                }) ->
+    Name =
+        if
+            ActorID == AccountID ->
+                { actor_name_full,
+                  {ActorID,
+                   CharacterName,
+                   "Party Name",
+                   "Guild Name",
+                   "Tester"}
+                };
+            true ->
+                case gen_server:call(MapServer, {get_actor, ActorID}) of
+                    {player, FSM} ->
+                        {ok, Z} = gen_statem:call(FSM, get_state),
+                        { actor_name_full,
+                          { ActorID,
+                            (Z#zone_state.char)#char.name,
+                            "Other Party Name",
+                            "Other Guild Name",
+                            "Other Tester"
+                          }
+                        };
+                    {npc, NPC} ->
+                        {actor_name, {ActorID, NPC#npc.name}};
+                    none ->
+                        "Unknown"
+                end
+        end,
+    send(State, Name),
+    {next_state, CurEvent, State};
+event(CurEvent, _, player_count, State) ->
+    Num = gen_server:call(zone_master, player_count),
+    send(State, {player_count, Num}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {emotion, Id},
+      State = #zone_state{
+                 map_server = MapServer,
+                 account = #account{id = AccountID},
+                 char = #char{
+                           id = CharacterID,
+                           x = X,
+                           y = Y
+                          }
+                }) ->
+    gen_server:cast(
+      MapServer,
+      { send_to_other_players_in_sight,
+        {X, Y},
+        CharacterID,
+        emotion,
+        {AccountID, Id}
+      }
+     ),
+    send(State, {emotion, {AccountID, Id}}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {speak, Message},
+      State = #zone_state{
+                 map_server = MapServer,
+                 account = #account{id = AccountID},
+                 char = #char{
+                           id = CharacterID,
+                           x = X,
+                           y = Y
+                          }
+                }) ->
+    [_Name | Rest] = re:split(Message, " : ", [{return, list}]),
+    Said = lists:concat(Rest),
+    if
+        (hd(Said) == 92) and (length(Said) > 1) -> % GM command
+            [Command | Args] = zone_commands:parse(tl(Said)),
+            FSM = self(),
+            spawn(
+              fun() ->
+                      zone_commands:execute(FSM, Command, Args, State)
+              end
+             );
+        true ->
+            gen_server:cast(
+              MapServer,
+              { send_to_other_players_in_sight,
+                {X, Y},
+                CharacterID,
+                actor_message,
+                {AccountID, Message}
+              }
+             ),
+
+            send(State, {message, Message})
+    end,
+    {next_state, CurEvent, State};
+event(CurEvent, _, {broadcast, Message}, State) ->
+    gen_server:cast(
+      zone_master,
+      %% i love how this looks like noise waves or something
+      { send_to_all,
+        { send_to_all,
+          { send_to_players,
+            broadcast,
+            Message
+          }
+        }
+      }
+     ),
+    {next_state, CurEvent, State};
+event(_CurEvent, _, {switch_zones, Update}, State) ->
+    {stop, normal, Update(State)};
+event(CurEvent, _, {give_item, ID, Amount},
+      State = #zone_state{
+                 tcp = TCP,
+                 db = DB,
+                 char = #char{id = CharacterID}}) ->
+    give_item(TCP, DB, CharacterID, ID, Amount),
+    {next_state, CurEvent, State};
+event(_CurEvent, _, stop, State = #zone_state{char_fsm = Char}) ->
+    gen_statem:cast(Char, exit),
+    {stop, normal, State};
+event(CurEvent, _, {tick, _Tick}, State) ->
+    send(State, {tick, zone_master:tick()}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {send_packet, Packet, Data}, State) ->
+    lager:log(info, self(), "Send packet ~p ~p", [{packet, Packet},
+                                                  {data, Data}]),
+    send(State, {Packet, Data}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {send_packets, Packets}, State) ->
+    send(State, {send_packets, Packets}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {show_to, FSM},
+      State = #zone_state{
+                 account = A,
+                 char = C
+                }) ->
+    gen_statem:cast(FSM, {send_packet,
+                          change_look,
+                          C
+                         }),
+    gen_statem:cast(FSM, {send_packet,
+                          actor,
+                          {normal, A, C}
+                         }),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {get_state, From}, State) ->
+    From ! {ok, State},
+    {next_state, CurEvent, State};
+event(CurEvent, _, {update_state, Fun}, State) ->
+    {next_state, CurEvent, Fun(State)};
+event(_CurEvent, _, crash, _) ->
+    exit('crash induced');
+event(CurEvent, _, request_guild_status,
+      State = #zone_state{
+                 db = DB,
+                 char = #char{
+                           id = CharacterID,
+                           guild_id = GuildID
+                          }
+                }) ->
+    if
+        GuildID /= 0 ->
+            GetGuildMaster = db:get_guild_master(DB, GuildID),
+            case GetGuildMaster of
+                CharacterID ->
+                    send(State, {guild_status, master});
+                _ ->
+                    send(State, {guild_status, member})
+            end;
+        true ->
+            send(State, {guild_status, none})
+    end,
+    {next_state, CurEvent, State};
+event(CurEvent, _, {request_guild_info, 0},
+      State = #zone_state{
+                 db = DB,
+                 char = #char{guild_id = GuildID}
+                }) when GuildID /= 0 ->
+    GetGuild = db:get_guild(DB, GuildID),
+    case GetGuild of
+        %% TODO?
+        nil -> ok;
+        G ->
+            send(State, {guild_info, G}),
+            send(State, {guild_relationships, G#guild.relationships})
+    end,
+    {next_state, CurEvent, State};
+event(CurEvent, _, {request_guild_info, 1},
+  State = #zone_state{
+             db = DB,
+             char = #char{guild_id = GuildID}
+            }) when GuildID /= 0 ->
+    GetMembers =
+        gen_server:call(char_server,
+                        {get_chars, db:get_guild_members(DB, GuildID)}),
+    case GetMembers of
+        {atomic, Members} ->
+            send(State, {guild_members, Members});
+
+        _Error ->
+            ok
+    end,
+    {next_state, CurEvent, State};
+event(CurEvent, _, {request_guild_info, 2}, State) ->
+    {next_state, CurEvent, State};
+event(CurEvent, _, {less_effect, _IsLess}, State) ->
+    {next_state, CurEvent, State};
+event(CurEvent, _, {drop, Slot, Amount},
+      State = #zone_state{
+                 db = DB,
+                 map_server = MapServer,
+                 char = #char{
+                           id = CharacterID,
+                           map = Map,
+                           x = X,
+                           y = Y}}) ->
+    send(State, {drop_item, {Slot, Amount}}),
+    case db:get_player_item(DB, CharacterID, Slot) of
+        nil ->
+            say("Invalid item.", State);
+        Item ->
+            if
+                Amount == Item#world_item.amount ->
+                    db:remove_player_item(DB, CharacterID, Slot);
+
+                true ->
+                    %% TODO: update amount
+                    ok
+            end,
+            %% TODO
+            ObjectID = db:give_world_item(DB, Map, Item#world_item.item,
+                                          Amount),
+            gen_server:cast(
+              MapServer,
+              { send_to_players_in_sight,
+                {X, Y},
+                item_on_ground,
+                %% TODO: actual item ID
+                %% TODO: randomize positions
+                {ObjectID, Item#world_item.item, 1, X + 1, Y + 1, 1, 2, Amount}
+              })
+    end,
+    {next_state, CurEvent, State};
+event(CurEvent, _, {pick_up, ObjectID},
+      State = #zone_state{
+                 tcp = TCP,
+                 db = DB,
+                 map_server = MapServer,
+                 account = #account{id = AccountID},
+                 char = #char{
+                           id = CharacterID,
+                           map = Map,
+                           x = X,
+                           y = Y
+                          }
+                }) ->
+    gen_server:cast(
+      MapServer,
+      {send_to_players, item_disappear, ObjectID}
+     ),
+    gen_server:cast(
+      MapServer,
+      { send_to_players_in_sight,
+        {X, Y},
+        actor_effect,
+        { AccountID,
+          ObjectID,
+          zone_master:tick(),
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        }
+      }
+     ),
+    case db:get_world_item(DB, ObjectID) of
+        nil ->
+            say("Item already picked up!", State);
+
+        Item ->
+            db:remove_world_item(DB, Map, ObjectID),
+            give_item(TCP, DB, CharacterID,
+                      Item#world_item.item, Item#world_item.amount)
+    end,
+    {next_state, CurEvent, State};
+event(CurEvent, _, {change_direction, Head, Body},
+      State = #zone_state{
+                 map_server = MapServer,
+                 account = #account{id = AccountID},
+                 char = #char{
+                           id = CharacterID,
+                           x = X,
+                           y = Y
+                          }
+                }) ->
+    gen_server:cast(
+      MapServer,
+      { send_to_other_players_in_sight,
+        {X, Y},
+        CharacterID,
+        change_direction,
+        {AccountID, Head, Body}
+      }
+     ),
+    {next_state, CurEvent, State};
+event(_CurEvent, _, exit, State) ->
+    lager:log(error, self(), "Zone FSM got EXIT signal", []),
+    {stop, normal, State};
+event(CurEvent, _, Event, State) ->
+    lager:log(warning, self(), "Zone FSM received unknown event ~p ~p",
+              [{event, Event}, {state, valid}]),
+    {next_state, CurEvent, State}.
 
 %% FIXME: Not used right now:
 %%        How to integrate?
