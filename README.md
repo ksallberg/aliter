@@ -11,7 +11,7 @@ This branch of Aliter has been tested only with Erlang/OTP 18.3.4.
 The main motivation of branching off from the main Aliter branch
 was that it did not build using modern Erlang/OTP versions.
 
-Requirements: Erlang/OTP 18.3.4+, rebar3.
+Requirements: Erlang/OTP 19+, rebar3.
 Also help the Makefile by exporting ERL_TOP to you erlang installation.
 (if not already done) (test echo $ERL_TOP)
 
