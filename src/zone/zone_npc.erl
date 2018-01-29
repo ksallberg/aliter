@@ -9,25 +9,20 @@
         , next/2 ]).
 
 do_all(FSM, Packets) ->
-    gen_fsm:send_all_state_event(FSM,
-                                 {send_packets, Packets}).
+    gen_statem:cast(FSM, {send_packets, Packets}).
 
 
 say(FSM, NPC, Message) ->
-    gen_fsm:send_all_state_event(FSM,
-                                 {send_packet, dialog, {NPC, Message}}).
+    gen_statem:cast(FSM, {send_packet, dialog, {NPC, Message}}).
 
 
 menu(FSM, NPC, Choices) ->
-    gen_fsm:send_all_state_event(FSM,
-                                 {send_packet, dialog_menu, {NPC, Choices}}).
+    gen_statem:cast(FSM, {send_packet, dialog_menu, {NPC, Choices}}).
 
 
 next(FSM, NPC) ->
-    gen_fsm:send_all_state_event(FSM,
-                                 {send_packet, dialog_next, NPC}).
+    gen_statem:cast(FSM, {send_packet, dialog_next, NPC}).
 
 
 close(FSM, NPC) ->
-    gen_fsm:send_all_state_event(FSM,
-                                 {send_packet, dialog_close, NPC}).
+    gen_statem:cast(FSM, {send_packet, dialog_close, NPC}).

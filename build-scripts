@@ -1,5 +1,0 @@
-#!/bin/sh
-
-for script in `find ~/.aliter/scripts/* -depth 1 -name main.ex`; do
-  export NPC_PATH=`dirname $script`
-done

@@ -70,7 +70,7 @@ new_connection(_ClientIP, _ClientPort, Sock, State) ->
                         ClientSup = gen_server_tcp:client_sup(Port),
                         {ok, FSM}
                             = supervisor:start_child(ClientSup, Args),
-                        gen_fsm:send_all_state_event(FSM, {set_server, Server}),
+                        gen_statem:cast(FSM, {set_server, Server}),
                         client_worker(Sock, FSM, PacketHandler)
                 end),
     gen_tcp:controlling_process(Sock, Pid),
@@ -82,19 +82,16 @@ client_worker(Socket, FSM, PacketHandler) ->
     receive
         {tcp, Socket, Packet} ->
             Event = PacketHandler:unpack(Packet),
-            gen_fsm:send_event(FSM, Event),
+            gen_statem:cast(FSM, Event),
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
-
         {tcp_closed, Socket} ->
-            gen_fsm:send_event(FSM, stop);
-
+            gen_statem:cast(FSM, stop);
         {parse, NewHandler} ->
             Loop = self(),
             Parser =
                 spawn(?MODULE, parse_loop, [Socket, NewHandler, Loop]),
             gen_tcp:controlling_process(Socket, Parser),
             ?MODULE:client_worker(Socket, FSM, NewHandler);
-
         {send_packets, Packets} ->
             Binaries = lists:map(
                          fun(Packet) ->
@@ -105,7 +102,6 @@ client_worker(Socket, FSM, PacketHandler) ->
 
             gen_tcp:send(Socket, iolist_to_binary(Binaries)),
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
-
         {Packet, Data} ->
             Packed = iolist_to_binary(PacketHandler:pack(Packet, Data)),
             case verify({Packet, Data}, PacketHandler) of
@@ -121,14 +117,11 @@ client_worker(Socket, FSM, PacketHandler) ->
                                {got, byte_size(Packed)}])
             end,
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
-
         Packet when is_binary(Packet) ->
             gen_tcp:send(Socket, Packet),
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
-
         close ->
             gen_tcp:close(Socket);
-
         _Other ->
             ok
     end.
@@ -142,7 +135,6 @@ verify({Packet, Data}, PacketHandler) ->
         Size == 0;
         byte_size(Packed) == Size ->
             {ok, Packed};
-
         true ->
             {badsize, Size}
     end.

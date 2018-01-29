@@ -52,7 +52,6 @@ handle_call(
   _From,
   State = #map_state{players = Players}) ->
     {reply, get_player_by(Pred, Players), State};
-
 handle_call(
   player_count,
   _From,
@@ -61,104 +60,82 @@ handle_call(
 
 handle_call(Request, _From, State) ->
     {reply, {illegal_request, Request}, State}.
-
 handle_cast( {add_player, Player}, State = #map_state{players = Players}) ->
     {noreply, State#map_state{players = [Player | Players]}};
-
 handle_cast({register_npc, NPC}, State = #map_state{npcs = NPCs}) ->
     %% TODO: make it appear on screen for anyone around it
     {noreply, State#map_state{npcs = [NPC | NPCs]}};
-
 handle_cast({remove_player, AccountID},
             State = #map_state{players = Players}) ->
     {noreply,
      State#map_state{players = lists:keydelete(AccountID, 1, Players)}};
-
 handle_cast({send_to_players, Packet, Data}, State) ->
     lists:foreach(
       fun({_ID, FSM}) ->
-              gen_fsm:send_all_state_event(
-                FSM,
-                {send_packet, Packet, Data}
-               )
+              gen_statem:cast(FSM, {send_packet, Packet, Data})
       end,
       State#map_state.players
      ),
     {noreply, State};
-
 handle_cast({send_to_other_players, Self, Packet, Data}, State) ->
     lists:foreach(
       fun({_ID, FSM}) ->
-              gen_fsm:send_all_state_event(
-                FSM,
-                { send_packet_if,
-                  fun(#zone_state{char = C}) ->
-                          (C#char.id /= Self)
-                  end,
-                  Packet,
-                  Data
-                }
-               )
+              gen_statem:cast(FSM,
+                              {send_packet_if,
+                               fun(#zone_state{char = C}) ->
+                                       (C#char.id /= Self)
+                               end,
+                               Packet,
+                               Data
+                              })
       end,
       State#map_state.players
      ),
     {noreply, State};
-
 handle_cast({send_to_players_in_sight, {X, Y}, Packet, Data}, State) ->
     lists:foreach(
       fun({_ID, FSM}) ->
-              gen_fsm:send_all_state_event(
-                FSM,
-                { send_packet_if,
-                  fun(#zone_state{char = C}) ->
-                          in_range(C, {X, Y})
-                  end,
-                  Packet,
-                  Data
-                }
-               )
+              gen_statem:cast(FSM,
+                              {send_packet_if,
+                               fun(#zone_state{char = C}) ->
+                                       in_range(C, {X, Y})
+                               end,
+                               Packet,
+                               Data
+                              })
       end,
       State#map_state.players),
     {noreply, State};
-
 handle_cast({send_to_other_players_in_sight, {X, Y}, Self, Packet, Data},
             State) ->
     lists:foreach(
       fun({_ID, FSM}) ->
-              gen_fsm:send_all_state_event(
-                FSM,
-                { send_packet_if,
-                  fun(#zone_state{char = C}) ->
-                          (C#char.id /= Self) and
-                              in_range(C, {X, Y})
-                  end,
-                  Packet,
-                  Data
-                }
-               )
+              gen_statem:cast(FSM,
+                              {send_packet_if,
+                               fun(#zone_state{char = C}) ->
+                                       (C#char.id /= Self) and
+                                           in_range(C, {X, Y})
+                               end,
+                               Packet,
+                               Data
+                              })
       end,
       State#map_state.players),
     {noreply, State};
-
 handle_cast({show_actors, {SelfID, SelfFSM}}, State) ->
     lists:foreach(
       fun({ID, _FSM}) when ID == SelfID ->
               ok;
          ({_ID, FSM}) ->
-              gen_fsm:send_all_state_event(
-                FSM,
-                {show_to, SelfFSM})
+              gen_statem:cast(FSM, {show_to, SelfFSM})
       end,
       State#map_state.players),
     lists:foreach(
       fun(N) ->
-              gen_fsm:send_all_state_event(
-                SelfFSM,
-                {send_packet, show_npc, N})
+              gen_statem:cast(SelfFSM, {send_packet, show_npc, N})
       end,
       State#map_state.npcs),
     {noreply, State};
-
 handle_cast(_Cast, State) ->
     {noreply, State}.
 
@@ -166,7 +143,6 @@ handle_info({'EXIT', From, Reason}, State) ->
     lager:log(error, self(), "Zone map server got EXIT signal ~p ~p",
               [{from, From}, {reason, Reason}]),
     {stop, normal, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -184,9 +160,8 @@ in_range(C, {X, Y}) ->
 
 get_player_by(_Pred, []) ->
     none;
-
 get_player_by(Pred, [{_ID, FSM} | Players]) ->
-    case gen_fsm:sync_send_all_state_event(FSM, get_state) of
+    case gen_statem:call(FSM, get_state) of
         {ok, State} ->
             case Pred(State) of
                 false ->
@@ -195,7 +170,6 @@ get_player_by(Pred, [{_ID, FSM} | Players]) ->
                 true ->
                     {ok, State}
             end;
-
         _Fail ->
             get_player_by(Pred, Players)
     end.

@@ -29,9 +29,9 @@ init({TCP, [DB]}) ->
     process_flag(trap_exit, true),
     {ok, locked, #char_state{tcp = TCP, db = DB}}.
 
-locked(_, {_, {set_server, Server}}, State) ->
+locked(_, {set_server, Server}, State) ->
     {next_state, locked, State#char_state{server = Server}};
-locked(_, {_, {connect, AccountID, LoginIDa, LoginIDb, _Gender}},
+locked(_, {connect, AccountID, LoginIDa, LoginIDb, _Gender},
        State = #char_state{tcp = TCP, db = DB}) ->
     TCP ! <<AccountID:32/little>>,
     Verify =
@@ -68,7 +68,7 @@ locked(_, {_, {connect, AccountID, LoginIDa, LoginIDb, _Gender}},
             {next_state, locked, State}
     end.
 
-valid(_, {_, {choose, Num}},
+valid(_, {choose, Num},
       #char_state{db = DB, account = #account{id = AccountID}} = State) ->
     GetChar = db:get_account_char(DB, AccountID, Num),
     case GetChar of
@@ -85,9 +85,8 @@ valid(_, {_, {choose, Num}},
             State#char_state.tcp ! {zone_connect, {C, ?ZONE_IP, ZonePort}},
             {next_state, chosen, State#char_state{char = C}}
     end;
-valid(_, {_,
-          {create, Name, Str, Agi, Vit, Int, Dex,
-           Luk, Num, HairColour, HairStyle}},
+valid(_, {create, Name, Str, Agi, Vit, Int, Dex,
+          Luk, Num, HairColour, HairStyle},
       State = #char_state{db = DB, account = Account}) ->
     Exists = db:get_char_id(DB, Name),
     case Exists of
@@ -114,7 +113,7 @@ valid(_, {_,
             State#char_state.tcp ! {creation_failed, 0}
     end,
     {next_state, valid, State};
-valid(_, {_, {delete, CharacterID, EMail}},
+valid(_, {delete, CharacterID, EMail},
       State = #char_state{
                  db = DB,
                  account = #account{id = AccountID, email = AccountEMail}
@@ -146,7 +145,7 @@ valid(_, {_, {delete, CharacterID, EMail}},
             State#char_state.tcp ! {deletion_failed, 0}
     end,
     {next_state, valid, State};
-valid(_, {_, {check_name, AccountID, CharacterID, NewName}},
+valid(_, {check_name, AccountID, CharacterID, NewName},
       State = #char_state{db = DB, account = #account{id = AccountID}}) ->
     Check = db:get_char_id(DB, NewName),
     case Check of
@@ -167,9 +166,9 @@ valid({call, From}, switch_zone, StateData = #char_state{die = Die}) ->
             erlang:cancel_timer(Die)
     end,
     {next_state, valid, StateData, [{reply, From, {ok, StateData}}]};
-valid(_, {_, {keepalive, _AccountID}}, State) ->
+valid(_, {keepalive, _AccountID}, State) ->
     {keep_state, State};
-valid(info, {_, stop}, State) ->
+valid(info, stop, State) ->
     NewState = State#char_state{
                  die = erlang:send_after(5 * 60 * 1000, self(), exit)},
     {next_state, valid, NewState};
@@ -180,7 +179,7 @@ valid(cast, exit, State = #char_state{login_fsm = Login,
     gen_server:cast(login_server, {remove_session, AccountID}),
     gen_statem:cast(Login, exit),
     {stop, normal, State};
-valid(info, {_, exit}, State = #char_state{login_fsm = Login,
+valid(info, exit, State = #char_state{login_fsm = Login,
                                            account=#account{id=AccountID}}) ->
     lager:log(info, self(), "Character FSM exiting."),
     gen_server:cast(char_server, {remove_session, AccountID}),
@@ -188,7 +187,7 @@ valid(info, {_, exit}, State = #char_state{login_fsm = Login,
     gen_statem:cast(Login, exit),
     {stop, normal, State}.
 
-chosen(info, {_, stop}, State) ->
+chosen(_EventType, stop, State) ->
     NewState = State#char_state{
                  die = erlang:send_after(5 * 60 * 1000, self(), exit)},
     {next_state, valid, NewState};
@@ -201,7 +200,7 @@ chosen({call, From}, switch_zone, StateData = #char_state{die = Die}) ->
     end,
     {next_state, chosen, StateData, [{reply, From, {ok, StateData}}]}.
 
-renaming(_, {_, {rename, CharacterID}},
+renaming(_, {rename, CharacterID},
          #char_state{db = DB,
                      rename = {#char{name = OldName,
                                      id = CharacterID,
@@ -218,7 +217,7 @@ renaming(_, {_, {rename, CharacterID}},
             State#char_state.tcp ! {rename_result, 3}
     end,
     {next_state, valid, State#char_state{rename = undefined}};
-renaming(_, {_, {rename, _CharacterID}},
+renaming(_, {rename, _CharacterID},
          State = #char_state{rename = {#char{renamed = 1}, _NewName}}) ->
     State#char_state.tcp ! {rename_result, 1},
     {next_state, valid, State}.

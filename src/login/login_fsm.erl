@@ -25,14 +25,10 @@ init({TCP, [DB]}) ->
     process_flag(trap_exit, true),
     {ok, locked, #login_state{tcp = TCP, db = DB}}.
 
-locked(_,
-       {_, {set_server, Server}},
-       State) ->
+locked(_, {set_server, Server}, State) ->
     {next_state, locked, State#login_state{server = Server}};
-
-locked(_Type,
-  {_, {login, PacketVer, RawLogin, Password, Region}},
-  State = #login_state{tcp = TCP, db = DB}) ->
+locked(_Type, {login, PacketVer, RawLogin, Password, Region},
+       State = #login_state{tcp = TCP, db = DB}) ->
     lager:log(info, self(),
               "Received login request ~p ~p ~p ~p",
               [ {packetver, PacketVer},
