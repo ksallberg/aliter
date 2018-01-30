@@ -8,11 +8,16 @@ include arch/${OS}/Makefile
 all: build
 
 build:
-	${CC} ${CFLAGS} ${ARCHFLAGS} -I${ERL_TOP}/erts/emulator/beam/ -I${ERL_TOP}/lib/erlang/usr/include
+	${CC} ${CFLAGS} ${ARCHFLAGS} \
+	    -I${ERL_TOP}/erts/emulator/beam/ \
+            -I${ERL_TOP}/lib/erlang/usr/include
 	rebar3 compile
 
 start: build
-	erl start_sasl -pa _build/default/lib/*/ebin -sname aliternode -eval "application:start(aliter)." -config priv/app.config
+	erl start_sasl -pa _build/default/lib/*/ebin \
+            -sname aliternode \
+            -eval "application:start(aliter)." \
+            -config priv/app.config
 
 clean:
 	@@echo "Removing compiled modules..."
