@@ -695,4 +695,18 @@ say(Message, State) ->
 give_item(TCP, DB, CharacterID, ID, Amount) ->
     Slot = db:give_player_item(DB, CharacterID, ID, Amount),
     TCP !
-        {give_item, {Slot, Amount, ID, 1, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 0}}.
+        {give_item, {Slot,   %% Index
+                     Amount, %% Amount
+                     ID,     %% ID
+                     1,      %% Identified
+                     0,      %% Damaged
+                     0,      %% Refined
+                     0,      %% Card1
+                     0,      %%     2
+                     0,      %%     3
+                     0,      %%     4
+                     2,      %% EquipLocation
+                     4,      %% Type
+                     0,      %% Result
+                     0,      %% ExpireTime
+                     0}}.    %% BindOnEquipType

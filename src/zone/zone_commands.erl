@@ -21,7 +21,6 @@ execute(
                           x = X,
                           y = Y}}) ->
     Capitalized = string:to_upper(string:join(Args, " ")),
-
     gen_server:cast(
       MapServer,
       { send_to_other_players_in_sight,
