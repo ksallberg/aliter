@@ -132,7 +132,7 @@ verify({Packet, Data}, PacketHandler) ->
     <<Header:16/little, _/binary>> = Packed,
     Size = PacketHandler:packet_size(Header),
     if
-        Size == 0;
+        Size == 0 orelse
         byte_size(Packed) == Size ->
             {ok, Packed};
         true ->

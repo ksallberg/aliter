@@ -77,9 +77,12 @@ unpack(<<16#18a:16/little, _:16>>) ->
 unpack(<<16#21d:16/little, IsLess:32/little>>) ->
     {less_effect, IsLess};
 
+unpack(<<16#0817:16/little, Time:32/little>>) ->
+    {notify_time, Time};
+
 unpack(Unknown) ->
     lager:log(warning, self(), "zone packets Got unknown data ~p",
-              [{data, Unknown}]),
+              [Unknown]),
     unknown.
 
 pack(accept, {Tick, {X, Y, D}}) ->
@@ -433,7 +436,6 @@ pack(equipment, Equipment) ->
 pack(inventory, Inventory) ->
     [ <<16#2e8:16/little,
         (22 * length(Inventory) + 4):16/little>>,
-
       [ <<(I#world_item.slot):16/little,
           (I#world_item.item):16/little,
           0:8, % TODO: type
@@ -444,9 +446,8 @@ pack(inventory, Inventory) ->
           0:16/little, % TODO: card 2
           0:16/little, % TODO: card 3
           0:16/little, % TODO: card 4
-                                                % TODO: expiration
-          0:32/little>> || I <- Inventory]
-    ];
+                       % TODO: expiration
+          0:32/little>> || I <- Inventory]];
 
 pack(
   give_item,
@@ -479,8 +480,6 @@ pack(
       Card4:16/little,
       EquipLocation:16/little,
       Type:8,
-
-                                                % TODO: ?
       Result:8,
       ExpireTime:32/little,
       BindOnEquipType:16/little>>;
@@ -521,9 +520,12 @@ pack(item_on_ground, {ObjectID, ItemID, Identified, X, Y, SubX, SubY, Amount}) -
       SubY:8,
       Amount:16/little>>;
 
+pack(time, Time) ->
+    <<16#007F:16/little, Time:32/little>>;
+
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
-              [{header, Header}, {data, Data}]),
+              [Header, Data]),
     <<>>.
 
 decode_position(<<XNum, YNum, DNum>>) ->

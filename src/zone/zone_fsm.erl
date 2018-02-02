@@ -613,6 +613,10 @@ event(CurEvent, _, {change_direction, Head, Body},
       }
      ),
     {next_state, CurEvent, State};
+event(CurEvent, _, {notify_time, Time}, State) ->
+    %% FIXME: What time to reply with?
+    send(State, {time, Time+2}),
+    {next_state, CurEvent, State};
 event(_CurEvent, _, exit, State) ->
     lager:log(error, self(), "Zone FSM got EXIT signal", []),
     {stop, normal, State};
@@ -650,7 +654,6 @@ walk_interval(N) ->
                 %% Walking straight.
                 ?WALKSPEED
         end,
-
     timer:apply_interval(
       Interval,
       gen_fsm,
