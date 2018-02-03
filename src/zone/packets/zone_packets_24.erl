@@ -29,8 +29,9 @@ unpack(<<16#0817:16/little, Tick:32/little>>) ->
     {tick, Tick};
 unpack(<<16#90:16/little, NPCID:32/little, _:8>>) ->
     {npc_activate, NPCID};
-unpack(<<16#8c:16/little, _:8/binary, ActorID:32/little>>) ->
-    {request_name, ActorID};
+%% CZ_REQNAME
+unpack(<<16#88a:16/little, ReqName:16/little, _ReqName2:16/little>>) ->
+    {request_name, ReqName};
 unpack(<<16#99:16/little, Length:16/little, Message/binary>>)
   when byte_size(Message) == (Length - 4) ->
     {broadcast, string:strip(binary_to_list(Message), right, 0)};

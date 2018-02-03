@@ -307,11 +307,9 @@ event(CurEvent, _, {char_select, _Type}, State) ->
     send(State, {confirm_back_to_char, {1}}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {request_name, ActorID},
-      State = #zone_state{
-                 account = #account{id = AccountID},
-                 char = #char{name = CharacterName},
-                 map_server = MapServer
-                }) ->
+      State = #zone_state{account = #account{id = AccountID},
+                          char = #char{name = CharacterName},
+                          map_server = MapServer}) ->
     Name =
         if
             ActorID == AccountID ->
