@@ -21,17 +21,13 @@ start_link(Conf) ->
 
 init(_Conf) ->
     process_flag(trap_exit, true),
-
     application:set_env(zone, started, erlang:timestamp()),
     nif:init(),
     %% zone_npc:load_all(),
     {zones, Zones} = zone_map:zones(),
-    { ok,
-      #state{
-         npc_id = 5000000,
-         servers = [zone_srv:server_for(P) || {P, _} <- Zones]
-        }
-    }.
+    {ok, #state{npc_id = 5000000,
+                servers = [zone_srv:server_for(P) || {P, _} <- Zones]
+               }}.
 
 handle_call({who_serves, Map}, _From, State) ->
     {reply, who_serves(Map, State#state.servers), State};
