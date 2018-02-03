@@ -62,5 +62,9 @@ var ROConfig = {
 ### Commands
 
 ```
-\item 1228 - You got Combat Knife (1).
+\caps text           - chat "TEXT"
+\crash               - Yeeah...
+\warp prontera 50 20 - Travel
+\item 1228           - You got Combat Knife (1).
+\zeny 100             - You get 100 zeny
 ```

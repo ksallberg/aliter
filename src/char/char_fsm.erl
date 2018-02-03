@@ -6,7 +6,6 @@
 -include("ro.hrl").
 
 -include_lib("stdlib/include/qlc.hrl").
-
 -export([ start_link/1
         , init/1
         , locked/3
@@ -172,6 +171,8 @@ valid(info, stop, State) ->
     NewState = State#char_state{
                  die = erlang:send_after(5 * 60 * 1000, self(), exit)},
     {next_state, valid, NewState};
+valid(cast, {update_state, UpdateFun}, State) ->
+    {keep_state, UpdateFun(State)};
 valid(cast, exit, State = #char_state{login_fsm = Login,
                                       account=#account{id=AccountID}}) ->
     lager:log(info, self(), "Character FSM exiting."),

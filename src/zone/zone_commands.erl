@@ -76,14 +76,11 @@ execute(_FSM, Unknown, _Args, State) ->
     zone_fsm:say("Unknown command `" ++ Unknown ++ "'.", State),
     ok.
 
-warp_to(
-  FSM, Map, X, Y,
-  State = #zone_state{
-             tcp = TCP,
-             map_server = MapServer,
-             account = #account{id = AccountID},
-             char = C
-            }) ->
+warp_to(FSM, Map, X, Y,
+        #zone_state{tcp = TCP,
+                    map_server = MapServer,
+                    account = #account{id = AccountID},
+                    char = C} = State) ->
     case gen_server:call(zone_master, {who_serves, Map}) of
         {zone, Port, ZoneServer} ->
             zone_fsm:say(
@@ -99,7 +96,6 @@ warp_to(
                              C#char.id,
                              vanish,
                              {AccountID, 3}}),
-
             %% Move to new Map server
             gen_server:cast(MapServer, {remove_player, AccountID}),
             {ok, NewMap, NewMapServer}
