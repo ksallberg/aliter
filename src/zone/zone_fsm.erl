@@ -123,7 +123,9 @@ valid(_, {npc_next, _ActorID}, State = #zone_state{npc = {Pid, _NPC}}) ->
 valid(_, {npc_close, _ActorID}, State = #zone_state{npc = {Pid, _NPC}}) ->
     Pid ! close,
     {next_state, valid, State};
-valid(_, map_loaded, State) -> show_actors(State), {next_state, valid, State};
+valid(_, map_loaded, State) ->
+    show_actors(State),
+    {next_state, valid, State};
 valid(_, {walk, {ToX, ToY, _ToD}},
       State = #zone_state{
                  map = Map,
@@ -613,10 +615,6 @@ event(CurEvent, _, {change_direction, Head, Body},
       }
      ),
     {next_state, CurEvent, State};
-event(CurEvent, _, {notify_time, Time}, State) ->
-    %% FIXME: What time to reply with?
-    send(State, {time, Time+2}),
-    {next_state, CurEvent, State};
 event(_CurEvent, _, exit, State) ->
     lager:log(error, self(), "Zone FSM got EXIT signal", []),
     {stop, normal, State};
@@ -661,36 +659,17 @@ walk_interval(N) ->
       [self(), step]
      ).
 
-show_actors(
-  #zone_state{
-     map_server = MapServer,
-     char = C,
-     account = A
-    }) ->
-    gen_server:cast(
-      MapServer,
-      { send_to_other_players,
-        C#char.id,
-        change_look,
-        C
-      }
-     ),
-
-    gen_server:cast(
-      MapServer,
-      { send_to_other_players,
-        C#char.id,
-        actor,
-        {new, A, C}
-      }
-     ),
-
-    gen_server:cast(
-      MapServer,
-      { show_actors,
-        {A#account.id, self()}
-      }
-     ).
+show_actors(#zone_state{map_server = MapServer,
+                        char = C,
+                        account = A
+                       } = State) ->
+    send(State, {status, C}), %% Send stats to client
+    gen_server:cast(MapServer,
+                    {send_to_other_players, C#char.id, change_look, C}),
+    gen_server:cast(MapServer,
+                    {send_to_other_players, C#char.id, actor, {new, A, C}}),
+    gen_server:cast(MapServer,
+                    {show_actors, {A#account.id, self()}}).
 
 say(Message, State) ->
     send(State, {message, Message}).
