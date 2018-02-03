@@ -402,7 +402,7 @@ pack(equipment, _Equipment) ->
                   0:16/little,
               0:32/little,     %% HireExpireDate
               0:16/little,     %% bindOnEquipType
-              0:16/little>>,   %% wItemSpriteNumber
+              110:16/little>>,   %% wItemSpriteNumber
     Equiplen = 3,
     Res = [<<16#2d0:16/little,
              (L * Equiplen + 4):16/little>>,
@@ -488,6 +488,12 @@ pack(item_on_ground,
       SubX:8,
       SubY:8,
       Amount:16/little>>;
+pack(sprite,
+     {Type, Value}) ->
+    <<16#01d7:16/little,
+      1:32/little,
+      Type:8/little,
+      Value:32/little>>;
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
               [Header, Data]),

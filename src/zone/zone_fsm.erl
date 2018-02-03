@@ -669,6 +669,7 @@ show_actors(#zone_state{map_server = MapServer,
     send(State, {param_change, {?SP_MAX_SP, 60}}),
     send(State, {param_change, {?SP_CUR_SP, 50}}),
     send(State, {equipment, whatever}), %% FIXME: Needs db support
+    send(State, {sprite, {2, 5025}}),
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),
     gen_server:cast(MapServer,

@@ -35,6 +35,7 @@ mod_upd(#char{map = _OldMap} = Ch) ->
                     base_level = 20,
                     max_hp = 9999,
                     max_sp = 1000,
+                    view_head_top = 110,
                     %% Crusader = 14
                     job = 4015, %% Paladin
                     x = 53,
