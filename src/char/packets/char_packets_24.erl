@@ -159,9 +159,7 @@ character(C) ->
         (C#char.view_head_middle):16/little,
         (C#char.hair_colour):16/little,
         (C#char.clothes_colour):16/little>>,
-
       pad_to(C#char.name, 24),
-
       <<(C#char.str):8,
         (C#char.agi):8,
         (C#char.vit):8,
@@ -171,9 +169,7 @@ character(C) ->
         (C#char.num):16/little,
         %% TODO: I think this is 0 for renamed
         1:16/little>>,
-
       pad_to([C#char.map, <<".gat">>], 16),
-
       <<0:32/little,  % delete date
         0:32/little>>  % robe
           %% 0:32/little,  % change slot (0 = disabled)
@@ -182,6 +178,5 @@ character(C) ->
 
 pad_to(Bin, Size) ->
     Binary = iolist_to_binary(Bin),
-    [ binary:part(Binary, 0, min(byte_size(Binary), Size)),
-      binary:copy(<<0>>, Size - byte_size(Binary))
-    ].
+    [ binary:part(Binary, 0, min(byte_size(Binary), Size))
+    , binary:copy(<<0>>, Size - byte_size(Binary))].
