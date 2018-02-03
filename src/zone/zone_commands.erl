@@ -11,15 +11,13 @@
 parse(String) ->
     string:tokens(String, " ").
 
-execute(
-  _FSM, "caps", Args,
-  State = #zone_state{
-             tcp = TCP,
-             map_server = MapServer,
-             account = #account{id = AccountID},
-             char = #char{id = CharacterID,
-                          x = X,
-                          y = Y}}) ->
+execute(_FSM, "caps", Args,
+        State = #zone_state{tcp = TCP,
+                            map_server = MapServer,
+                            account = #account{id = AccountID},
+                            char = #char{id = CharacterID,
+                                         x = X,
+                                         y = Y}}) ->
     Capitalized = string:to_upper(string:join(Args, " ")),
     gen_server:cast(
       MapServer,
@@ -36,10 +34,7 @@ execute(FSM, "crash", _Args, _State) ->
 execute(FSM, "load", _Args, State = #zone_state{char = C}) ->
     warp_to(FSM, C#char.save_map, C#char.save_x, C#char.save_y, State);
 execute(FSM, "warp", [Map | [XStr | [YStr | _]]], State) ->
-    case
-        { string:to_integer(XStr),
-          string:to_integer(YStr)
-        } of
+    case {string:to_integer(XStr), string:to_integer(YStr)} of
         {{X,_}, {Y,_}} when is_integer(X), is_integer(Y) ->
             warp_to(FSM, list_to_binary(Map), X, Y, State);
 
@@ -48,14 +43,12 @@ execute(FSM, "warp", [Map | [XStr | [YStr | _]]], State) ->
             {ok, State}
     end;
 execute(FSM, "jumpto", [PlayerName | _], State) ->
-    case
-        gen_server:call(
-          zone_master,
-          { get_player_by,
-            fun(#zone_state{char = C}) ->
-                    C#char.name == PlayerName
-            end
-          }) of
+    case gen_server:call(zone_master,
+                         {get_player_by,
+                          fun(#zone_state{char = C}) ->
+                                  C#char.name == PlayerName
+                          end
+                         }) of
         {ok, #zone_state{char = C}} ->
             warp_to(FSM, C#char.map, C#char.x, C#char.y, State);
         none ->
