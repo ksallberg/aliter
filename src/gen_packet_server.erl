@@ -99,7 +99,6 @@ client_worker(Socket, FSM, PacketHandler) ->
                                      {ok, Binary} -> Binary
                                  end
                          end, Packets),
-
             gen_tcp:send(Socket, iolist_to_binary(Binaries)),
             ?MODULE:client_worker(Socket, FSM, PacketHandler);
         {Packet, Data} ->

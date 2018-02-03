@@ -1,5 +1,8 @@
 -module(zone_packets_24).
 
+%% When length per element is given, such as in the case of equipment,
+%% it defines length in terms of bytes. So, (bits / 8).
+
 -include("records.hrl").
 
 -export([ unpack/1
@@ -352,24 +355,74 @@ pack(hotkeys, _Hotkeys) ->
      list_to_binary(lists:duplicate(189, 0))];
 pack(party_invite_state, State) ->
     <<16#2c9:16/little, State:8>>;
-pack(equipment, Equipment) ->
-    <<16#2d0:16/little,
-      (26 * length(Equipment) + 4):16/little>>;
+pack(equipment, _Equipment) ->
+    Item = <<0:16/little,     %% index
+             1201:16/little,  %% Item ID
+             5:8,             %% type
+             1:8,             %% identified
+             2:16/little,     %% location
+             2:16/little,     %% WearState
+             0:8/little,      %% IsDamaged
+             0:8/little,      %% RefiningLevel
+                 0:16/little, %% cards
+                 0:16/little,
+                 0:16/little,
+                 0:16/little,
+             0:32/little,     %% HireExpireDate
+             0:16/little,     %% bindOnEquipType
+             0:16/little>>,   %% wItemSpriteNumber
+    L  = (16 + 16 + 8 + 8 + 16 + 16 + 8 + 8
+          + 16 + 16 + 16 + 16 + 32 + 16 + 16) div 8,
+    Item2 = <<3:16/little,     %% index
+              2376:16/little,  %% Item ID
+              4:8,             %% type
+              1:8,             %% identified
+              16:16/little,    %% location
+              16:16/little,    %% WearState
+              0:8/little,      %% IsDamaged
+              0:8/little,      %% RefiningLevel
+                  0:16/little, %% cards
+                  0:16/little,
+                  0:16/little,
+                  0:16/little,
+              0:32/little,     %% HireExpireDate
+              0:16/little,     %% bindOnEquipType
+              0:16/little>>,   %% wItemSpriteNumber
+    Item3 = <<5:16/little,     %% index
+              5025:16/little,  %% Item ID
+              4:8,             %% type
+              1:8,             %% identified
+              256:16/little,   %% location
+              256:16/little,   %% WearState
+              0:8/little,      %% IsDamaged
+              0:8/little,      %% RefiningLevel
+                  0:16/little, %% cards
+                  0:16/little,
+                  0:16/little,
+                  0:16/little,
+              0:32/little,     %% HireExpireDate
+              0:16/little,     %% bindOnEquipType
+              0:16/little>>,   %% wItemSpriteNumber
+    Equiplen = 3,
+    Res = [<<16#2d0:16/little,
+             (L * Equiplen + 4):16/little>>,
+           [Item, Item2, Item3]],
+    Res;
 pack(inventory, Inventory) ->
-    [ <<16#2e8:16/little,
-        (22 * length(Inventory) + 4):16/little>>,
-      [ <<(I#world_item.slot):16/little,
-          (I#world_item.item):16/little,
-          0:8, % TODO: type
-          1:8, % TODO: identified
-          (I#world_item.amount):16/little,
-          0:16/little, % TODO: WearState(?)
-          0:16/little, % TODO: card 1
-          0:16/little, % TODO: card 2
-          0:16/little, % TODO: card 3
-          0:16/little, % TODO: card 4
-                       % TODO: expiration
-          0:32/little>> || I <- Inventory]];
+    [<<16#2e8:16/little,
+       (22 * length(Inventory) + 4):16/little>>,
+     [<<(I#world_item.slot):16/little,
+        (I#world_item.item):16/little,
+        0:8, % TODO: type
+        1:8, % TODO: identified
+        (I#world_item.amount):16/little,
+        0:16/little, % TODO: WearState(?)
+        0:16/little, % TODO: card 1
+        0:16/little, % TODO: card 2
+        0:16/little, % TODO: card 3
+        0:16/little, % TODO: card 4
+                                                % TODO: expiration
+        0:32/little>> || I <- Inventory]];
 pack(give_item,
      {Index,
       Amount,
@@ -463,6 +516,5 @@ encode_move(X, Y, ToX, ToY) ->
 
 pad_to(Bin, Size) ->
     Binary = iolist_to_binary(Bin),
-    [ binary:part(Binary, 0, min(byte_size(Binary), Size)),
-      binary:copy(<<0>>, Size - byte_size(Binary))
-    ].
+    [ binary:part(Binary, 0, min(byte_size(Binary), Size))
+    , binary:copy(<<0>>, Size - byte_size(Binary))].
