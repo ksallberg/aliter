@@ -131,6 +131,7 @@ valid(_, {walk, {ToX, ToY, _ToD}},
                  map = Map,
                  map_server = MapServer,
                  account = #account{id = AccountID},
+
                  char = C = #char{
                                id = CharacterID,
                                x = X,
@@ -662,6 +663,11 @@ show_actors(#zone_state{map_server = MapServer,
                         account = A
                        } = State) ->
     send(State, {status, C}), %% Send stats to client
+    send(State, {status, C}),
+    send(State, {param_change, {?SP_MAX_HP, 100}}),
+    send(State, {param_change, {?SP_CUR_HP, 90}}),
+    send(State, {param_change, {?SP_MAX_SP, 60}}),
+    send(State, {param_change, {?SP_CUR_SP, 50}}),
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),
     gen_server:cast(MapServer,

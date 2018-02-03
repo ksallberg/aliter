@@ -12,3 +12,9 @@
 %% Zone server
 -define(ZONE_IP,              {127, 0, 0, 1}).
 -define(ZONE_PORT,            9999).
+
+-define(SP_CUR_HP,            5).
+-define(SP_MAX_HP,            6).
+-define(SP_CUR_SP,            7).
+-define(SP_MAX_SP,            8).
+-define(SP_ZENY,              20).

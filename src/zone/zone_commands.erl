@@ -6,8 +6,6 @@
 -export([ parse/1
         , execute/4 ]).
 
--define(SP_ZENY, 20).
-
 parse(String) ->
     string:tokens(String, " ").
 

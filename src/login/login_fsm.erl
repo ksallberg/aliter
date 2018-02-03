@@ -141,6 +141,4 @@ valid(info, stop, State) ->
     {next_state, valid,
      State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
 valid(info, exit, State) ->
-    {stop, normal, State};
-valid(_, Event, State) ->
-    ?MODULE:handle_event(Event, chosen, State).
+    {stop, normal, State}.
