@@ -63,6 +63,12 @@ execute(FSM, "item", [ID], State) ->
         {ItemID, _} ->
             give_item(FSM, State, ItemID, 1)
     end;
+execute(FSM, "hat", [ID], State) ->
+    case string:to_integer(ID) of
+        {error, _} -> zone_fsm:say("Invalid item ID.", State);
+        {SpriteID, _} ->
+            change_hat(FSM, State, SpriteID)
+    end;
 execute(_FSM, Unknown, _Args, State) ->
     zone_fsm:say("Unknown command `" ++ Unknown ++ "'.", State),
     ok.
@@ -112,6 +118,9 @@ warp_to(FSM, Map, X, Y,
 
 give_item(FSM, _State, ID, Amount) ->
     gen_statem:cast(FSM, {give_item, ID, Amount}).
+
+change_hat(FSM, _State, ID) ->
+    gen_statem:cast(FSM, {sprite, ID}).
 
 add_zeny(FSM, State, Zeny) ->
     C = State#zone_state.char,

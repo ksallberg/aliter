@@ -417,6 +417,9 @@ event(CurEvent, _, {broadcast, Message}, State) ->
     {next_state, CurEvent, State};
 event(_CurEvent, _, {switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
+event(CurEvent, _, {sprite, ID}, State) ->
+    send(State, {sprite, {4, ID}}),
+    {next_state, CurEvent, State};
 event(CurEvent, _, {give_item, ID, Amount},
       State = #zone_state{
                  tcp = TCP,
@@ -669,7 +672,7 @@ show_actors(#zone_state{map_server = MapServer,
     send(State, {param_change, {?SP_MAX_SP, 60}}),
     send(State, {param_change, {?SP_CUR_SP, 50}}),
     send(State, {equipment, whatever}), %% FIXME: Needs db support
-    send(State, {sprite, {2, 5025}}),
+    send(State, {sprite, {4, 196}}),
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),
     gen_server:cast(MapServer,

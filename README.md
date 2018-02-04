@@ -68,6 +68,7 @@ var ROConfig = {
 \load                - Travel to last saved spot
 \item 1228           - You got Combat Knife (1).
 \zeny 100            - You get 100 zeny
+\hat 110             - Give spriteid to display headgear on top
 ```
 
 ### Maps
