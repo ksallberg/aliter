@@ -333,6 +333,8 @@ event(CurEvent, _, {request_name, ActorID},
                             "Other Tester"
                           }
                         };
+                    {npc, false} ->
+                        "Unknown";
                     {npc, NPC} ->
                         {actor_name, {ActorID, NPC#npc.name}};
                     none ->
@@ -419,6 +421,9 @@ event(_CurEvent, _, {switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
 event(CurEvent, _, {sprite, ID}, State) ->
     send(State, {sprite, {4, ID}}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {monster, ID}, State) ->
+    send(State, {monster, ID}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {give_item, ID, Amount},
       State = #zone_state{

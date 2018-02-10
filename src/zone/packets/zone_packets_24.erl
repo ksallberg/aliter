@@ -494,6 +494,29 @@ pack(sprite,
       1:32/little,
       Type:8/little,
       Value:32/little>>;
+pack(monster, ID) ->
+    <<16#07c:16/little, %% PacketType
+      5:8/little, %% objecttype
+      1000:32/little, %% GID
+      0:16/little, %% speed
+      0:16/little, %% bodyState
+      0:16/little, %% healthState
+      0:16/little, %% effectState
+      0:16/little, %% head
+      0:16/little, %% weapon
+      0:16/little, %% accessory
+      ID:16/little, %% job
+      0:16/little, %% shield
+      0:16/little, %% accessory2
+      0:16/little, %% accessory3
+      0:16/little, %% headpalette
+      0:16/little, %% bodypalette
+      0:16/little, %% headDir
+      0:8/little, %% isPKModeON
+      0:8/little, %% sex
+      10:8/little, 10:8/little, 0:8/little, %% PosDir, array[3] :: int8
+      0:8/little, %% xSize
+      0:8/little>>; %% ySize
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
               [Header, Data]),

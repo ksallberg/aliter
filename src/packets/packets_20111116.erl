@@ -1,3 +1,6 @@
+%% all packet sizes are measured in bytes (8 bits)
+%% except 0 which are not defined here but in the packet
+
 -module(packets_20111116).
 
 -export([packet_size/1]).
@@ -26,7 +29,7 @@ packet_size(16#0078) -> 55;
 packet_size(16#0079) -> 53;
 packet_size(16#007A) -> 58;
 packet_size(16#007B) -> 60;
-packet_size(16#007C) -> 44;
+packet_size(16#007C) -> 42;
 packet_size(16#007D) -> 2;
 packet_size(16#007E) -> 105;
 packet_size(16#007F) -> 6;
@@ -997,4 +1000,4 @@ packet_size(16#07E7) -> 5;
 packet_size(16#0817) -> 6;
 packet_size(16#088a) -> 6;
 packet_size(16#08B9) -> 12;
-packet_size(_Other) -> undefined.
+packet_size(_Other)  -> undefined.
