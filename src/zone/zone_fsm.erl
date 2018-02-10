@@ -168,9 +168,9 @@ valid(_, {action_request, _Target, 2},
                            y = Y
                           }
                 }) ->
+    Msg = {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 2, 0},
     gen_server:cast(MapServer,
-                    {send_to_players_in_sight, {X, Y}, actor_effect,
-                     {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 2, 0}}),
+                    {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
     {next_state, sitting, State};
 valid(Type, Event, State) ->
     event(valid, Type, Event, State).

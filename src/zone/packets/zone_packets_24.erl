@@ -15,14 +15,18 @@ packet_size(X) ->
     packets:packet_size(X).
 
 %% FIXME: what is 60, 8?
-unpack(
-  <<60,8,
-    AccountID:32/little,
-    CharacterID:32/little,
-    LoginIDa:32/little,
-    _ClientTick:32,
-    Gender:8>>) ->
+unpack(<<60,8,
+         AccountID:32/little,
+         CharacterID:32/little,
+         LoginIDa:32/little,
+         _ClientTick:32,
+         Gender:8>>) ->
     {connect, AccountID, CharacterID, LoginIDa, Gender};
+%% sitting, standing:
+unpack(<<16#08aa:16/little,
+         Target:32/little,
+         Action:8>>) ->
+    {action_request, Target, Action};
 %% CZ_NOTIFY_ACTORINIT
 unpack(<<16#7d:16/little>>) ->
     map_loaded;
