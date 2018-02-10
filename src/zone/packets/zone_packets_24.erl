@@ -494,7 +494,8 @@ pack(sprite,
       1:32/little,
       Type:8/little,
       Value:32/little>>;
-pack(monster, ID) ->
+pack(monster, {ID, X, Y}) ->
+    <<X2, Y2, D>> = encode_position(X, Y, 0),
     <<16#07c:16/little, %% PacketType
       5:8/little, %% objecttype
       1000:32/little, %% GID
@@ -514,7 +515,7 @@ pack(monster, ID) ->
       0:16/little, %% headDir
       0:8/little, %% isPKModeON
       0:8/little, %% sex
-      10:8/little, 10:8/little, 0:8/little, %% PosDir, array[3] :: int8
+      X2:8, Y2:8, D:8,
       0:8/little, %% xSize
       0:8/little>>; %% ySize
 pack(Header, Data) ->

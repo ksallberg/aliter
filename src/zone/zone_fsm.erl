@@ -422,8 +422,8 @@ event(_CurEvent, _, {switch_zones, Update}, State) ->
 event(CurEvent, _, {sprite, ID}, State) ->
     send(State, {sprite, {4, ID}}),
     {next_state, CurEvent, State};
-event(CurEvent, _, {monster, ID}, State) ->
-    send(State, {monster, ID}),
+event(CurEvent, _, {monster, ID, X, Y}, State) ->
+    send(State, {monster, {ID, X, Y}}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {give_item, ID, Amount},
       State = #zone_state{

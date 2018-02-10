@@ -70,7 +70,7 @@ var ROConfig = {
 \zeny 100            - You get 100 zeny
 \hat 110             - Give spriteid to display headgear on top
 \hat 422             - Fire bursting out of ears
-\monster 1373        - Spawn LOD
+\monster 1373 50 50  - Spawn LOD to tile X:50, Y:50
 ```
 
 ### Maps

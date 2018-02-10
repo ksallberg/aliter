@@ -69,11 +69,13 @@ execute(FSM, "hat", [ID], State) ->
         {SpriteID, _} ->
             change_hat(FSM, State, SpriteID)
     end;
-execute(FSM, "monster", [ID], State) ->
+execute(FSM, "monster", [ID, X, Y], State) ->
     case string:to_integer(ID) of
         {error, _} -> zone_fsm:say("Invalid monster ID.", State);
-        {SpriteID, _} ->
-            spawn_monster(FSM, State, SpriteID)
+        {MonsterID, _} ->
+            {XParse, _} = string:to_integer(X),
+            {YParse, _} = string:to_integer(Y),
+            spawn_monster(FSM, State, MonsterID, XParse, YParse)
     end;
 execute(_FSM, Unknown, _Args, State) ->
     zone_fsm:say("Unknown command `" ++ Unknown ++ "'.", State),
@@ -128,8 +130,8 @@ give_item(FSM, _State, ID, Amount) ->
 change_hat(FSM, _State, ID) ->
     gen_statem:cast(FSM, {sprite, ID}).
 
-spawn_monster(FSM, _State, ID) ->
-    gen_statem:cast(FSM, {monster, ID}).
+spawn_monster(FSM, _State, ID, X, Y) ->
+    gen_statem:cast(FSM, {monster, ID, X, Y}).
 
 add_zeny(FSM, State, Zeny) ->
     C = State#zone_state.char,
