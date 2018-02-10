@@ -69,6 +69,7 @@ var ROConfig = {
 \item 1228           - You got Combat Knife (1).
 \zeny 100            - You get 100 zeny
 \hat 110             - Give spriteid to display headgear on top
+\hat 422             - Fire bursting out of ears
 ```
 
 ### Maps
