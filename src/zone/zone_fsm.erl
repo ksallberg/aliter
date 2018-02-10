@@ -57,37 +57,28 @@ locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             WorldItems = db:get_world_items(State#zone_state.db, Char#char.map),
             lists:foreach(
               fun(Item) ->
-                      send(
-                        State,
-                        { item_on_ground,
-                          { Item#world_item.slot,
-                            Item#world_item.item,
-                            1, % TODO: identified
-                            % TODO
-                            Char#char.x + 1,
-                            Char#char.y + 1,
-                            1,
-                            2,
-                            Item#world_item.amount
-                          }
-                        })
+                      send(State, {item_on_ground, {Item#world_item.slot,
+                                                    Item#world_item.item,
+                                                    1, % TODO: identified
+                                                % TODO
+                                                    Char#char.x + 1,
+                                                    Char#char.y + 1,
+                                                    1,
+                                                    2,
+                                                    Item#world_item.amount
+                                                   }})
               end,
               WorldItems),
             say("Welcome to Aliter.", State),
-            { next_state,
-              valid,
-              State#zone_state{
-                map = Map,
-                map_server = MapServer,
-                account = C#char_state.account,
-                char = C#char_state.char,
-                id_a = C#char_state.id_a,
-                id_b = C#char_state.id_b,
-                packet_ver = C#char_state.packet_ver,
-                char_fsm = FSM
-               }
-            };
-
+            NewState = State#zone_state{map = Map,
+                                        map_server = MapServer,
+                                        account = C#char_state.account,
+                                        char = C#char_state.char,
+                                        id_a = C#char_state.id_a,
+                                        id_b = C#char_state.id_b,
+                                        packet_ver = C#char_state.packet_ver,
+                                        char_fsm = FSM},
+            {next_state, valid, NewState};
         invalid ->
             lager:log(warning, "Invalid zone login attempt caught ~p ~p",
                       [{account_id, AccountID},
@@ -99,8 +90,7 @@ locked(cast, {set_server, Server}, State) ->
 locked(Type, Event, State) ->
     event(locked, Type, Event, State).
 
-valid(_,
-      {npc_activate, ActorID}, State = #zone_state{map_server = MapServer}) ->
+valid(_, {npc_activate, ActorID}, State = #zone_state{map_server=MapServer}) ->
     case gen_server:call(MapServer, {get_actor, ActorID}) of
         {npc, NPC} ->
             %% Env = [{x, NPC#npc.main}, {p, self()}, {i, NPC#npc.id}],
@@ -178,36 +168,22 @@ valid(_, {action_request, _Target, 2},
                            y = Y
                           }
                 }) ->
-    gen_server:cast(
-      MapServer,
-      { send_to_players_in_sight,
-        {X, Y},
-        actor_effect,
-        {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 2, 0}
-      }
-     ),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, actor_effect,
+                     {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 2, 0}}),
     {next_state, sitting, State};
 valid(Type, Event, State) ->
     event(valid, Type, Event, State).
 
-sitting(_,
-        {action_request, _Target, 3},
-        State = #zone_state{
-                   map_server = MapServer,
-                   account = #account{id = AccountID},
-                   char = #char{
-                             x = X,
-                             y = Y
-                            }
-                  }) ->
-    gen_server:cast(
-      MapServer,
-      { send_to_players_in_sight,
-        {X, Y},
-        actor_effect,
-        {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}
-      }
-     ),
+sitting(_, {action_request, _Target, 3}, State = #zone_state{
+                                                    map_server = MapServer,
+                                                    account = #account{
+                                                                 id = AID},
+                                                    char = #char{x = X,
+                                                                 y = Y}}) ->
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, actor_effect,
+                     {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
     {next_state, valid, State};
 sitting(Type, Event, State) ->
     event(sitting, Type, Event, State).
@@ -223,33 +199,28 @@ walking(_, {send_packet_if, Pred, Packet, Data}, State) ->
     case Pred(State) of
         true ->
             send(State, {Packet, Data});
-
         false ->
             ok
     end,
     {next_state, walking, State};
-walking(_, {_, step},
-        State = #zone_state{
-                   char = C,
-                   account = A,
-                   map_server = MapServer,
-                   walk_timer = Timer,
-                   walk_prev = {Time, PDir},
-                   walk_path = Path,
-                   walk_changed = Changed
-                  }) ->
+walking(_, step, State = #zone_state{
+                            char = C,
+                            account = A,
+                            map_server = MapServer,
+                            walk_timer = Timer,
+                            walk_prev = {Time, PDir},
+                            walk_path = Path,
+                            walk_changed = Changed
+                           }) ->
     case Path of
         [] ->
             timer:cancel(Timer),
-            { next_state,
-              valid,
-              State#zone_state{
-                walk_timer = undefined,
-                walk_path = undefined,
-                walk_changed = false
-               }
-            };
-
+            {next_state, valid,
+             State#zone_state{
+               walk_timer = undefined,
+               walk_path = undefined,
+               walk_changed = false
+              }};
         [{CX, CY, CDir} | Rest] ->
             if
                 CDir == PDir ->
@@ -258,11 +229,9 @@ walking(_, {_, step},
                     timer:cancel(Timer),
                     {ok, NewTimer} = walk_interval(CDir)
             end,
-
             case Changed of
                 {X, Y} ->
                     {FX, FY, _FDir} = lists:last(Path),
-
                     gen_server:cast(
                       MapServer,
                       { send_to_other_players_in_sight,
@@ -272,22 +241,15 @@ walking(_, {_, step},
                         {A#account.id, {X, Y}, {FX, FY}, zone_master:tick()}
                       }
                      ),
-
                     send(State, {move, {{X, Y}, {FX, FY}, zone_master:tick()}});
-
                 _ -> ok
             end,
-
-            { next_state,
-              walking,
-              State#zone_state{
-                char = C#char{x = CX, y = CY},
-                walk_timer = NewTimer,
-                walk_prev = {Time, CDir},
-                walk_path = Rest,
-                walk_changed = false
-               }
-            }
+            NewState = State#zone_state{char = C#char{x = CX, y = CY},
+                                        walk_timer = NewTimer,
+                                        walk_prev = {Time, CDir},
+                                        walk_path = Rest,
+                                        walk_changed = false},
+            {next_state, walking, NewState}
     end;
 walking(Type, Event, State) ->
     event(walking, Type, Event, State).
@@ -404,18 +366,9 @@ event(CurEvent, _, {speak, Message},
     end,
     {next_state, CurEvent, State};
 event(CurEvent, _, {broadcast, Message}, State) ->
-    gen_server:cast(
-      zone_master,
-      %% i love how this looks like noise waves or something
-      { send_to_all,
-        { send_to_all,
-          { send_to_players,
-            broadcast,
-            Message
-          }
-        }
-      }
-     ),
+    gen_server:cast(zone_master,
+                    {send_to_all, {send_to_all,
+                                   {send_to_players, broadcast, Message}}}),
     {next_state, CurEvent, State};
 event(_CurEvent, _, {switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
@@ -622,6 +575,8 @@ event(CurEvent, _, {change_direction, Head, Body},
       }
      ),
     {next_state, CurEvent, State};
+event(_CurEvent, _, step, State) ->
+    {next_state, walking, State};
 event(_CurEvent, _, exit, State) ->
     lager:log(error, self(), "Zone FSM got EXIT signal", []),
     {stop, normal, State};
@@ -650,21 +605,15 @@ terminate(_Reason, _StateName, _State) ->
 
 %% Helper walking function
 walk_interval(N) ->
-    Interval =
-        case N band 1 of
-            1 ->
-                %% Walking diagonally.
-                trunc(?WALKSPEED * 1.4);
-            0 ->
-                %% Walking straight.
-                ?WALKSPEED
-        end,
-    timer:apply_interval(
-      Interval,
-      gen_fsm,
-      send_event,
-      [self(), step]
-     ).
+    Interval = case N band 1 of
+                   1 ->
+                       %% Walking diagonally.
+                       trunc(?WALKSPEED * 1.4);
+                   0 ->
+                       %% Walking straight.
+                       ?WALKSPEED
+               end,
+    timer:apply_interval(Interval, gen_statem, cast, [self(), step]).
 
 show_actors(#zone_state{map_server = MapServer,
                         char = C,
