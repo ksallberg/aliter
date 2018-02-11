@@ -71,6 +71,7 @@ var ROConfig = {
 \hat 110             - Give spriteid to display headgear on top
 \hat 422             - Fire bursting out of ears
 \monster 1373 50 50  - Spawn LOD to tile X:50, Y:50
+\npc 20 50 50        - Spawn NPC to tile X:50, Y:50
 ```
 
 ### Maps
