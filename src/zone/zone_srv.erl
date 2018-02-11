@@ -66,11 +66,8 @@ handle_cast(
   State = #state{maps = Maps}) ->
     case proplists:lookup(MapName, Maps) of
         none ->
-            io:format("none!! \n", []),
             {noreply, State};
         {_Name, Map} ->
-            io:format("hittade map!! \n", []),
-
             gen_server:cast(zone_map:server_for(Map), {register_npc, NPC}),
             {noreply, State}
     end;

@@ -93,10 +93,6 @@ locked(Type, Event, State) ->
 valid(_, {npc_activate, ActorID}, State = #zone_state{map_server=MapServer}) ->
     case gen_server:call(MapServer, {get_actor, ActorID}) of
         {npc, NPC} ->
-            %% Env = [{x, NPC#npc.main}, {p, self()}, {i, NPC#npc.id}],
-            %% Pid = spawn(fun() ->
-            %%                     elixir:eval("x.new(p, i).main", Env)
-            %%             end),
             {next_state, valid, State#zone_state{npc = {broken, NPC}}};
         _Invalid ->
             lager:log(error, self(), "NPC not found ~p", [{id, ActorID}]),
