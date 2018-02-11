@@ -98,17 +98,22 @@ handle_cast({send_to_other_players_in_sight, {X, Y}, Self, Packet, Data},
     lists:foreach(IterF, State#map_state.players),
     {noreply, State};
 handle_cast({show_actors, {SelfID, SelfFSM}}, State) ->
-    IterF1 = fun({ID, _FSM}) when ID == SelfID ->
-                     ok;
-                ({_ID, FSM}) ->
-                     gen_statem:cast(FSM, {show_to, SelfFSM})
-             end,
-    lists:foreach(IterF1, State#map_state.players),
-
-    IterF2 = fun(N) ->
-                     gen_statem:cast(SelfFSM, {send_packet, show_npc, N})
-             end,
-    lists:foreach(IterF2, State#map_state.npcs),
+    %% Show players
+    PlayerIterF = fun({ID, _FSM}) when ID == SelfID ->
+                          ok;
+                     ({_ID, FSM}) ->
+                          gen_statem:cast(FSM, {show_to, SelfFSM})
+                  end,
+    lists:foreach(PlayerIterF, State#map_state.players),
+    NPCIterF = fun(N) ->
+                       gen_statem:cast(SelfFSM, {send_packet, show_npc, N})
+               end,
+    lists:foreach(NPCIterF, State#map_state.npcs),
+    MobIterF = fun(#npc{id=GID, sprite=Sprite, coordinates={X, Y}}) ->
+                       Mob = {Sprite, X, Y, GID},
+                       gen_statem:cast(SelfFSM, {send_packet, monster, Mob})
+               end,
+    lists:foreach(MobIterF, State#map_state.mobs),
     {noreply, State};
 handle_cast(_Cast, State) ->
     {noreply, State}.

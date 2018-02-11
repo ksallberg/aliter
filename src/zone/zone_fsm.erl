@@ -365,7 +365,7 @@ event(CurEvent, _, {monster, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
     MonsterID = gen_server:call(monster_srv, next_id),
     NPC = #npc{id=MonsterID,
                name=monsters:strname(SpriteID),
-               sprite=1373,
+               sprite=SpriteID,
                map=Map,
                coordinates={X, Y},
                direction=north,
