@@ -28,14 +28,21 @@ init(State) ->
     {ok, State}.
 
 handle_call({get_actor, ActorID}, _From,
-            State = #map_state{players = Players, npcs = NPCs}) ->
+            State = #map_state{players = Players,
+                               npcs = NPCs,
+                               mobs = Mobs}) ->
     case proplists:lookup(ActorID, Players) of
         {ActorID, FSM} ->
             {reply, {player, FSM}, State};
         none ->
             case lists:keyfind(ActorID, 2, NPCs) of
-                none ->
-                    {reply, none, State};
+                false ->
+                    case lists:keyfind(ActorID, 2, Mobs) of
+                        false ->
+                            {reply, none, State};
+                        Mob ->
+                            {reply, {mob, Mob}, State}
+                    end;
                 NPC ->
                     {reply, {npc, NPC}, State}
             end
@@ -50,8 +57,9 @@ handle_call(Request, _From, State) ->
 handle_cast({add_player, Player}, State = #map_state{players = Players}) ->
     {noreply, State#map_state{players = [Player | Players]}};
 handle_cast({register_npc, NPC}, State = #map_state{npcs = NPCs}) ->
-    %% TODO: make it appear on screen for anyone around it
     {noreply, State#map_state{npcs = [NPC | NPCs]}};
+handle_cast({register_mob, NPC}, State = #map_state{mobs = NPCs}) ->
+    {noreply, State#map_state{mobs = [NPC | NPCs]}};
 handle_cast({remove_player, AccountID}, State = #map_state{players=Players}) ->
     {noreply, State#map_state{players=lists:keydelete(AccountID, 1, Players)}};
 handle_cast({send_to_players, Packet, Data}, State) ->

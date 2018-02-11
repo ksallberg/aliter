@@ -17,14 +17,13 @@ execute(_FSM, "caps", Args,
                                          x = X,
                                          y = Y}}) ->
     Capitalized = string:to_upper(string:join(Args, " ")),
-    gen_server:cast(
-      MapServer,
-      { send_to_other_players_in_sight,
-        {X, Y},
-        CharacterID,
-        actor_message,
-        {AccountID, Capitalized}
-      }),
+    gen_server:cast(MapServer,
+                    {send_to_other_players_in_sight,
+                     {X, Y},
+                     CharacterID,
+                     actor_message,
+                     {AccountID, Capitalized}
+                    }),
     TCP ! {message, Capitalized},
     {ok, State};
 execute(FSM, "crash", _Args, _State) ->
@@ -76,6 +75,14 @@ execute(FSM, "monster", [ID, X, Y], State) ->
             {XParse, _} = string:to_integer(X),
             {YParse, _} = string:to_integer(Y),
             spawn_monster(FSM, State, MonsterID, XParse, YParse)
+    end;
+execute(FSM, "npc", [ID, X, Y], State) ->
+    case string:to_integer(ID) of
+        {error, _} -> zone_fsm:say("Invalid NPC ID.", State);
+        {NPCID, _} ->
+            {XParse, _} = string:to_integer(X),
+            {YParse, _} = string:to_integer(Y),
+            spawn_npc(FSM, State, NPCID, XParse, YParse)
     end;
 execute(_FSM, Unknown, _Args, State) ->
     zone_fsm:say("Unknown command `" ++ Unknown ++ "'.", State),
@@ -132,6 +139,9 @@ change_hat(FSM, _State, ID) ->
 
 spawn_monster(FSM, _State, ID, X, Y) ->
     gen_statem:cast(FSM, {monster, ID, X, Y}).
+
+spawn_npc(FSM, _State, ID, X, Y) ->
+    gen_statem:cast(FSM, {npc, ID, X, Y}).
 
 add_zeny(FSM, State, Zeny) ->
     C = State#zone_state.char,

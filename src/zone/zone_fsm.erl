@@ -281,6 +281,8 @@ event(CurEvent, _, {request_name, ActorID},
                                            "Other Party Name",
                                            "Other Guild Name",
                                            "Other Tester"}};
+                    {mob, Mob} ->
+                        {actor_name, {ActorID, Mob#npc.name}};
                     {npc, NPC} ->
                         {actor_name, {ActorID, NPC#npc.name}};
                     none ->
@@ -366,10 +368,22 @@ event(CurEvent, _, {monster, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
                sprite=1373,
                map=Map,
                coordinates={X, Y},
-               direction=0,
+               direction=north,
+               main=0},
+    gen_server:cast(zone_map:server_for(Map), {register_mob, NPC}),
+    send(State, {monster, {SpriteID, X, Y, MonsterID}}),
+    {next_state, CurEvent, State};
+event(CurEvent, _, {npc, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
+    MonsterID = gen_server:call(monster_srv, next_id),
+    NPC = #npc{id=MonsterID,
+               name="npc",
+               sprite=SpriteID,
+               map=Map,
+               coordinates={X, Y},
+               direction=north,
                main=0},
     gen_server:cast(zone_map:server_for(Map), {register_npc, NPC}),
-    send(State, {monster, {SpriteID, X, Y, MonsterID}}),
+    send(State, {show_npc, NPC}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {give_item, ID, Amount},
       State = #zone_state{
