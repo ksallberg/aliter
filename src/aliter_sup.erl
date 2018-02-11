@@ -30,4 +30,10 @@ init(_) ->
                 shutdown => 1000,
                 type => supervisor,
                 modules => [zone]},
-    {ok, {SupFlags, [LoginSup, CharSup, ZoneSup]}}.
+    MonsterSup = #{id => monster_sup,
+                   start => {monster_sup, start_link, []},
+                   restart => permanent,
+                   shutdown => 1000,
+                   type => supervisor,
+                   modules => [monster]},
+    {ok, {SupFlags, [LoginSup, CharSup, ZoneSup, MonsterSup]}}.

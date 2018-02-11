@@ -40,23 +40,16 @@ handle_call(
         {MapName, _Map} ->
             {reply, {yes, Port}, State}
     end;
-
 handle_call({add_player, MapName, Player}, _From, State) ->
     {MapName, Map} = proplists:lookup(MapName, State#state.maps),
-
     gen_server:cast(zone_map:server_for(Map), {add_player, Player}),
-
     {reply, {ok, Map, zone_map:server_for(Map)}, State};
-
 handle_call({get_actor, ActorID}, _From, State = #state{maps = Maps}) ->
     {reply, get_actor(ActorID, Maps), State};
-
 handle_call({get_player_by, Pred}, _From, State = #state{maps = Maps}) ->
     {reply, get_player_by(Pred, Maps), State};
-
 handle_call(player_count, _From, State = #state{maps = Maps}) ->
     {reply, player_count(Maps), State};
-
 handle_call(Request, _From, State) ->
     {reply, {illegal_request, Request}, State}.
 
@@ -68,19 +61,19 @@ handle_cast({send_to_all, Msg}, State) ->
       State#state.maps
      ),
     {noreply, State};
-
 handle_cast(
   {register_npc, NPC = #npc{map = MapName}},
   State = #state{maps = Maps}) ->
     case proplists:lookup(MapName, Maps) of
         none ->
+            io:format("none!! \n", []),
             {noreply, State};
-
         {_Name, Map} ->
+            io:format("hittade map!! \n", []),
+
             gen_server:cast(zone_map:server_for(Map), {register_npc, NPC}),
             {noreply, State}
     end;
-
 handle_cast(_Cast, State) ->
     {noreply, State}.
 
@@ -112,7 +105,6 @@ get_actor(ActorID, [{_Name, Map} | Maps]) ->
     case gen_server:call(zone_map:server_for(Map), {get_actor, ActorID}) of
         none ->
             get_actor(ActorID, Maps);
-
         Found ->
             {ok, Found}
     end.

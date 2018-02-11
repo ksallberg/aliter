@@ -498,11 +498,11 @@ pack(sprite,
       1:32/little,
       Type:8/little,
       Value:32/little>>;
-pack(monster, {ID, X, Y}) ->
+pack(monster, {SpriteID, X, Y, GID}) ->
     <<X2, Y2, D>> = encode_position(X, Y, 0),
     <<16#07c:16/little, %% PacketType
       5:8/little, %% objecttype
-      1000:32/little, %% GID
+      GID:32/little, %% GID
       0:16/little, %% speed
       0:16/little, %% bodyState
       0:16/little, %% healthState
@@ -510,7 +510,7 @@ pack(monster, {ID, X, Y}) ->
       0:16/little, %% head
       0:16/little, %% weapon
       0:16/little, %% accessory
-      ID:16/little, %% job
+      SpriteID:16/little, %% job
       0:16/little, %% shield
       0:16/little, %% accessory2
       0:16/little, %% accessory3

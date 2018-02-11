@@ -121,13 +121,9 @@ valid(_, {walk, {ToX, ToY, _ToD}},
                  map = Map,
                  map_server = MapServer,
                  account = #account{id = AccountID},
-
-                 char = C = #char{
-                               id = CharacterID,
-                               x = X,
-                               y = Y
-                              }
-                }) ->
+                 char = C = #char{id = CharacterID,
+                                  x = X,
+                                  y = Y}}) ->
     PathFound = nif:pathfind(Map#map.id, [X | Y], [ToX | ToY]),
     case PathFound of
         [{SX, SY, SDir} | Path] ->
@@ -143,9 +139,7 @@ valid(_, {walk, {ToX, ToY, _ToD}},
                 {AccountID, {X, Y}, {FX, FY}, zone_master:tick()}
               }
              ),
-
             send(State, {move, {{X, Y}, {FX, FY}, zone_master:tick()}}),
-
             { next_state,
               walking,
               State#zone_state{
@@ -273,7 +267,6 @@ event(CurEvent, _, {request_name, ActorID},
       State = #zone_state{account = #account{id = AccountID},
                           char = #char{name = CharacterName},
                           map_server = MapServer}) ->
-    io:format("NAMEE!~p\n", [ActorID]),
     Name =
         if
             ActorID == AccountID ->
@@ -292,8 +285,6 @@ event(CurEvent, _, {request_name, ActorID},
                                            "Other Party Name",
                                            "Other Guild Name",
                                            "Other Tester"}};
-                    {npc, false} ->
-                        {actor_name, {ActorID, "bobby"}};
                     {npc, NPC} ->
                         {actor_name, {ActorID, NPC#npc.name}};
                     none ->
@@ -372,8 +363,17 @@ event(_CurEvent, _, {switch_zones, Update}, State) ->
 event(CurEvent, _, {sprite, ID}, State) ->
     send(State, {sprite, {4, ID}}),
     {next_state, CurEvent, State};
-event(CurEvent, _, {monster, ID, X, Y}, State) ->
-    send(State, {monster, {ID, X, Y}}),
+event(CurEvent, _, {monster, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
+    MonsterID = gen_server:call(monster_srv, next_id),
+    NPC = #npc{id=MonsterID,
+               name=monsters:strname(SpriteID),
+               sprite=1373,
+               map=Map,
+               coordinates={X, Y},
+               direction=0,
+               main=0},
+    gen_server:cast(zone_map:server_for(Map), {register_npc, NPC}),
+    send(State, {monster, {SpriteID, X, Y, MonsterID}}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {give_item, ID, Amount},
       State = #zone_state{

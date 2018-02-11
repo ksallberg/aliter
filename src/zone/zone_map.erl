@@ -27,17 +27,11 @@ init(State) ->
     process_flag(trap_exit, true),
     {ok, State}.
 
-handle_call(
-  {get_actor, ActorID},
-  _From,
-  State = #map_state{
-             players = Players,
-             npcs = NPCs
-            }) ->
+handle_call({get_actor, ActorID}, _From,
+            State = #map_state{players = Players, npcs = NPCs}) ->
     case proplists:lookup(ActorID, Players) of
         {ActorID, FSM} ->
             {reply, {player, FSM}, State};
-
         none ->
             case lists:keyfind(ActorID, 2, NPCs) of
                 none ->
@@ -46,95 +40,67 @@ handle_call(
                     {reply, {npc, NPC}, State}
             end
     end;
-
-handle_call(
-  {get_player_by, Pred},
-  _From,
-  State = #map_state{players = Players}) ->
+handle_call({get_player_by, Pred}, _From, State=#map_state{players=Players}) ->
     {reply, get_player_by(Pred, Players), State};
-handle_call(
-  player_count,
-  _From,
-  State = #map_state{players = Players}) ->
+handle_call(player_count, _From, State = #map_state{players = Players}) ->
     {reply, length(Players), State};
-
 handle_call(Request, _From, State) ->
     {reply, {illegal_request, Request}, State}.
-handle_cast( {add_player, Player}, State = #map_state{players = Players}) ->
+
+handle_cast({add_player, Player}, State = #map_state{players = Players}) ->
     {noreply, State#map_state{players = [Player | Players]}};
 handle_cast({register_npc, NPC}, State = #map_state{npcs = NPCs}) ->
     %% TODO: make it appear on screen for anyone around it
     {noreply, State#map_state{npcs = [NPC | NPCs]}};
-handle_cast({remove_player, AccountID},
-            State = #map_state{players = Players}) ->
-    {noreply,
-     State#map_state{players = lists:keydelete(AccountID, 1, Players)}};
+handle_cast({remove_player, AccountID}, State = #map_state{players=Players}) ->
+    {noreply, State#map_state{players=lists:keydelete(AccountID, 1, Players)}};
 handle_cast({send_to_players, Packet, Data}, State) ->
-    lists:foreach(
-      fun({_ID, FSM}) ->
-              gen_statem:cast(FSM, {send_packet, Packet, Data})
-      end,
-      State#map_state.players
-     ),
+    IterF = fun({_ID, FSM}) ->
+                    gen_statem:cast(FSM, {send_packet, Packet, Data})
+            end,
+    lists:foreach(IterF, State#map_state.players),
     {noreply, State};
 handle_cast({send_to_other_players, Self, Packet, Data}, State) ->
-    lists:foreach(
-      fun({_ID, FSM}) ->
-              gen_statem:cast(FSM,
-                              {send_packet_if,
-                               fun(#zone_state{char = C}) ->
-                                       (C#char.id /= Self)
-                               end,
-                               Packet,
-                               Data
-                              })
-      end,
-      State#map_state.players
-     ),
+    Cmp = fun(#zone_state{char = C}) ->
+                  (C#char.id /= Self)
+          end,
+    IterF = fun({_ID, FSM}) ->
+                    gen_statem:cast(FSM, {send_packet_if, Cmp, Packet, Data})
+            end,
+    lists:foreach(IterF, State#map_state.players),
     {noreply, State};
 handle_cast({send_to_players_in_sight, {X, Y}, Packet, Data}, State) ->
-    lists:foreach(
-      fun({_ID, FSM}) ->
-              gen_statem:cast(FSM,
-                              {send_packet_if,
-                               fun(#zone_state{char = C}) ->
-                                       in_range(C, {X, Y})
-                               end,
-                               Packet,
-                               Data
-                              })
-      end,
-      State#map_state.players),
+    Cmp = fun(#zone_state{char = C}) ->
+                  in_range(C, {X, Y})
+          end,
+    IterF = fun({_ID, FSM}) ->
+                    gen_statem:cast(FSM, {send_packet_if, Cmp, Packet, Data})
+            end,
+    lists:foreach(IterF, State#map_state.players),
     {noreply, State};
 handle_cast({send_to_other_players_in_sight, {X, Y}, Self, Packet, Data},
             State) ->
-    lists:foreach(
-      fun({_ID, FSM}) ->
-              gen_statem:cast(FSM,
-                              {send_packet_if,
-                               fun(#zone_state{char = C}) ->
-                                       (C#char.id /= Self) and
-                                           in_range(C, {X, Y})
-                               end,
-                               Packet,
-                               Data
-                              })
-      end,
-      State#map_state.players),
+    Cmp = fun(#zone_state{char = C}) ->
+                  (C#char.id /= Self) and
+                      in_range(C, {X, Y})
+          end,
+    IterF = fun({_ID, FSM}) ->
+                    gen_statem:cast(FSM, {send_packet_if, Cmp, Packet, Data})
+            end,
+    lists:foreach(IterF, State#map_state.players),
     {noreply, State};
 handle_cast({show_actors, {SelfID, SelfFSM}}, State) ->
-    lists:foreach(
-      fun({ID, _FSM}) when ID == SelfID ->
-              ok;
-         ({_ID, FSM}) ->
-              gen_statem:cast(FSM, {show_to, SelfFSM})
-      end,
-      State#map_state.players),
-    lists:foreach(
-      fun(N) ->
-              gen_statem:cast(SelfFSM, {send_packet, show_npc, N})
-      end,
-      State#map_state.npcs),
+    IterF1 = fun({ID, _FSM}) when ID == SelfID ->
+                     ok;
+                ({_ID, FSM}) ->
+                     gen_statem:cast(FSM, {show_to, SelfFSM})
+             end,
+    lists:foreach(IterF1, State#map_state.players),
+
+    IterF2 = fun(N) ->
+                     gen_statem:cast(SelfFSM, {send_packet, show_npc, N})
+             end,
+    lists:foreach(IterF2, State#map_state.npcs),
     {noreply, State};
 handle_cast(_Cast, State) ->
     {noreply, State}.
