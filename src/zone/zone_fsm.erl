@@ -273,30 +273,27 @@ event(CurEvent, _, {request_name, ActorID},
       State = #zone_state{account = #account{id = AccountID},
                           char = #char{name = CharacterName},
                           map_server = MapServer}) ->
+    io:format("NAMEE!~p\n", [ActorID]),
     Name =
         if
             ActorID == AccountID ->
-                { actor_name_full,
-                  {ActorID,
-                   CharacterName,
-                   "Party Name",
-                   "Guild Name",
-                   "Tester"}
+                {actor_name_full, {ActorID,
+                                   CharacterName,
+                                   "Party Name",
+                                   "Guild Name",
+                                   "Tester"}
                 };
             true ->
                 case gen_server:call(MapServer, {get_actor, ActorID}) of
                     {player, FSM} ->
                         {ok, Z} = gen_statem:call(FSM, get_state),
-                        { actor_name_full,
-                          { ActorID,
-                            (Z#zone_state.char)#char.name,
-                            "Other Party Name",
-                            "Other Guild Name",
-                            "Other Tester"
-                          }
-                        };
+                        {actor_name_full, {ActorID,
+                                           (Z#zone_state.char)#char.name,
+                                           "Other Party Name",
+                                           "Other Guild Name",
+                                           "Other Tester"}};
                     {npc, false} ->
-                        "Unknown";
+                        {actor_name, {ActorID, "bobby"}};
                     {npc, NPC} ->
                         {actor_name, {ActorID, NPC#npc.name}};
                     none ->
