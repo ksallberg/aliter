@@ -167,7 +167,7 @@ valid({call, From}, switch_zone, StateData = #char_state{die = Die}) ->
     {next_state, valid, StateData, [{reply, From, {ok, StateData}}]};
 valid(_, {keepalive, _AccountID}, State) ->
     {keep_state, State};
-valid(info, stop, State) ->
+valid(_CastOrInfo, stop, State) ->
     NewState = State#char_state{
                  die = erlang:send_after(5 * 60 * 1000, self(), exit)},
     {next_state, valid, NewState};

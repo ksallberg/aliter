@@ -14,7 +14,7 @@ packet_size(16#0069) -> 0;
 packet_size(16#006A) -> 23;
 packet_size(16#006B) -> 0;
 packet_size(16#006C) -> 3;
-packet_size(16#006D) -> 114;
+packet_size(16#006D) -> 138;
 packet_size(16#006E) -> 3;
 packet_size(16#006F) -> 2;
 packet_size(16#0070) -> 3;
