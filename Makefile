@@ -10,7 +10,8 @@ all: build
 build:
 	${CC} ${CFLAGS} ${ARCHFLAGS} \
 	    -I${ERL_TOP}/erts/emulator/beam/ \
-            -I${ERL_TOP}/lib/erlang/usr/include
+	    -I${ERL_TOP}/lib/erlang/usr/include \
+	    -I/usr/lib/erlang/usr/include
 	rebar3 compile
 
 start: build
