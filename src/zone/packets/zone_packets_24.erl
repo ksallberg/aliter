@@ -15,7 +15,7 @@ packet_size(X) ->
     packets:packet_size(X).
 
 %% FIXME: what is 60, 8?
-unpack(<<60,8,
+unpack(<<16#083c:16/little,
          AccountID:32/little,
          CharacterID:32/little,
          LoginIDa:32/little,
@@ -54,6 +54,9 @@ unpack(<<16#bf:16/little, EmoticonID:8>>) ->
     {emotion, EmoticonID};
 unpack(<<16#c1:16/little>>) ->
     player_count;
+unpack(<<16#0151:16/little, GuildID:32/little>>) ->
+    %% request_guild_status;
+    {guild_emblem, GuildID};
 unpack(<<16#f3:16/little, Length:16/little, Message/little-binary-unit:8>>)
   when byte_size(Message) == (Length - 4) ->
     {speak, string:strip(binary_to_list(Message), right, 0)};
@@ -67,6 +70,11 @@ unpack(<<16#18a:16/little, _:16>>) ->
     quit;
 unpack(<<16#21d:16/little, IsLess:32/little>>) ->
     {less_effect, IsLess};
+unpack(<<16#0165:16/little,
+         CharId:32/little,
+         GuildName/binary>>) ->
+    GName = string:strip(binary_to_list(GuildName), right, 0),
+    {create_guild, CharId, GName};
 unpack(Unknown) ->
     lager:log(warning, self(), "zone packets Got unknown data ~p",
               [Unknown]),
@@ -229,7 +237,7 @@ pack(attack_range, Range) ->
 pack(status_change, {Stat, Value, Bonus}) ->
     <<16#141:16/little, Stat:32/little, Value:32/little, Bonus:32/little>>;
 pack(guild_relationships, Relationships) ->
-    [ <<16#14c:16/little,
+    [ <<16#014c:16/little,
         (32 * length(Relationships) + 4):16/little>>,
       [ [ <<(R#guild_relationship.type):32/little,
             (R#guild_relationship.b_id):32/little>>,
@@ -241,9 +249,9 @@ pack(guild_relationships, Relationships) ->
 pack(guild_status, State) ->
     case State of
         master ->
-            <<16#14e:16/little, 16#d7:32/little>>;
+            <<16#014e:16/little, 16#d7:32/little>>;
         _Other ->
-            <<16#14e:16/little, 16#57:32/little>>
+            <<16#014e:16/little, 16#57:32/little>>
     end;
 pack(guild_message, Message) ->
     [ <<16#17f:16/little, (length(Message) + 5):16/little>>,
@@ -258,13 +266,25 @@ pack(actor_name_full, {AccountID, Name, Party, Guild, Position}) ->
      pad_to(Party, 24),
      pad_to(Guild, 24),
      pad_to(Position, 24)];
+pack(update_gd_id, Guild) ->
+    [<<16#016c:16/little,
+       (Guild#guild.id):32/little,
+       0:32/little, %% emblem id
+       0:32/little, %% mode
+       1:8, %% isMaster
+       0:32/little>>, %% inter sid
+       pad_to(Guild#guild.name, 24)];
+% 01b6 <guild id>.L <level>.L <member num>.L
+% <member max>.L <exp>.L <max exp>.L <points>.L
+% <honor>.L <virtue>.L <emblem id>.L <name>.24B
+% <master name>.24B <manage land>.16B <zeny>.L (ZC_GUILD_INFO2)
 pack(guild_info, Guild) ->
-    [<<16#1b6:16/little,
+    [<<16#01B6:16/little,
        (Guild#guild.id):32/little,
        (Guild#guild.level):32/little,
        0:32/little, % TODO: Online count
        (16 * Guild#guild.level):32/little, % TODO: Verify this
-       9001:32/little, % TODO: Average level
+       11:32/little, % TODO: Average level
        (Guild#guild.exp):32/little,
        (Guild#guild.next_exp):32/little,
        0:32/little, % TODO: Tax points
@@ -273,7 +293,8 @@ pack(guild_info, Guild) ->
        0:32/little>>, % TODO: Emblem ID
      pad_to(Guild#guild.name, 24),
      pad_to("Master goes here!", 24),
-     pad_to("Hmmm", 24)];
+     pad_to("Hmmm", 16),
+    <<0:32/little>>]; %% zeny
 pack(change_look, Character) ->
     <<16#1d7:16/little,
       (Character#char.account_id):32/little,

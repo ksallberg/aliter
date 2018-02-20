@@ -37,6 +37,7 @@ init({TCP, [DB]}) ->
     {ok, locked, #zone_state{db = DB, tcp = TCP}}.
 
 locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
+    DB = State#zone_state.db,
     Session =
         gen_server:call(char_server,
                         {verify_session, AccountID, CharacterID, SessionIDa}),
@@ -52,9 +53,9 @@ locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             send(State, {account_id, AccountID}),
             send(State, {accept, {zone_master:tick(),
                                   {Char#char.x, Char#char.y, 0}}}),
-            Items = db:get_player_items(State#zone_state.db, Char#char.id),
+            Items = db:get_player_items(DB, Char#char.id),
             send(State, {inventory, Items}),
-            WorldItems = db:get_world_items(State#zone_state.db, Char#char.map),
+            WorldItems = db:get_world_items(DB, Char#char.map),
             lists:foreach(
               fun(Item) ->
                       send(State, {item_on_ground, {Item#world_item.slot,
@@ -69,6 +70,14 @@ locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                                                    }})
               end,
               WorldItems),
+            case Char#char.guild_id of
+                0 ->
+                    ok;
+                GuildID ->
+                    send(State, {guild_status, master}),
+                    Guild = db:get_guild(DB, GuildID),
+                    send(State, {update_gd_id, Guild})
+            end,
             say("Welcome to Aliter.", State),
             NewState = State#zone_state{map = Map,
                                         map_server = MapServer,
@@ -149,6 +158,17 @@ valid(_, {walk, {ToX, ToY, _ToD}},
         _Error ->
             {next_state, valid, State}
     end;
+valid(_, {create_guild, CharId, GName},
+      State = #zone_state{db = DB,
+                          char = Char}) ->
+    Guild = #guild{name      = GName,
+                   master_id = CharId},
+    GuildSaved = db:save_guild(DB, Guild),
+    GuildID = GuildSaved#guild.id,
+    NewChar = Char#char{guild_id=GuildID},
+    %% Update char
+    db:save_char(DB, NewChar),
+    {next_state, valid, State#zone_state{char = NewChar}};
 valid(_, {action_request, _Target, 2},
       State = #zone_state{
                  map_server = MapServer,
@@ -162,6 +182,10 @@ valid(_, {action_request, _Target, 2},
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
     {next_state, sitting, State};
+%% TODO use GuildID
+valid(_, {guild_emblem, _GuildID}, State) ->
+    send(State, {guild_relationships, []}),
+    {next_state, valid, State};
 valid(Type, Event, State) ->
     event(valid, Type, Event, State).
 
@@ -588,8 +612,8 @@ event(_CurEvent, _, exit, State) ->
     lager:log(error, self(), "Zone FSM got EXIT signal", []),
     {stop, normal, State};
 event(CurEvent, _, Event, State) ->
-    lager:log(warning, self(), "Zone FSM received unknown event ~p ~p",
-              [{event, Event}, {state, valid}]),
+    lager:log(warning, self(), "Zone FSM received unknown event ~p in state ~p",
+              [Event, valid]),
     {next_state, CurEvent, State}.
 
 %% FIXME: Not used right now:

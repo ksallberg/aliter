@@ -266,6 +266,7 @@ packet_size(16#0167) -> 3;
 packet_size(16#0168) -> 14;
 packet_size(16#0169) -> 3;
 packet_size(16#016A) -> 43;
+packet_size(16#016C) -> 43;
 packet_size(16#016D) -> 14;
 packet_size(16#016E) -> 186;
 packet_size(16#016F) -> 182;

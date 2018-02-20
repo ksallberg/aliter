@@ -262,22 +262,19 @@ delete_guild(C, Guild) ->
     redis:del(C, ["guild:", Guild#char.name]),
     ok.
 
-
 get_guild(C, ID) ->
     Hash = "guild:" ++ integer_to_list(ID),
-    #guild{
-       id = ID,
-       name = gethash(C, Hash, "name"),
-       level = numeric(gethash(C, Hash, "level")),
-       capacity = numeric(gethash(C, Hash, "capacity")),
-       exp = numeric(gethash(C, Hash, "exp")),
-       next_exp = numeric(gethash(C, Hash, "next_exp")),
-       skill_points = numeric(gethash(C, Hash, "skill_points")),
-       message_title = gethash(C, Hash, "message_title"),
-       message_body = gethash(C, Hash, "message_body"),
-       emblem = gethash(C, Hash, "emblem"),
-       master_id = numeric(gethash(C, Hash, "master_id"))
-      }.
+    #guild{id = ID,
+           name = gethash(C, Hash, "name"),
+           level = numeric(gethash(C, Hash, "level")),
+           capacity = numeric(gethash(C, Hash, "capacity")),
+           exp = numeric(gethash(C, Hash, "exp")),
+           next_exp = numeric(gethash(C, Hash, "next_exp")),
+           skill_points = numeric(gethash(C, Hash, "skill_points")),
+           message_title = gethash(C, Hash, "message_title"),
+           message_body = gethash(C, Hash, "message_body"),
+           emblem = gethash(C, Hash, "emblem"),
+           master_id = numeric(gethash(C, Hash, "master_id"))}.
 
 get_guild_id(C, Name) ->
     case redis:get(C, ["guild:", Name]) of
@@ -285,13 +282,12 @@ get_guild_id(C, Name) ->
         {ok, X} -> numeric(X)
     end.
 
-get_guild_master(C, Guild) ->
+get_guild_master(C, GuildId) ->
     ID =
-        case Guild#guild.id of
+        case GuildId of
             undefined -> redis:incr(C, "guilds:id");
             X -> X
         end,
-
     Hash = "guild:" ++ integer_to_list(ID),
     case redis:hget(C, Hash, "master_id") of
         undefined -> nil;

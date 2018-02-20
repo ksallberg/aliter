@@ -79,6 +79,7 @@ var ROConfig = {
 ```
 /stand
 /sit
+/guild Name
 ```
 
 ### Maps
