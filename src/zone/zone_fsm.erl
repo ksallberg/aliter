@@ -172,16 +172,11 @@ valid(_, {create_guild, CharId, GName},
     send(State, {guild_status, master}),
     send(State, {update_gd_id, GuildSaved}),
     say("Welcome to guild " ++ GName ++ ".", State),
-    {next_state, valid, State#zone_state{char = NewChar}};
+    {next_state, valid, State#zone_state{char=NewChar}};
 valid(_, {action_request, _Target, 2},
-      State = #zone_state{
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           x = X,
-                           y = Y
-                          }
-                }) ->
+      State = #zone_state{map_server = MapServer,
+                          account = #account{id=AccountID},
+                          char = #char{x=X, y=Y}}) ->
     Msg = {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 2, 0},
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
