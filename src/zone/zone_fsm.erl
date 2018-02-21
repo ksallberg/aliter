@@ -159,7 +159,7 @@ valid(_, {walk, {ToX, ToY, _ToD}},
             {next_state, valid, State}
     end;
 valid(_, {create_guild, CharId, GName},
-      State = #zone_state{db = DB,
+      State = #zone_state{db   = DB,
                           char = Char}) ->
     Guild = #guild{name      = GName,
                    master_id = CharId},
@@ -168,6 +168,10 @@ valid(_, {create_guild, CharId, GName},
     NewChar = Char#char{guild_id=GuildID},
     %% Update char
     db:save_char(DB, NewChar),
+    %% Notify client
+    send(State, {guild_status, master}),
+    send(State, {update_gd_id, GuildSaved}),
+    say("Welcome to guild " ++ GName ++ ".", State),
     {next_state, valid, State#zone_state{char = NewChar}};
 valid(_, {action_request, _Target, 2},
       State = #zone_state{
@@ -285,17 +289,21 @@ event(CurEvent, _, {char_select, _Type}, State) ->
     {next_state, CurEvent, State};
 event(CurEvent, _, {request_name, ActorID},
       State = #zone_state{account = #account{id = AccountID},
-                          char = #char{name = CharacterName},
+                          db = DB,
+                          char = #char{name = CharacterName,
+                                       guild_id = GuildID},
                           map_server = MapServer}) ->
     Name =
         if
             ActorID == AccountID ->
-                {actor_name_full, {ActorID,
-                                   CharacterName,
-                                   "Party Name",
-                                   "Guild Name",
-                                   "Tester"}
-                };
+                case GuildID of
+                    0 ->
+                        GuildName = "";
+                    _ ->
+                        #guild{name=GuildName} = db:get_guild(DB, GuildID)
+                end,
+                {actor_name_full,
+                 {ActorID, CharacterName, "Party Name", GuildName, "Tester"}};
             true ->
                 case gen_server:call(MapServer, {get_actor, ActorID}) of
                     {player, FSM} ->
