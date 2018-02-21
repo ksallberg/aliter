@@ -6,6 +6,7 @@
 -include("ro.hrl").
 
 -include_lib("stdlib/include/qlc.hrl").
+
 -export([ start_link/1
         , init/1
         , locked/3
@@ -13,10 +14,6 @@
         , renaming/3
         , chosen/3
         , callback_mode/0 ]).
-
--define(MAX_SLOTS, 9).
--define(AVAILABLE_SLOTS, 9).
--define(PREMIUM_SLOTS, 9).
 
 callback_mode() ->
     state_functions.
@@ -90,21 +87,18 @@ valid(_, {create, Name, Str, Agi, Vit, Int, Dex,
     Exists = db:get_char_id(DB, Name),
     case Exists of
         nil ->
-            Char = db:save_char(DB,
-                                #char{num = Num,
-                                      name = Name,
-                                      zeny = 500, % TODO: Config flag
-                                      str = Str,
-                                      agi = Agi,
-                                      vit = Vit,
-                                      int = Int,
-                                      dex = Dex,
-                                      luk = Luk,
-                                      hair_colour = HairColour,
-                                      hair_style = HairStyle,
-                                      account_id = Account#account.id
-                                     }
-                               ),
+            Char = db:save_char(DB, #char{num = Num,
+                                          name = Name,
+                                          zeny = 500, % TODO: Config flag
+                                          str = Str,
+                                          agi = Agi,
+                                          vit = Vit,
+                                          int = Int,
+                                          dex = Dex,
+                                          luk = Luk,
+                                          hair_colour = HairColour,
+                                          hair_style = HairStyle,
+                                          account_id = Account#account.id}),
             lager:log(info, self(), "Created character. ~p~p",
                       [{account, Account}, {char, Char}]),
             State#char_state.tcp ! {character_created, Char};
@@ -173,19 +167,9 @@ valid(_CastOrInfo, stop, State) ->
     {next_state, valid, NewState};
 valid(cast, {update_state, UpdateFun}, State) ->
     {keep_state, UpdateFun(State)};
-valid(cast, exit, State = #char_state{login_fsm = Login,
-                                      account=#account{id=AccountID}}) ->
+valid(_, exit, State = #char_state{account=#account{id=AccountID}}) ->
     lager:log(info, self(), "Character FSM exiting."),
     gen_server:cast(char_server, {remove_session, AccountID}),
-    gen_server:cast(login_server, {remove_session, AccountID}),
-    gen_statem:cast(Login, exit),
-    {stop, normal, State};
-valid(info, exit, State = #char_state{login_fsm = Login,
-                                           account=#account{id=AccountID}}) ->
-    lager:log(info, self(), "Character FSM exiting."),
-    gen_server:cast(char_server, {remove_session, AccountID}),
-    gen_server:cast(login_server, {remove_session, AccountID}),
-    gen_statem:cast(Login, exit),
     {stop, normal, State}.
 
 chosen(_EventType, stop, State) ->
@@ -206,9 +190,7 @@ renaming(_, {rename, CharacterID},
                      rename = {#char{name = OldName,
                                      id = CharacterID,
                                      renamed = 0
-                                    }, NewName
-                              }
-                    } = State) ->
+                                    }, NewName}} = State) ->
     Check = db:get_char_id(DB, NewName),
     case Check of
         nil ->

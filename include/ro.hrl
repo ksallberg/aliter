@@ -18,3 +18,7 @@
 -define(SP_CUR_SP,            7).
 -define(SP_MAX_SP,            8).
 -define(SP_ZENY,              20).
+
+-define(MAX_SLOTS,            9).
+-define(AVAILABLE_SLOTS,      9).
+-define(PREMIUM_SLOTS,        9).

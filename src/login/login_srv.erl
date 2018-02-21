@@ -49,6 +49,8 @@ handle_cast({add_session, Session}, Sessions) ->
               [{session, Session}]),
     {noreply, [Session | Sessions]};
 handle_cast({remove_session, AccountID}, Sessions) ->
+    lager:log(info, self(), "DELETE SESSION ~p",
+              [Sessions]),
     {noreply, lists:keydelete(AccountID, 1, Sessions)};
 handle_cast(_Cast, Sessions) ->
     {noreply, Sessions}.
