@@ -60,8 +60,7 @@ locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
               fun(Item) ->
                       send(State, {item_on_ground, {Item#world_item.slot,
                                                     Item#world_item.item,
-                                                    1, % TODO: identified
-                                                % TODO
+                                                    1,
                                                     Char#char.x + 1,
                                                     Char#char.y + 1,
                                                     1,
@@ -447,9 +446,9 @@ event(CurEvent, _, {show_to, FSM},
                           {normal, A, C}
                          }),
     {next_state, CurEvent, State};
-event(CurEvent, _, {get_state, From}, State) ->
-    From ! {ok, State},
-    {next_state, CurEvent, State};
+event(CurEvent, {call, From}, get_state, State) ->
+    Actions = [{reply, From, {ok, State}}],
+    {next_state, CurEvent, State, Actions};
 event(CurEvent, _, {update_state, Fun}, State) ->
     {next_state, CurEvent, Fun(State)};
 event(_CurEvent, _, crash, _) ->
