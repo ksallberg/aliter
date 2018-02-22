@@ -297,16 +297,26 @@ event(CurEvent, _, {request_name, ActorID},
                         #guild{name=GuildName} = db:get_guild(DB, GuildID)
                 end,
                 {actor_name_full,
-                 {ActorID, CharacterName, "Party Name", GuildName, "Tester"}};
+                 {ActorID, CharacterName, "", GuildName, ""}};
+                         %%               party          guild position
             true ->
                 case gen_server:call(MapServer, {get_actor, ActorID}) of
                     {player, FSM} ->
-                        {ok, Z} = gen_statem:call(FSM, get_state),
+                        {ok, #zone_state{char=#char{name=CharName,
+                                                    guild_id=OtherGuildID}}}
+                            = gen_statem:call(FSM, get_state),
+                        case OtherGuildID of
+                            0 ->
+                                OtherGuildName = "";
+                            _ ->
+                                #guild{name=OtherGuildName}
+                                    = db:get_guild(DB, OtherGuildID)
+                        end,
                         {actor_name_full, {ActorID,
-                                           (Z#zone_state.char)#char.name,
-                                           "Other Party Name",
-                                           "Other Guild Name",
-                                           "Other Tester"}};
+                                           CharName,
+                                           "", %% party
+                                           OtherGuildName,
+                                           ""}}; %% guild position
                     {mob, Mob} ->
                         {actor_name, {ActorID, Mob#npc.name}};
                     {npc, NPC} ->
