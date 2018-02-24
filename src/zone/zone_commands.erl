@@ -135,7 +135,7 @@ give_item(FSM, _State, ID, Amount) ->
     gen_statem:cast(FSM, {give_item, ID, Amount}).
 
 change_hat(FSM, _State, ID) ->
-    gen_statem:cast(FSM, {sprite, ID}).
+    gen_statem:cast(FSM, {hat_sprite, ID}).
 
 spawn_monster(FSM, _State, ID, X, Y) ->
     gen_statem:cast(FSM, {monster, ID, X, Y}).

@@ -513,7 +513,7 @@ pack(item_on_ground,
       SubX:8,
       SubY:8,
       Amount:16/little>>;
-pack(sprite,
+pack(hat_sprite,
      {CharID, Type, Value}) ->
     <<16#01d7:16/little,
       CharID:32/little,

@@ -394,18 +394,19 @@ event(CurEvent, _, {broadcast, Message}, State) ->
     {next_state, CurEvent, State};
 event(_CurEvent, _, {switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
-event(CurEvent, _, {sprite, SpriteID},
+event(CurEvent, _, {hat_sprite, SpriteID},
       #zone_state{char=#char{x=X, y=Y, id=_CharacterID, account_id=AID},
                   map_server=MapServer} = State) ->
-    send(State, {sprite, {AID, 4, SpriteID}}),
+    send(State, {hat_sprite, {AID, 4, SpriteID}}),
     Msg = {send_to_other_players_in_sight, {X, Y},
            AID,
-           sprite,
+           hat_sprite,
            {AID, 4, SpriteID}},
     gen_server:cast(MapServer, Msg),
-
     {next_state, CurEvent, State};
-event(CurEvent, _, {monster, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
+event(CurEvent, _, {monster, SpriteID, X, Y},
+      #zone_state{map=Map, map_server=MapServer,
+                  char=#char{account_id=AID}} = State) ->
     MonsterID = gen_server:call(monster_srv, next_id),
     NPC = #npc{id=MonsterID,
                name=monsters:strname(SpriteID),
@@ -416,8 +417,15 @@ event(CurEvent, _, {monster, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
                main=0},
     gen_server:cast(zone_map:server_for(Map), {register_mob, NPC}),
     send(State, {monster, {SpriteID, X, Y, MonsterID}}),
+    Msg = {send_to_other_players_in_sight, {X, Y},
+           AID,
+           monster,
+           {SpriteID, X, Y, MonsterID}},
+    gen_server:cast(MapServer, Msg),
     {next_state, CurEvent, State};
-event(CurEvent, _, {npc, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
+event(CurEvent, _, {npc, SpriteID, X, Y},
+      #zone_state{map=Map, map_server=MapServer,
+                  char=#char{account_id=AID}} = State) ->
     MonsterID = gen_server:call(monster_srv, next_id),
     NPC = #npc{id=MonsterID,
                name="npc",
@@ -428,6 +436,11 @@ event(CurEvent, _, {npc, SpriteID, X, Y}, #zone_state{map=Map} = State) ->
                main=0},
     gen_server:cast(zone_map:server_for(Map), {register_npc, NPC}),
     send(State, {show_npc, NPC}),
+    Msg = {send_to_other_players_in_sight, {X, Y},
+           AID,
+           show_npc,
+           NPC},
+    gen_server:cast(MapServer, Msg),
     {next_state, CurEvent, State};
 event(CurEvent, _, {give_item, ID, Amount},
       State = #zone_state{
