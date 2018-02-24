@@ -1,6 +1,6 @@
 # Project Aliter
 
-(NOTE: This is a hard fork of (https://github.com/aliter/aliter/)[https://github.com/aliter/aliter])
+(NOTE: This is a hard fork of [https://github.com/aliter/aliter/](https://github.com/aliter/aliter))
 
 This is an Erlang/OTP based ragnarok online server.
 
