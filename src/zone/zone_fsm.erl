@@ -121,13 +121,12 @@ valid(_, map_loaded, State) ->
     show_actors(State),
     {next_state, valid, State};
 valid(_, {walk, {ToX, ToY, _ToD}},
-      State = #zone_state{
-                 map = Map,
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = C = #char{id = CharacterID,
-                                  x = X,
-                                  y = Y}}) ->
+      State = #zone_state{map = Map,
+                          map_server = MapServer,
+                          account = #account{id = AccountID},
+                          char = C = #char{id = CharacterID,
+                                           x = X,
+                                           y = Y}}) ->
     PathFound = nif:pathfind(Map#map.id, [X | Y], [ToX | ToY]),
     case PathFound of
         [{SX, SY, SDir} | Path] ->
@@ -215,24 +214,20 @@ walking(_, {send_packet_if, Pred, Packet, Data}, State) ->
             ok
     end,
     {next_state, walking, State};
-walking(_, step, State = #zone_state{
-                            char = C,
-                            account = A,
-                            map_server = MapServer,
-                            walk_timer = Timer,
-                            walk_prev = {Time, PDir},
-                            walk_path = Path,
-                            walk_changed = Changed
-                           }) ->
+walking(_, step, State = #zone_state{char = C,
+                                     account = A,
+                                     map_server = MapServer,
+                                     walk_timer = Timer,
+                                     walk_prev = {Time, PDir},
+                                     walk_path = Path,
+                                     walk_changed = Changed}) ->
     case Path of
         [] ->
             timer:cancel(Timer),
             {next_state, valid,
-             State#zone_state{
-               walk_timer = undefined,
-               walk_path = undefined,
-               walk_changed = false
-              }};
+             State#zone_state{walk_timer = undefined,
+                              walk_path = undefined,
+                              walk_changed = false}};
         [{CX, CY, CDir} | Rest] ->
             if
                 CDir == PDir ->
@@ -332,36 +327,22 @@ event(CurEvent, _, player_count, State) ->
     send(State, {player_count, Num}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {emotion, Id},
-      State = #zone_state{
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
-    gen_server:cast(
-      MapServer,
-      { send_to_other_players_in_sight,
-        {X, Y},
-        CharacterID,
-        emotion,
-        {AccountID, Id}
-      }
-     ),
+      State = #zone_state{map_server = MapServer,
+                          account = #account{id = AccountID},
+                          char = #char{id = CharacterID,
+                                       x = X,
+                                       y = Y}}) ->
+    Map = {send_to_other_players_in_sight, {X, Y}, CharacterID,
+           emotion, {AccountID, Id}},
+    gen_server:cast(MapServer, Map),
     send(State, {emotion, {AccountID, Id}}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {speak, Message},
-      State = #zone_state{
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
+      State = #zone_state{map_server = MapServer,
+                          account = #account{id = AccountID},
+                          char = #char{id = CharacterID,
+                                       x = X,
+                                       y = Y}}) ->
     [_Name | Rest] = re:split(Message, " : ", [{return, list}]),
     Said = lists:concat(Rest),
     if
@@ -374,16 +355,9 @@ event(CurEvent, _, {speak, Message},
               end
              );
         true ->
-            gen_server:cast(
-              MapServer,
-              { send_to_other_players_in_sight,
-                {X, Y},
-                CharacterID,
-                actor_message,
-                {AccountID, Message}
-              }
-             ),
-
+            gen_server:cast(MapServer, {send_to_other_players_in_sight, {X, Y},
+                                        CharacterID, actor_message,
+                                        {AccountID, Message}}),
             send(State, {message, Message})
     end,
     {next_state, CurEvent, State};
@@ -477,18 +451,9 @@ event(CurEvent, _, {send_packets, Packets}, State) ->
     send(State, {send_packets, Packets}),
     {next_state, CurEvent, State};
 event(CurEvent, _, {show_to, FSM},
-      State = #zone_state{
-                 account = A,
-                 char = C
-                }) ->
-    gen_statem:cast(FSM, {send_packet,
-                          change_look,
-                          C
-                         }),
-    gen_statem:cast(FSM, {send_packet,
-                          actor,
-                          {normal, A, C}
-                         }),
+      State = #zone_state{account = A, char = C }) ->
+    gen_statem:cast(FSM, {send_packet, change_look, C}),
+    gen_statem:cast(FSM, {send_packet, actor, {normal, A, C}}),
     {next_state, CurEvent, State};
 event(CurEvent, {call, From}, get_state, State) ->
     Actions = [{reply, From, {ok, State}}],
@@ -498,13 +463,9 @@ event(CurEvent, _, {update_state, Fun}, State) ->
 event(_CurEvent, _, crash, _) ->
     exit('crash induced');
 event(CurEvent, _, request_guild_status,
-      State = #zone_state{
-                 db = DB,
-                 char = #char{
-                           id = CharacterID,
-                           guild_id = GuildID
-                          }
-                }) ->
+      State = #zone_state{db = DB,
+                          char = #char{id = CharacterID,
+                                       guild_id = GuildID}}) ->
     if
         GuildID /= 0 ->
             GetGuildMaster = db:get_guild_master(DB, GuildID),
@@ -577,55 +538,29 @@ event(CurEvent, _, {drop, Slot, Amount},
             %% TODO
             ObjectID = db:give_world_item(DB, Map, Item#world_item.item,
                                           Amount),
-            gen_server:cast(
-              MapServer,
-              { send_to_players_in_sight,
-                {X, Y},
-                item_on_ground,
-                %% TODO: actual item ID
-                %% TODO: randomize positions
-                {ObjectID, Item#world_item.item, 1, X + 1, Y + 1, 1, 2, Amount}
-              })
+            Msg = {ObjectID, Item#world_item.item, 1, X+1, Y+1, 1, 2, Amount},
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y},
+                             item_on_ground, Msg})
     end,
     {next_state, CurEvent, State};
 event(CurEvent, _, {pick_up, ObjectID},
-      State = #zone_state{
-                 tcp = TCP,
-                 db = DB,
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           map = Map,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
-    gen_server:cast(
-      MapServer,
-      {send_to_players, item_disappear, ObjectID}
-     ),
-    gen_server:cast(
-      MapServer,
-      { send_to_players_in_sight,
-        {X, Y},
-        actor_effect,
-        { AccountID,
-          ObjectID,
-          zone_master:tick(),
-          0,
-          0,
-          0,
-          0,
-          1,
-          0
-        }
-      }
-     ),
+      State = #zone_state{tcp = TCP,
+                          db = DB,
+                          map_server = MapServer,
+                          account = #account{id = AccountID},
+                          char = #char{id = CharacterID,
+                                       map = Map,
+                                       x = X,
+                                       y = Y
+                                      }}) ->
+    gen_server:cast(MapServer, {send_to_players, item_disappear, ObjectID}),
+    Msg = {AccountID, ObjectID, zone_master:tick(), 0, 0, 0, 0, 1, 0},
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
     case db:get_world_item(DB, ObjectID) of
         nil ->
             say("Item already picked up!", State);
-
         Item ->
             db:remove_world_item(DB, Map, ObjectID),
             give_item(TCP, DB, CharacterID,
@@ -633,15 +568,11 @@ event(CurEvent, _, {pick_up, ObjectID},
     end,
     {next_state, CurEvent, State};
 event(CurEvent, _, {change_direction, Head, Body},
-      State = #zone_state{
-                 map_server = MapServer,
-                 account = #account{id = AccountID},
-                 char = #char{
-                           id = CharacterID,
-                           x = X,
-                           y = Y
-                          }
-                }) ->
+      State = #zone_state{map_server = MapServer,
+                          account = #account{id = AccountID},
+                          char = #char{id = CharacterID,
+                                       x = X,
+                                       y = Y}}) ->
     Msg = {send_to_other_players_in_sight, {X, Y},
            CharacterID,
            change_direction,
