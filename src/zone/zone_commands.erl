@@ -84,6 +84,11 @@ execute(FSM, "npc", [ID, X, Y], State) ->
             {YParse, _} = string:to_integer(Y),
             spawn_npc(FSM, State, NPCID, XParse, YParse)
     end;
+execute(FSM, "job", [ID], State) ->
+    case string:to_integer(ID) of
+        {error, _} -> zone_fsm:say("Invalid Job ID.", State);
+        {JobID, _} -> change_job(FSM, State, JobID)
+    end;
 execute(_FSM, Unknown, _Args, State) ->
     zone_fsm:say("Unknown command `" ++ Unknown ++ "'.", State),
     ok.
@@ -136,6 +141,9 @@ give_item(FSM, _State, ID, Amount) ->
 
 change_hat(FSM, _State, ID) ->
     gen_statem:cast(FSM, {hat_sprite, ID}).
+
+change_job(FSM, _State, JobID) ->
+    gen_statem:cast(FSM, {change_job, JobID}).
 
 spawn_monster(FSM, _State, ID, X, Y) ->
     gen_statem:cast(FSM, {monster, ID, X, Y}).

@@ -397,13 +397,26 @@ event(_CurEvent, _, {switch_zones, Update}, State) ->
 event(CurEvent, _, {hat_sprite, SpriteID},
       #zone_state{char=#char{x=X, y=Y, id=_CharacterID, account_id=AID},
                   map_server=MapServer} = State) ->
-    send(State, {hat_sprite, {AID, 4, SpriteID}}),
+    send(State, {sprite, {AID, 4, SpriteID}}),
     Msg = {send_to_other_players_in_sight, {X, Y},
            AID,
-           hat_sprite,
+           sprite,
            {AID, 4, SpriteID}},
     gen_server:cast(MapServer, Msg),
     {next_state, CurEvent, State};
+event(CurEvent, _, {change_job, JobID},
+      #zone_state{db=DB, char=#char{x=X, y=Y, account_id=AID}=Char,
+                  map_server=MapServer}=State) ->
+    NewChar = Char#char{job=JobID},
+    NewState = State#zone_state{char=NewChar},
+    db:save_char(DB, NewChar),
+    send(State, {sprite, {AID, 0, JobID}}),
+    Msg = {send_to_other_players_in_sight, {X, Y},
+           AID,
+           sprite,
+           {AID, 0, JobID}},
+    gen_server:cast(MapServer, Msg),
+    {next_state, CurEvent, NewState};
 event(CurEvent, _, {monster, SpriteID, X, Y},
       #zone_state{map=Map, map_server=MapServer,
                   char=#char{account_id=AID}} = State) ->
