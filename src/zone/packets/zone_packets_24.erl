@@ -514,9 +514,9 @@ pack(item_on_ground,
       SubY:8,
       Amount:16/little>>;
 pack(sprite,
-     {Type, Value}) ->
+     {CharID, Type, Value}) ->
     <<16#01d7:16/little,
-      1:32/little,
+      CharID:32/little,
       Type:8/little,
       Value:32/little>>;
 pack(monster, {SpriteID, X, Y, GID}) ->
