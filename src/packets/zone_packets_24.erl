@@ -37,7 +37,7 @@ unpack(<<16#0817:16/little, Tick:32/little>>) ->
 unpack(<<16#90:16/little, NPCID:32/little, _:8>>) ->
     {npc_activate, NPCID};
 %% CZ_REQNAME
-unpack(<<16#88a:16/little, ReqName:16/little, _ReqName2:16/little>>) ->
+unpack(<<16#88a:16/little, ReqName:32/little>>) ->
     {request_name, ReqName};
 unpack(<<16#99:16/little, Length:16/little, Message/binary>>)
   when byte_size(Message) == (Length - 4) ->

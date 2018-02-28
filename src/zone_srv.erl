@@ -61,8 +61,7 @@ handle_cast({send_to_all, Msg}, State) ->
       State#state.maps
      ),
     {noreply, State};
-handle_cast(
-  {register_npc, NPC = #npc{map = MapName}},
+handle_cast({register_npc, NPC = #npc{map = MapName}},
   State = #state{maps = Maps}) ->
     case proplists:lookup(MapName, Maps) of
         none ->

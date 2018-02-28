@@ -23,7 +23,7 @@ init(_Conf) ->
     process_flag(trap_exit, true),
     application:set_env(zone, started, erlang:timestamp()),
     nif:init(),
-    %% zone_npc:load_all(),
+    zone_npc:load_all(),
     {zones, Zones} = zone_map:zones(),
     {ok, #state{npc_id = 5000000,
                 servers = [zone_srv:server_for(P) || {P, _} <- Zones]
@@ -56,28 +56,21 @@ handle_cast({send_to_all, Msg}, State) ->
       end, State#state.servers),
     {noreply, State};
 
-handle_cast(
-  {register_npc, Name, Sprite, Map, {X, Y}, Direction, Object},
-  State = #state{npc_id = Id}) ->
+handle_cast({register_npc, Name, Sprite, Map, {X, Y}, Direction, Object},
+            State = #state{npc_id = Id}) ->
     lists:foreach(
       fun(Server) ->
-              gen_server:cast(
-                Server,
-                { register_npc,
-                  #npc{
-                     id = Id,
-                     name = Name,
-                     sprite = Sprite,
-                     map = Map,
-                     coordinates = {X, Y},
-                     direction = Direction,
-                     main = Object
-                    }
-                })
+              gen_server:cast(Server, {register_npc,
+                                       #npc{id = Id,
+                                            name = Name,
+                                            sprite = Sprite,
+                                            map = Map,
+                                            coordinates = {X, Y},
+                                            direction = Direction,
+                                            main = Object}})
       end,
       State#state.servers
      ),
-
     {noreply, State#state{npc_id = Id + 1}};
 
 handle_cast(_Cast, State) ->
