@@ -34,7 +34,7 @@ unpack(<<16#85:16/little, _:16, Head:16/little, _:24, Body:8>>) ->
     {change_direction, Head, Body};
 unpack(<<16#0817:16/little, Tick:32/little>>) ->
     {tick, Tick};
-unpack(<<16#90:16/little, NPCID:32/little, _:8>>) ->
+unpack(<<16#0090:16/little, NPCID:32/little, _:8>>) ->
     {npc_activate, NPCID};
 %% CZ_REQNAME
 unpack(<<16#88a:16/little, ReqName:32/little>>) ->
@@ -99,7 +99,7 @@ pack(show_npc, N) -> % TODO: This isn't actually specific to NPCs
             northeast -> 7
         end,
     <<16#78:16/little,
-      0:8, % Object type
+      (N#npc.objecttype):8, % Object type
       (N#npc.id):32/little,
       ?WALKSPEED:16/little,
       0:3/unit:16, %% Body, Health, Effect state

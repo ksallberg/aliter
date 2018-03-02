@@ -1,0 +1,21 @@
+{"Guard", 105, <<"prontera">>,
+  [ {160, 130, west}
+  , {223, 99, northwest}
+  , {229, 104, southeast}
+  , {47, 339, southeast}],
+  [{say, "[Prontera Guard]"},
+   {say, "Welcome to prontera"},
+   next,
+   {say, "Bla bla bla"},
+   next,
+   {say, "ok"},
+   close]}.
+
+{"Guard2", 21, <<"prontera">>,
+  [ {161, 131, west}],
+  [{say, "[Prontera Guard]"},
+   {say, "Time to chose"},
+   {menu, [{"First", {say, "You chose first"}},
+           {"Second", {say, "You chose second"}}]},
+   {say, "OK I'll say this too."},
+   close]}.

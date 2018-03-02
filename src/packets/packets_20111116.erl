@@ -752,7 +752,7 @@ packet_size(16#0362) -> 0;
 packet_size(16#0363) -> 0;
 packet_size(16#0364) -> 5; %% packet(0x0364,5,clif->pWalkToXY,2);
 packet_size(16#0365) -> 0;
-packet_size(16#0366) -> 0;
+packet_size(16#0366) -> 5; %% CZ_CHANGE_DIRECTION
 packet_size(16#0367) -> 0;
 packet_size(16#0368) -> 0;
 packet_size(16#0369) -> 0;

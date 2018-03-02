@@ -67,6 +67,7 @@ handle_cast({register_npc, Name, Sprite, Map, {X, Y}, Direction, Object},
                                             map = Map,
                                             coordinates = {X, Y},
                                             direction = Direction,
+                                            objecttype=6,
                                             main = Object}})
       end,
       State#state.servers

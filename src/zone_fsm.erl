@@ -101,7 +101,13 @@ locked(Type, Event, State) ->
 valid(_, {npc_activate, ActorID}, State = #zone_state{map_server=MapServer}) ->
     case gen_server:call(MapServer, {get_actor, ActorID}) of
         {npc, NPC} ->
-            {next_state, valid, State#zone_state{npc = {broken, NPC}}};
+            ZoneFSM = self(),
+            SpawnFun = fun() ->
+                               zone_npc:spawn_logic(ZoneFSM, ActorID,
+                                                    NPC#npc.main)
+                       end,
+            Proc = spawn(SpawnFun),
+            {next_state, valid, State#zone_state{npc = {Proc, NPC}}};
         _Invalid ->
             lager:log(error, self(), "NPC not found ~p", [{id, ActorID}]),
             {next_state, valid, State}
@@ -420,6 +426,7 @@ event(CurEvent, _, {npc, SpriteID, X, Y},
                map=Map,
                coordinates={X, Y},
                direction=north,
+               objecttype=6,
                main=0},
     gen_server:cast(zone_map:server_for(Map), {register_npc, NPC}),
     send(State, {show_npc, NPC}),

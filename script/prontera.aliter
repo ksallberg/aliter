@@ -1,9 +1,0 @@
-{"Guard", 105, <<"prontera">>,
-  [ {160, 130, west}
-  , {223, 99, northwest}
-  , {229, 104, southeast}
-  , {47, 339, southeast}],
-  [{say, "[Prontera Guard]"},
-   {say, "Welcome to prontera"},
-   close]
-}.

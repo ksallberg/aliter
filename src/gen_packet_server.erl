@@ -197,7 +197,6 @@ parse_loop(Socket, PacketHandler, Loop) ->
                                                                Loop)
                                     end
                             end;
-
                         %% Already read all of it!
                         2 ->
                             Loop ! {tcp, Socket, <<Header:16/little>>},

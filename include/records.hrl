@@ -13,6 +13,7 @@
         {id,
          name,
          sprite,
+         objecttype = 0,
          map,
          coordinates,
          direction,
