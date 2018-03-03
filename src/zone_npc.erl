@@ -66,5 +66,5 @@ spawn_logic(FSM, ActorID, [{menu, MenuList} | ActionObjectRest]) ->
     receive
         Selected ->
             {_, Action} = lists:nth(Selected, MenuList),
-            spawn_logic(FSM, ActorID, [Action |ActionObjectRest])
+            spawn_logic(FSM, ActorID, Action ++ ActionObjectRest)
     end.

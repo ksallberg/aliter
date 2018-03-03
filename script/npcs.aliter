@@ -149,8 +149,10 @@
   [{134, 211, south}],
   [{say, "[Young Man]"},
    {say, "Time to chose"},
-   {menu, [{"First", {say, "You chose first"}},
-           {"Second", {say, "You chose second"}}]},
+   {menu, [{"First", [{say, "You chose first.."}]},
+           {"Second", [{say, "You chose second!"},
+                       {say, "Then I'll keep talking"}]
+           }]},
    {say, "OK I'll say this too."},
    close]}.
 
@@ -236,4 +238,101 @@
   [{77, 131, west}],
   [{say, "[Archer Joe]"},
    {say, "Such a wonderful place! Superb Bows and skillful Archers!"},
+   close]}.
+
+{"Complete", 1373, <<"aldebaran">>,
+  [{50, 50, south}],
+  [{say, "[Complete dialogue]"},
+   {say, "Press next to continue"},
+   next,
+   {say, "[Complete dialogue]"},
+   {say, "Use the menu"},
+   {menu, [{"First", [{say, "You chose first.."},
+                      {say, "thats ok"}]},
+           {"Second", [{say, "You chose second!"},
+                       {say, "also ok"}]},
+           {"3rd", [{say, "This is an inner menu!"},
+                    {menu, [{"a", [{say, "You chose a.."},
+                                   {say, "a you said..."}]},
+                            {"b", [{say, "You chose b!"},
+                                   {say, "b has other logic"},
+                                   {say, "some more even..."}]}
+                           ]}]}
+          ]},
+   {say, "After the menu, I will say this "
+         "regardless of what you chose."},
+   next,
+   {say, "Good bye!"},
+   close]}.
+
+{"Baphomet", 1039, <<"cmd_fild02">>,
+  [{160, 125, south}],
+  [{say, "[Baphomet]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Amon Ra", 1511, <<"cmd_fild02">>,
+  [{160, 120, south}],
+  [{say, "[Amon Ra]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Dark Lord", 1272, <<"cmd_fild02">>,
+  [{165, 120, south}],
+  [{say, "[Dark Lord]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Doppelganger", 1046, <<"cmd_fild02">>,
+  [{155, 120, south}],
+  [{say, "[Doppelganger]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Eddga", 1115, <<"cmd_fild02">>,
+  [{160, 115, south}],
+  [{say, "[Eddga]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Dracula", 1389, <<"cmd_fild02">>,
+  [{165, 115, south}],
+  [{say, "[Dracula]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Drake", 1112, <<"cmd_fild02">>,
+  [{150, 130, south}],
+  [{say, "[Drake]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Garm", 1252, <<"cmd_fild02">>,
+  [{155, 135, south}],
+  [{say, "[Garm]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Incacntation Samuari", 1492, <<"cmd_fild02">>,
+  [{155, 125, south}],
+  [{say, "[Incacntation Samuari]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Orc Hero", 1087, <<"cmd_fild02">>,
+  [{165, 135, south}],
+  [{say, "[Orc Hero]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Ghostring", 1120, <<"cmd_fild02">>,
+  [{165, 125, south}],
+  [{say, "[Ghostring]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Angeling", 1096, <<"cmd_fild02">>,
+  [{165, 130, south}],
+  [{say, "[Angeling]"},
+   {say, "Be gone"},
    close]}.

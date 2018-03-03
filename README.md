@@ -99,10 +99,37 @@ Example of 'if-statement':
   [{134, 211, south}],
   [{say, "[Young Man]"},
    {say, "Time to chose"},
-   {menu, [{"First", {say, "You chose first"}},
-           {"Second", {say, "You chose second"}}]},
-   {say, "OK I'll say one more thing:"},
+   {menu, [{"First", [{say, "You chose first.."}]},
+           {"Second", [{say, "You chose second!"},
+                       {say, "Then I'll keep talking"}]
+           }]},
+   {say, "OK I'll say this too."},
+   close]}.
+```
+
+Example of nested 'if-statement':
+
+```
+{"Complete", 1373, <<"aldebaran">>,
+  [{50, 50, south}],
+  [{say, "[Complete dialogue]"},
+   {say, "Press next to continue"},
    next,
-   {say, "Bye!"},
+   {say, "[Complete dialogue]"},
+   {say, "Use the menu"},
+   {menu, [{"First", [{say, "You chose first.."},
+                      {say, "thats ok"}]},
+           {"Second", [{say, "You chose second!"},
+                       {say, "also ok"}]},
+           {"3rd", [{say, "This is an inner menu!"},
+                    {menu, [{"a", [{say, "You chose a.."},
+                                   {say, "a you said..."}]},
+                            {"b", [{say, "You chose b!"},
+                                   {say, "b has other logic"},
+                                   {say, "some more even..."}]}
+                           ]}]}
+          ]},
+   {say, "Finally, after the menu, I will say this "
+         "regardless of what you chose."},
    close]}.
 ```
