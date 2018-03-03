@@ -278,7 +278,7 @@
    close]}.
 
 {"Dark Lord", 1272, <<"cmd_fild02">>,
-  [{165, 120, south}],
+  [{170, 120, south}],
   [{say, "[Dark Lord]"},
    {say, "Be gone"},
    close]}.
@@ -296,7 +296,7 @@
    close]}.
 
 {"Dracula", 1389, <<"cmd_fild02">>,
-  [{165, 115, south}],
+  [{175, 115, south}],
   [{say, "[Dracula]"},
    {say, "Be gone"},
    close]}.
@@ -326,13 +326,97 @@
    close]}.
 
 {"Ghostring", 1120, <<"cmd_fild02">>,
-  [{165, 125, south}],
+  [{180, 125, south}],
   [{say, "[Ghostring]"},
    {say, "Be gone"},
    close]}.
 
 {"Angeling", 1096, <<"cmd_fild02">>,
-  [{165, 130, south}],
+  [{155, 13, south}],
   [{say, "[Angeling]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Golden Thief Bug", 1086, <<"cmd_fild02">>,
+  [{175, 130, south}],
+  [{say, "[Golden Thief Bug]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Stormy Knight", 1251, <<"cmd_fild02">>,
+  [{165, 130, south}],
+  [{say, "[Stormy Knight]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Lord of Death", 1373, <<"cmd_fild02">>,
+  [{170, 125, south}],
+  [{say, "[Lord of Death]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Maya", 1147, <<"cmd_fild02">>,
+  [{165, 120, south}],
+  [{say, "[Maya]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Moonlight Flower", 1150, <<"cmd_fild02">>,
+  [{170, 115, south}],
+  [{say, "[Moonlight Flower]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Mistress", 1059, <<"cmd_fild02">>,
+  [{155, 115, south}],
+  [{say, "[Mistress]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Orc Lord", 1190, <<"cmd_fild02">>,
+  [{165, 115, south}],
+  [{say, "[Orc Lord]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Osiris", 1038, <<"cmd_fild02">>,
+  [{165, 125, south}],
+  [{say, "[Osiris]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Pharaoh", 1157, <<"cmd_fild02">>,
+  [{170, 130, south}],
+  [{say, "[Pharaoh]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Phreeoni", 1159, <<"cmd_fild02">>,
+  [{170, 135, south}],
+  [{say, "[Phreeoni]"},
+   {say, "Be gone"},
+   close]}.
+
+{"RSX 0806", 1623, <<"cmd_fild02">>,
+  [{165, 140, south}],
+  [{say, "[RSX 0806]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Tao Gunka", 1583, <<"cmd_fild02">>,
+  [{165, 145, south}],
+  [{say, "[Tao Gunka]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Turtle General", 1312, <<"cmd_fild02">>,
+  [{165, 150, south}],
+  [{say, "[Turtle General]"},
+   {say, "Be gone"},
+   close]}.
+
+{"Valkyrie Randgris", 1751, <<"cmd_fild02">>,
+  [{165, 155, south}],
+  [{say, "[Valkyrie Randgris]"},
    {say, "Be gone"},
    close]}.
