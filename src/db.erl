@@ -41,21 +41,21 @@
 save_account(C, Account) ->
     ID =
         case Account#account.id of
-            undefined -> redis:incr(C, "accounts:id");
+            undefined -> incr(C, "accounts:id");
             X -> X
         end,
     lager:log(info, self(), "Creating account ~p ~p",
               [{id, ID}, {account_id, Account#account.id}]),
     Hash = "account:" ++ integer_to_list(ID),
-    redis:hset(C, Hash, "login", Account#account.login),
-    redis:hset(C, Hash, "password", Account#account.password),
-    redis:hset(C, Hash, "email", Account#account.email),
-    redis:hset(C, Hash, "gender", Account#account.gender),
-    redis:hset(C, Hash, "login_count", Account#account.login_count),
-    redis:hset(C, Hash, "last_login", Account#account.last_login),
-    redis:hset(C, Hash, "last_ip", Account#account.last_ip),
-    redis:hset(C, Hash, "gm_level", Account#account.gm_level),
-    redis:set(C, ["account:", Account#account.login], ID),
+    sethash(C, Hash, "login", Account#account.login),
+    sethash(C, Hash, "password", Account#account.password),
+    sethash(C, Hash, "email", Account#account.email),
+    sethash(C, Hash, "gender", Account#account.gender),
+    sethash(C, Hash, "login_count", Account#account.login_count),
+    sethash(C, Hash, "last_login", Account#account.last_login),
+    sethash(C, Hash, "last_ip", Account#account.last_ip),
+    sethash(C, Hash, "gm_level", Account#account.gm_level),
+    set(C, ["account:", Account#account.login], ID),
     Account#account{id = ID}.
 
 get_account(C, ID) ->
@@ -73,7 +73,7 @@ get_account(C, ID) ->
       }.
 
 get_account_id(C, Name) ->
-    case redis:get(C, ["account:", Name]) of
+    case db_get(C, ["account:", Name]) of
         undefined -> nil;
         {ok, X} -> numeric(X)
     end.
@@ -81,60 +81,60 @@ get_account_id(C, Name) ->
 save_char(C, Char) ->
     ID =
         case Char#char.id of
-            undefined -> redis:incr(C, "chars:id");
+            undefined -> incr(C, "chars:id");
             X -> X
         end,
     Hash = "char:" ++ integer_to_list(ID),
-    redis:hset(C, Hash, "num", Char#char.num),
-    redis:hset(C, Hash, "name", Char#char.name),
-    redis:hset(C, Hash, "job", Char#char.job),
-    redis:hset(C, Hash, "base_level", Char#char.base_level),
-    redis:hset(C, Hash, "base_exp", Char#char.base_exp),
-    redis:hset(C, Hash, "job_level", Char#char.job_level),
-    redis:hset(C, Hash, "job_exp", Char#char.job_exp),
-    redis:hset(C, Hash, "zeny", Char#char.zeny),
-    redis:hset(C, Hash, "str", Char#char.str),
-    redis:hset(C, Hash, "agi", Char#char.agi),
-    redis:hset(C, Hash, "vit", Char#char.vit),
-    redis:hset(C, Hash, "int", Char#char.int),
-    redis:hset(C, Hash, "dex", Char#char.dex),
-    redis:hset(C, Hash, "luk", Char#char.luk),
-    redis:hset(C, Hash, "max_hp", Char#char.max_hp),
-    redis:hset(C, Hash, "hp", Char#char.hp),
-    redis:hset(C, Hash, "max_sp", Char#char.max_sp),
-    redis:hset(C, Hash, "sp", Char#char.sp),
-    redis:hset(C, Hash, "status_points", Char#char.status_points),
-    redis:hset(C, Hash, "skill_points", Char#char.skill_points),
-    redis:hset(C, Hash, "hair_style", Char#char.hair_style),
-    redis:hset(C, Hash, "hair_colour", Char#char.hair_colour),
-    redis:hset(C, Hash, "clothes_colour", Char#char.clothes_colour),
-    redis:hset(C, Hash, "view_weapon", Char#char.view_weapon),
-    redis:hset(C, Hash, "view_shield", Char#char.view_shield),
-    redis:hset(C, Hash, "view_head_top", Char#char.view_head_top),
-    redis:hset(C, Hash, "view_head_middle", Char#char.view_head_middle),
-    redis:hset(C, Hash, "view_head_bottom", Char#char.view_head_bottom),
-    redis:hset(C, Hash, "map", Char#char.map),
-    redis:hset(C, Hash, "x", Char#char.x),
-    redis:hset(C, Hash, "y", Char#char.y),
-    redis:hset(C, Hash, "save_map", Char#char.save_map),
-    redis:hset(C, Hash, "save_x", Char#char.save_x),
-    redis:hset(C, Hash, "save_y", Char#char.save_y),
-    redis:hset(C, Hash, "online", Char#char.online),
-    redis:hset(C, Hash, "effects", Char#char.effects),
-    redis:hset(C, Hash, "karma", Char#char.karma),
-    redis:hset(C, Hash, "manner", Char#char.manner),
-    redis:hset(C, Hash, "fame", Char#char.fame),
-    redis:hset(C, Hash, "guild_position", Char#char.guild_position),
-    redis:hset(C, Hash, "guild_taxed", Char#char.guild_taxed),
-    redis:hset(C, Hash, "renamed", Char#char.renamed),
-    redis:hset(C, Hash, "account_id", Char#char.account_id),
-    redis:hset(C, Hash, "party_id", Char#char.party_id),
-    redis:hset(C, Hash, "guild_id", Char#char.guild_id),
-    redis:hset(C, Hash, "pet_id", Char#char.pet_id),
-    redis:hset(C, Hash, "homunculus_id", Char#char.homunculus_id),
-    redis:hset(C, Hash, "mercenary_id", Char#char.mercenary_id),
-    redis:set(C, ["char:", Char#char.name], ID),
-    redis:hset(
+    sethash(C, Hash, "num", Char#char.num),
+    sethash(C, Hash, "name", Char#char.name),
+    sethash(C, Hash, "job", Char#char.job),
+    sethash(C, Hash, "base_level", Char#char.base_level),
+    sethash(C, Hash, "base_exp", Char#char.base_exp),
+    sethash(C, Hash, "job_level", Char#char.job_level),
+    sethash(C, Hash, "job_exp", Char#char.job_exp),
+    sethash(C, Hash, "zeny", Char#char.zeny),
+    sethash(C, Hash, "str", Char#char.str),
+    sethash(C, Hash, "agi", Char#char.agi),
+    sethash(C, Hash, "vit", Char#char.vit),
+    sethash(C, Hash, "int", Char#char.int),
+    sethash(C, Hash, "dex", Char#char.dex),
+    sethash(C, Hash, "luk", Char#char.luk),
+    sethash(C, Hash, "max_hp", Char#char.max_hp),
+    sethash(C, Hash, "hp", Char#char.hp),
+    sethash(C, Hash, "max_sp", Char#char.max_sp),
+    sethash(C, Hash, "sp", Char#char.sp),
+    sethash(C, Hash, "status_points", Char#char.status_points),
+    sethash(C, Hash, "skill_points", Char#char.skill_points),
+    sethash(C, Hash, "hair_style", Char#char.hair_style),
+    sethash(C, Hash, "hair_colour", Char#char.hair_colour),
+    sethash(C, Hash, "clothes_colour", Char#char.clothes_colour),
+    sethash(C, Hash, "view_weapon", Char#char.view_weapon),
+    sethash(C, Hash, "view_shield", Char#char.view_shield),
+    sethash(C, Hash, "view_head_top", Char#char.view_head_top),
+    sethash(C, Hash, "view_head_middle", Char#char.view_head_middle),
+    sethash(C, Hash, "view_head_bottom", Char#char.view_head_bottom),
+    sethash(C, Hash, "map", Char#char.map),
+    sethash(C, Hash, "x", Char#char.x),
+    sethash(C, Hash, "y", Char#char.y),
+    sethash(C, Hash, "save_map", Char#char.save_map),
+    sethash(C, Hash, "save_x", Char#char.save_x),
+    sethash(C, Hash, "save_y", Char#char.save_y),
+    sethash(C, Hash, "online", Char#char.online),
+    sethash(C, Hash, "effects", Char#char.effects),
+    sethash(C, Hash, "karma", Char#char.karma),
+    sethash(C, Hash, "manner", Char#char.manner),
+    sethash(C, Hash, "fame", Char#char.fame),
+    sethash(C, Hash, "guild_position", Char#char.guild_position),
+    sethash(C, Hash, "guild_taxed", Char#char.guild_taxed),
+    sethash(C, Hash, "renamed", Char#char.renamed),
+    sethash(C, Hash, "account_id", Char#char.account_id),
+    sethash(C, Hash, "party_id", Char#char.party_id),
+    sethash(C, Hash, "guild_id", Char#char.guild_id),
+    sethash(C, Hash, "pet_id", Char#char.pet_id),
+    sethash(C, Hash, "homunculus_id", Char#char.homunculus_id),
+    sethash(C, Hash, "mercenary_id", Char#char.mercenary_id),
+    set(C, ["char:", Char#char.name], ID),
+    sethash(
       C,
       ["account:", integer_to_list(Char#char.account_id), ":chars"],
       Char#char.num,
@@ -144,11 +144,10 @@ save_char(C, Char) ->
 
 delete_char(C, Char) ->
     Hash = "char:" ++ integer_to_list(Char#char.id),
-    redis:del(C, Hash),
-    redis:del(C, ["char:", Char#char.name]),
-    redis:hdel(C,
-               ["account:", integer_to_list(Char#char.account_id), ":chars"],
-               Char#char.num),
+    delete(C, Hash),
+    delete(C, ["char:", Char#char.name]),
+    hdel(C, ["account:", integer_to_list(Char#char.account_id), ":chars"],
+         Char#char.num),
     ok.
 
 get_char(C, ID) ->
@@ -205,61 +204,55 @@ get_char(C, ID) ->
        mercenary_id = numeric(gethash(C, Hash, "mercenary_id"))}.
 
 get_account_chars(C, AccountID) ->
-    Chars =
-        redis:hgetall(C, ["account:", integer_to_list(AccountID), ":chars"]),
-    [db:get_char(C, numeric(ID)) || {_, ID} <- Chars].
+    Chars = hgetall(C, ["account:", integer_to_list(AccountID), ":chars"]),
+    [get_char(C, numeric(ID)) || {_, ID} <- Chars].
 
 get_account_char(C, AccountID, Num) ->
-    ID =
-        redis:hget(
-          C,
-          ["account:", integer_to_list(AccountID), ":chars"],
-          integer_to_list(Num)
-         ),
-
+    Path = ["account:", integer_to_list(AccountID), ":chars"],
+    ID = hget(C, Path, integer_to_list(Num)),
     case ID of
         undefined -> nil;
-        {ok, X} -> db:get_char(C, numeric(X))
+        {ok, X} -> get_char(C, numeric(X))
     end.
 
 get_char_id(C, Name) ->
-    case redis:get(C, ["char:", Name]) of
+    case db_get(C, ["char:", Name]) of
         undefined -> nil;
         {ok, X} -> numeric(X)
     end.
 
 rename_char(C, ID, OldName, NewName) ->
     Hash = "char:" ++ integer_to_list(ID),
-    redis:del(C, ["char:", OldName]),
-    redis:set(C, ["char:", NewName], ID),
-    redis:hset(C, Hash, "name", NewName),
-    redis:hset(C, Hash, "renamed", 1),
+    delete(C, ["char:", OldName]),
+    set(C, ["char:", NewName], ID),
+    sethash(C, Hash, "name", NewName),
+    sethash(C, Hash, "renamed", 1),
     ok.
 
 save_guild(C, Guild) ->
     ID =
         case Guild#guild.id of
-            undefined -> redis:incr(C, "guilds:id");
+            undefined -> incr(C, "guilds:id");
             X -> X
         end,
     Hash = "guild:" ++ integer_to_list(ID),
-    redis:hset(C, Hash, "name", Guild#guild.name),
-    redis:hset(C, Hash, "level", Guild#guild.level),
-    redis:hset(C, Hash, "capacity", Guild#guild.capacity),
-    redis:hset(C, Hash, "exp", Guild#guild.exp),
-    redis:hset(C, Hash, "next_exp", Guild#guild.next_exp),
-    redis:hset(C, Hash, "skill_points", Guild#guild.skill_points),
-    redis:hset(C, Hash, "message_title", Guild#guild.message_title),
-    redis:hset(C, Hash, "message_body", Guild#guild.message_body),
-    redis:hset(C, Hash, "emblem", Guild#guild.emblem),
-    redis:hset(C, Hash, "master_id", Guild#guild.master_id),
-    redis:set(C, ["guild:", Guild#guild.name], ID),
+    sethash(C, Hash, "name", Guild#guild.name),
+    sethash(C, Hash, "level", Guild#guild.level),
+    sethash(C, Hash, "capacity", Guild#guild.capacity),
+    sethash(C, Hash, "exp", Guild#guild.exp),
+    sethash(C, Hash, "next_exp", Guild#guild.next_exp),
+    sethash(C, Hash, "skill_points", Guild#guild.skill_points),
+    sethash(C, Hash, "message_title", Guild#guild.message_title),
+    sethash(C, Hash, "message_body", Guild#guild.message_body),
+    sethash(C, Hash, "emblem", Guild#guild.emblem),
+    sethash(C, Hash, "master_id", Guild#guild.master_id),
+    set(C, ["guild:", Guild#guild.name], ID),
     Guild#guild{id = ID}.
 
 delete_guild(C, Guild) ->
     Hash = "guild:" ++ integer_to_list(Guild#guild.id),
-    redis:del(C, Hash),
-    redis:del(C, ["guild:", Guild#char.name]),
+    delete(C, Hash),
+    delete(C, ["guild:", Guild#char.name]),
     ok.
 
 get_guild(C, ID) ->
@@ -277,7 +270,7 @@ get_guild(C, ID) ->
            master_id = numeric(gethash(C, Hash, "master_id"))}.
 
 get_guild_id(C, Name) ->
-    case redis:get(C, ["guild:", Name]) of
+    case db_get(C, ["guild:", Name]) of
         undefined -> nil;
         {ok, X} -> numeric(X)
     end.
@@ -285,52 +278,36 @@ get_guild_id(C, Name) ->
 get_guild_master(C, GuildId) ->
     ID =
         case GuildId of
-            undefined -> redis:incr(C, "guilds:id");
+            undefined -> incr(C, "guilds:id");
             X -> X
         end,
     Hash = "guild:" ++ integer_to_list(ID),
-    case redis:hget(C, Hash, "master_id") of
+    case hget(C, Hash, "master_id") of
         undefined -> nil;
         {ok, Master} -> numeric(Master)
     end.
 
 get_guild_members(C, GuildID) ->
-    Chars =
-        redis:lrange(C,
-                     ["guild:", integer_to_list(GuildID), ":members"],
-                     0,
-                     -1),
-    [db:get_char(C, numeric(ID)) || {_, ID} <- Chars].
+    Chars = lrange(C, ["guild:", integer_to_list(GuildID), ":members"], 0, -1),
+    [get_char(C, numeric(ID)) || {_, ID} <- Chars].
 
 add_char_to_guild(C, GuildID, CharacterID) ->
-    redis:rpush(C, ["guild:", GuildID, ":members"], CharacterID).
+    rpush(C, ["guild:", GuildID, ":members"], CharacterID).
 
 delete_char_from_guild(C, GuildID, CharacterID) ->
-    redis:lrem(C, ["guild:", GuildID, ":members"], 0, CharacterID),
+    lrem(C, ["guild:", GuildID, ":members"], 0, CharacterID),
     ok.
 
 get_guild_relationships(C, GuildID) ->
-    redis:hgetall(C,
-                  [ "guild:",
-                    integer_to_list(GuildID),
-                    ":relationships"
-                  ]).
+    hgetall(C, ["guild:", integer_to_list(GuildID), ":relationships"]).
 
 save_guild_relationship(C, GuildID, TargetID, Type) ->
-    redis:hset(C,
-               [ "guild:",
-                 integer_to_list(GuildID),
-                 ":relationships"
-               ],
-               integer_to_list(TargetID),
-               integer_to_list(Type)).
+    Key = ["guild:", integer_to_list(GuildID), ":relationships"],
+    sethash(C, Key, integer_to_list(TargetID), integer_to_list(Type)).
 
 delete_guild_relationship(C, GuildID, TargetID) ->
-    redis:hdel(C,
-               [ "guild:",
-                 integer_to_list(GuildID),
-                 ":relationships"],
-               integer_to_list(TargetID)),
+    hdel(C, ["guild:", integer_to_list(GuildID), ":relationships"],
+         integer_to_list(TargetID)),
     ok.
 
 
@@ -343,21 +320,21 @@ get_guild_relationship(C, GuildID, TargetID) ->
               integer_to_list(TargetID))).
 
 give_world_item(C, Map, ItemID, Amount) ->
-    ObjectID = redis:incr(C, "objects:next"),
-    redis:sadd(C, ["objects:", Map], ObjectID),
-    redis:hset(C, ["objects:", integer_to_list(ObjectID)], "item", ItemID),
-    redis:hset(C, ["objects:", integer_to_list(ObjectID)], "amount", Amount),
+    ObjectID = incr(C, "objects:next"),
+    sadd(C, ["objects:", Map], ObjectID),
+    sethash(C, ["objects:", integer_to_list(ObjectID)], "item", ItemID),
+    sethash(C, ["objects:", integer_to_list(ObjectID)], "amount", Amount),
     ObjectID.
 
 get_world_items(C, Map) ->
-    Items = redis:smembers(C, ["objects:", Map]),
+    Items = smembers(C, ["objects:", Map]),
     [get_world_item(C, numeric(Slot)) || Slot <- Items].
 
 get_world_item(C, ObjectID) ->
     Object = ["objects:", integer_to_list(ObjectID)],
-    case redis:hget(C, Object, "item") of
+    case hget(C, Object, "item") of
         {ok, Item} ->
-            case redis:hget(C, Object, "amount") of
+            case hget(C, Object, "amount") of
                 {ok, Amount} ->
                     #world_item{
                        slot = ObjectID,
@@ -371,20 +348,20 @@ get_world_item(C, ObjectID) ->
     end.
 
 remove_world_item(C, Map, ObjectID) ->
-    redis:srem(C, ["objects:", Map], integer_to_list(ObjectID)),
-    redis:del(C, ["objects:", integer_to_list(ObjectID)]).
+    srem(C, ["objects:", Map], integer_to_list(ObjectID)),
+    delete(C, ["objects:", integer_to_list(ObjectID)]).
 
 give_player_item(C, CharacterID, ItemID, Amount) ->
-    Slot = redis:incr(C, ["inventory:", integer_to_list(CharacterID), ":next"]),
-    redis:sadd(C, ["inventory:", integer_to_list(CharacterID)], Slot),
-    redis:hset(C, ["inventory:", integer_to_list(CharacterID),
-                   ":", integer_to_list(Slot)], "item", ItemID),
-    redis:hset(C, ["inventory:", integer_to_list(CharacterID),
-                   ":", integer_to_list(Slot)], "amount", Amount),
+    Slot = incr(C, ["inventory:", integer_to_list(CharacterID), ":next"]),
+    sadd(C, ["inventory:", integer_to_list(CharacterID)], Slot),
+    sethash(C, ["inventory:", integer_to_list(CharacterID),
+                ":", integer_to_list(Slot)], "item", ItemID),
+    sethash(C, ["inventory:", integer_to_list(CharacterID),
+                ":", integer_to_list(Slot)], "amount", Amount),
     Slot.
 
 get_player_items(C, CharacterID) ->
-    Items = redis:smembers(C, ["inventory:", integer_to_list(CharacterID)]),
+    Items = smembers(C, ["inventory:", integer_to_list(CharacterID)]),
     [get_player_item(C, CharacterID, numeric(Slot)) || Slot <- Items].
 
 get_player_item(C, CharacterID, Slot) ->
@@ -393,9 +370,9 @@ get_player_item(C, CharacterID, Slot) ->
               integer_to_list(CharacterID), ":",
               integer_to_list(Slot)
              ],
-    case redis:hget(C, Object, "item") of
+    case hget(C, Object, "item") of
         {ok, Item} ->
-            case redis:hget(C, Object, "amount") of
+            case hget(C, Object, "amount") of
                 {ok, Amount} ->
                     #world_item{
                        slot = Slot,
@@ -410,15 +387,65 @@ get_player_item(C, CharacterID, Slot) ->
 
 remove_player_item(C, CharacterID, Slot) ->
     Inventory = ["inventory:", integer_to_list(CharacterID)],
-    redis:srem(C, Inventory, integer_to_list(Slot)),
-    redis:del(C, [Inventory, ":", integer_to_list(Slot)]),
+    srem(C, Inventory, integer_to_list(Slot)),
+    delete(C, [Inventory, ":", integer_to_list(Slot)]),
     ok.
 
 gethash(C, Key, Field) ->
-    case redis:hget(C, Key, Field) of
+    case hget(C, Key, Field) of
         undefined -> error(["undefined", Key, Field]);
         {ok, V} -> V
     end.
+
+%% gethash(C, Key, Field) ->
+%%     case eredis:q(C, ["HGET", Key, Field]) of
+%%         undefined -> error(["undefined", Key, Field]);
+%%         {ok, V} -> V
+%%     end.
+
+incr(C, ToIncr) ->
+    redis:incr(C, ToIncr).
+
+sethash(C, Key, Field, Value) ->
+    redis:hset(C, Key, Field, Value).
+    %% eredis:q(C, ["HSET", Key, Field, Value]).
+
+delete(C, What) ->
+    redis:del(C, What).
+    %% eredis:q(C, ["DEL", What]).
+
+sadd(C, Path, What) ->
+    redis:sadd(C, Path, What).
+
+set(C, Path, What) ->
+    redis:set(C, Path, What).
+
+srem(C, Path, What) ->
+    redis:srem(C, Path, What).
+
+hget(C, Path, What) ->
+    redis:hget(C, Path, What).
+
+hgetall(C, Path) ->
+    redis:hgetall(C, Path).
+
+hdel(C, Path, What) ->
+    redis:hdel(C, Path, What).
+
+db_get(C, What) ->
+    redis:get(C, What).
+
+lrange(C, Path, Id, Def) ->
+    redis:lrange(C, Path, Id, Def).
+
+lrem(C, Path, Def, CharacterID) ->
+    redis:lrem(C, Path, Def, CharacterID).
+
+rpush(C, Path, What) ->
+    redis:rpush(C, Path, What).
+
+smembers(C, Path) ->
+    redis:smembers(C, Path).
 
 %% TODO: this is probably only called with one form
 numeric(I) when is_binary(I) ->
