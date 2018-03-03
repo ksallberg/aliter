@@ -14,10 +14,6 @@
          code_change/3]).
 
 start_link(Map) ->
-    lager:log(info, self(), "Starting map server ~p ~p ~p",
-              [{map, Map#map.name},
-               {local, server_for(Map)},
-               ?MODULE]),
     gen_server:start_link({local, server_for(Map)},
                           ?MODULE,
                           #map_state{map = Map},
@@ -165,6 +161,8 @@ zones() ->
         "aldebaran",
         "yuno",
         "prt_monk",
+        "prt_in",
+        "prt_church",
         "prt_fild00",
         "prt_fild01",
         "prt_fild02",
@@ -198,6 +196,8 @@ zones() ->
       {6123,
        ["payon",
         "pay_arche",
+        "payon_in01",
+        "payon_in03",
         "pay_fild01",
         "pay_fild02",
         "pay_fild03",

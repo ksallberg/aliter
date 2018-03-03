@@ -11,16 +11,25 @@
         , spawn_logic/3 ]).
 
 load_all() ->
-    {ok, NPCs} = file:consult("script/npcs.aliter"),
-    DoF = fun({Name, Sprite, Map, Positions, Actions}) ->
-                  Pos = fun({X, Y, Dir}) ->
-                                Msg = {register_npc, Name, Sprite,
-                                       Map, {X, Y}, Dir, Actions},
-                                gen_server:cast(zone_master, Msg)
-                        end,
-                  lists:foreach(Pos, Positions)
-          end,
-    lists:foreach(DoF, NPCs).
+    case file:consult("script/npcs.aliter") of
+        {ok, NPCs} ->
+            DoF = fun({Name, Sprite, Map, Positions, Actions}) ->
+                          Pos = fun({X, Y, Dir}) ->
+                                        Msg = {register_npc, Name, Sprite,
+                                               Map, {X, Y}, Dir, Actions},
+                                        gen_server:cast(zone_master, Msg)
+                                end,
+                          lists:foreach(Pos, Positions)
+                  end,
+            lists:foreach(DoF, NPCs);
+        {error, Reason} ->
+            lager:log(error,
+                      self(),
+                      "Critical failure: Could not load NPCs: ~p. Exiting",
+                      [Reason]),
+            timer:sleep(1000), %% give lager time to print before stopping VM
+            erlang:halt()
+    end.
 
 do_all(FSM, Packets) ->
     gen_statem:cast(FSM, {send_packets, Packets}).

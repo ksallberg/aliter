@@ -1,8 +1,8 @@
 {"Guard", 105, <<"prontera">>,
-  [ {160, 130, west}
-  , {223, 99, northwest}
-  , {229, 104, southeast}
-  , {47, 339, southeast}],
+  [{160, 130, west}
+  ,{223, 99, northwest}
+  ,{229, 104, southeast}
+  ,{47, 339, southeast}],
   [{say, "[Prontera Guard]"},
    {say, "Welcome to prontera"},
    next,
@@ -11,11 +11,216 @@
    {say, "ok"},
    close]}.
 
-{"Guard2", 21, <<"prontera">>,
-  [ {161, 131, west}],
-  [{say, "[Prontera Guard]"},
+{"Shuger", 98, <<"prontera">>,
+  [{101, 288, southwest}],
+  [{say, "[Shuger]"},
+   {say, "Outside the safety of the city, there is a pink beast"
+         "known as poring"},
+   next,
+   {say, "OK I'll say this too."},
+   close]}.
+
+{"Tono", 97, <<"prontera">>,
+  [{54, 240, east}],
+  [{say, "[Tono]"},
+   {say, "Did you know?"},
+   next,
+   {say, "[Tono]"},
+   {say, "The larve of Creamy is Fabre. So, those green little wormy things "
+         "are actually the babies of those pinkish, purply butterfly things "
+         "you see around."},
+   close]}.
+
+{"Merideth", 91, <<"prontera">>,
+  [{106, 116, east}],
+  [{say, "[Merideth]"},
+   {say, "The weather was nice on my day off so my family and I went for a picnic. We chose to got a slightly secluded area where I saw something really interesting..."},
+   close]}.
+
+{"YuPi", 102, <<"prontera">>,
+  [{160, 133, west}],
+  [{say, "[YuPi]"},
+   {say, "Although many monsters may look the same, be careful! There are variations among monsters that have the same basic form."},
+   close]}.
+
+{"YuNa", 700, <<"prontera">>,
+  [{149, 202, west}],
+  [{say, "[YuNa]"},
+   {say, "Behold..."},
+   {say, "Mighty Odin!"},
+   {say, "God of wisdom!"},
+   {say, "God of war!"},
+   close]}.
+
+{"Strife", 48, <<"prontera">>,
+  [{149, 203, west}],
+  [{say, "[Strife]"},
+   {say, "Hello"},
+   close]}.
+
+{"Dairenne", 90, <<"prontera">>,
+  [{78, 150, southwest}],
+  [{say, "[Dairenne]"},
+   {say, "Ahh..."},
+   {say, "The streets are too crowded these days. *cough cough* Look at all this dust, not everything about living in the capital city is good. Anyway, may I help you?"},
+   close]}.
+
+{"LibraryGirl", 71, <<"prt_in">>,
+  [{178, 92, north}],
+  [{say, "[Library Girl Ellen]"},
+   {say, "Here in the Eastern branch of the Prontera Library, we provide Monster Encyclopedias in which creatures are organized by their properties. We also have books on Merchant and Blacksmith skills."},
+   close]}.
+
+{"AnOldMan1", 56, <<"prt_in">>,
+  [{47, 141, north}],
+  [{say, "[An Old Man]"},
+   {say, "bla bla"},
+   close]}.
+
+{"AnOldMan2", 54, <<"prt_in">>,
+  [{26, 31, north}],
+  [{say, "[Old Man]"},
+   {say, "I dunno if you'll believe me, but I saw the weirdest thing down in the Culvert Sewers."},
+   close]}.
+
+{"Bartender", 61, <<"prt_in">>,
+  [{180, 20, west}],
+  [{say, "[Bartender]"},
+   {say, "bla bla"},
+   close]}.
+
+{"Shevild", 87, <<"prt_in">>,
+  [{173, 24, west}],
+  [{say, "[Shevild]"},
+   {say, "bla bla"},
+   close]}.
+
+{"TenSue", 97, <<"prt_in">>,
+  [{177, 20, west}],
+  [{say, "[TenSue]"},
+   {say, "bla bla"},
+   close]}.
+
+{"Marvin", 80, <<"prt_in">>,
+  [{177, 18, west}],
+  [{say, "[Marvin]"},
+   {say, "bla bla"},
+   close]}.
+
+{"GinedinRephere", 55, <<"prt_in">>,
+  [{284, 168, southwest}],
+  [{say, "[Tailor Ginedin Rephere]"},
+   {say, "11..."},
+   {say, "12..."},
+   {say, "Mmm, good. I think I'll be able to finish before tonight's party."},
+   close]}.
+
+{"Garnet", 55, <<"prt_church">>,
+  [{103, 76, north}],
+  [{say, "[Garnet]"},
+   {say, "hello.."},
+   close]}.
+
+{"Henson", 55, <<"prt_church">>,
+  [{103, 71, north}],
+  [{say, "[Henson]"},
+   {say, "Well hello!"},
+   close]}.
+
+{"Lady", 90, <<"payon">>,
+  [{246, 154, north}],
+  [{say, "[Lady]"},
+   {say, "A long time ago,"},
+   {say, "when Payon was still"},
+   {say, "developing, many of the"},
+   {say, "villagers lived in poverty."},
+   close]}.
+
+{"Young Man", 59, <<"payon">>,
+  [{134, 211, south}],
+  [{say, "[Young Man]"},
    {say, "Time to chose"},
    {menu, [{"First", {say, "You chose first"}},
            {"Second", {say, "You chose second"}}]},
    {say, "OK I'll say this too."},
+   close]}.
+
+{"Young Man", 88, <<"payon">>,
+  [{173, 82, north}],
+  [{say, "[Young Man]"},
+   {say, "I remember the story my dearly departed grandfather has told me."},
+   close]}.
+
+{"Guardsman", 708, <<"payon">>,
+  [{158, 246, southwest}],
+  [{say, "[Guardsman]"},
+   {say, "This is the Central Palace of Payon. This place is open to the public, but in accordance with our laws, you must behave in an orderly fashion once inside."},
+   close]}.
+
+{"Woman1", 66, <<"payon">>,
+  [{249, 156, north}],
+  [{say, "[Woman]"},
+   {say, "Hello."},
+   close]}.
+
+{"Woman2", 66, <<"payon">>,
+  [{246, 158, southeast}],
+  [{say, "[Woman]"},
+   {say, "Hello..."},
+   close]}.
+
+{"Drunkard", 120, <<"payon">>,
+  [{210, 110, northwest}],
+  [{say, "[Drunkard]"},
+   {say, "auughhrh..."},
+   close]}.
+
+{"MonsterScholar", 98, <<"payon">>,
+  [{132, 235, southwest}],
+  [{say, "[Monster Scholar Vuicokk]"},
+   {say, "Nice to meet you."},
+   {say, "I am called Vuicokk."},
+   {say, "I am a scholar in the Monster Research organization of the Rune Midgarts Kingdom. Do you have any questions about monsters?"},
+   close]}.
+
+{"Waitress", 90, <<"payon_in01">>,
+  [{180, 7, west}],
+  [{say, "[Waitress]"},
+   {say, "Hello!"},
+   close]}.
+
+{"ChiefGuardsman", 708, <<"payon_in03">>,
+  [{96, 116, southwest}],
+  [{say, "[Chief Guardsman]"},
+   {say, "What brings you here?"},
+   close]}.
+
+{"ArcherZakk", 88, <<"payon_in01">>,
+  [{66, 64, southeast}],
+  [{say, "[Archer Zakk]"},
+   {say, "I'm kind of worried about one of my pals."},
+   close]}.
+
+{"ArcherWolt", 88, <<"payon_in01">>,
+  [{67, 59, west}],
+  [{say, "[Archer Wolt]"},
+   {say, "Archers should practice as much as they can. Otherwise, they'll never become experts."},
+   close]}.
+
+{"Chief", 107, <<"payon_in03">>,
+  [{99, 190, south}],
+  [{say, "[Chief]"},
+   {say, "What brings you here Im the CHIEF?"},
+   close]}.
+
+{"Guard", 708, <<"payon_in03">>,
+  [{102, 185, southeast}],
+  [{say, "[Guard]"},
+   {say, "What brings you here? ..."},
+   close]}.
+
+{"ArcherJoe", 88, <<"pay_arche">>,
+  [{77, 131, west}],
+  [{say, "[Archer Joe]"},
+   {say, "Such a wonderful place! Superb Bows and skillful Archers!"},
    close]}.
