@@ -34,13 +34,16 @@
 {"Merideth", 91, <<"prontera">>,
   [{106, 116, east}],
   [{say, "[Merideth]"},
-   {say, "The weather was nice on my day off so my family and I went for a picnic. We chose to got a slightly secluded area where I saw something really interesting..."},
+   {say, "The weather was nice on my day off so my family and I "
+         "went for a picnic. We chose to got a slightly secluded "
+         "area where I saw something really interesting..."},
    close]}.
 
 {"YuPi", 102, <<"prontera">>,
   [{160, 133, west}],
   [{say, "[YuPi]"},
-   {say, "Although many monsters may look the same, be careful! There are variations among monsters that have the same basic form."},
+   {say, "Although many monsters may look the same, be careful! "
+         "There are variations among monsters that have the same basic form."},
    close]}.
 
 {"YuNa", 700, <<"prontera">>,
@@ -62,13 +65,18 @@
   [{78, 150, southwest}],
   [{say, "[Dairenne]"},
    {say, "Ahh..."},
-   {say, "The streets are too crowded these days. *cough cough* Look at all this dust, not everything about living in the capital city is good. Anyway, may I help you?"},
+   {say, "The streets are too crowded these days. *cough cough* "
+         "Look at all this dust, not everything about living in the"
+         " capital city is good. Anyway, may I help you?"},
    close]}.
 
 {"LibraryGirl", 71, <<"prt_in">>,
   [{178, 92, north}],
   [{say, "[Library Girl Ellen]"},
-   {say, "Here in the Eastern branch of the Prontera Library, we provide Monster Encyclopedias in which creatures are organized by their properties. We also have books on Merchant and Blacksmith skills."},
+   {say, "Here in the Eastern branch of the Prontera Library, "
+         "we provide Monster Encyclopedias in which creatures are "
+         "organized by their properties. "
+         "We also have books on Merchant and Blacksmith skills."},
    close]}.
 
 {"AnOldMan1", 56, <<"prt_in">>,
@@ -80,7 +88,8 @@
 {"AnOldMan2", 54, <<"prt_in">>,
   [{26, 31, north}],
   [{say, "[Old Man]"},
-   {say, "I dunno if you'll believe me, but I saw the weirdest thing down in the Culvert Sewers."},
+   {say, "I dunno if you'll believe me, but I saw the "
+         "weirdest thing down in the Culvert Sewers."},
    close]}.
 
 {"Bartender", 61, <<"prt_in">>,
@@ -154,7 +163,9 @@
 {"Guardsman", 708, <<"payon">>,
   [{158, 246, southwest}],
   [{say, "[Guardsman]"},
-   {say, "This is the Central Palace of Payon. This place is open to the public, but in accordance with our laws, you must behave in an orderly fashion once inside."},
+   {say, "This is the Central Palace of Payon. "
+         "This place is open to the public, but in accordance with our laws, "
+         "you must behave in an orderly fashion once inside."},
    close]}.
 
 {"Woman1", 66, <<"payon">>,
@@ -180,7 +191,8 @@
   [{say, "[Monster Scholar Vuicokk]"},
    {say, "Nice to meet you."},
    {say, "I am called Vuicokk."},
-   {say, "I am a scholar in the Monster Research organization of the Rune Midgarts Kingdom. Do you have any questions about monsters?"},
+   {say, "I am a scholar in the Monster Research organization of the "
+         "Rune Midgarts Kingdom. Do you have any questions about monsters?"},
    close]}.
 
 {"Waitress", 90, <<"payon_in01">>,
@@ -204,7 +216,8 @@
 {"ArcherWolt", 88, <<"payon_in01">>,
   [{67, 59, west}],
   [{say, "[Archer Wolt]"},
-   {say, "Archers should practice as much as they can. Otherwise, they'll never become experts."},
+   {say, "Archers should practice as much as they can. "
+         "Otherwise, they'll never become experts."},
    close]}.
 
 {"Chief", 107, <<"payon_in03">>,

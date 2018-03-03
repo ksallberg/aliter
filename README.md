@@ -87,3 +87,22 @@ var ROConfig = {
 ### Maps
 
 For currently enabled maps, see zone_map:zones/0.
+
+### NPCs
+
+Limited scripting of NPCs is supported, see "script/npcs.aliter",
+
+Example of 'if-statement':
+
+```
+{"Young Man", 59, <<"payon">>,
+  [{134, 211, south}],
+  [{say, "[Young Man]"},
+   {say, "Time to chose"},
+   {menu, [{"First", {say, "You chose first"}},
+           {"Second", {say, "You chose second"}}]},
+   {say, "OK I'll say one more thing:"},
+   next,
+   {say, "Bye!"},
+   close]}.
+```
