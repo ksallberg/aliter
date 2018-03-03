@@ -20,10 +20,10 @@ start_link() ->
     gen_server_tcp:start_link({local, login_server}, ?MODULE, Port, []).
 
 init(Port) ->
-    case redis:connect() of
+    case eredis:start_link() of
         {ok, DB} ->
             {ok, _Keepalive} = timer:apply_interval(timer:seconds(30),
-                                                    redis,
+                                                    db,
                                                     ping,
                                                     [DB]),
             {ok, {Port, login_fsm, login_packets}, {[], [DB]}};

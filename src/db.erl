@@ -2,6 +2,8 @@
 
 -include("records.hrl").
 
+-export([ ping/1 ]).
+
 -export([ save_account/2
         , get_account/2
         , get_account_id/2 ]).
@@ -69,13 +71,13 @@ get_account(C, ID) ->
        login_count = numeric(gethash(C, Hash, "login_count")),
        last_login = numeric(gethash(C, Hash, "last_login")),
        last_ip = gethash(C, Hash, "last_ip"),
-       gm_level = numeric(gethash(C, Hash, "gm_level"))
-      }.
+       gm_level = numeric(gethash(C, Hash, "gm_level"))}.
 
 get_account_id(C, Name) ->
     case db_get(C, ["account:", Name]) of
         undefined -> nil;
-        {ok, X} -> numeric(X)
+        {ok, X} ->
+            numeric(X)
     end.
 
 save_char(C, Char) ->
@@ -310,7 +312,6 @@ delete_guild_relationship(C, GuildID, TargetID) ->
          integer_to_list(TargetID)),
     ok.
 
-
 get_guild_relationship(C, GuildID, TargetID) ->
     numeric(
       gethash(C,
@@ -397,55 +398,70 @@ gethash(C, Key, Field) ->
         {ok, V} -> V
     end.
 
-%% gethash(C, Key, Field) ->
-%%     case eredis:q(C, ["HGET", Key, Field]) of
-%%         undefined -> error(["undefined", Key, Field]);
-%%         {ok, V} -> V
-%%     end.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Facade to whatever redis lib used: %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 incr(C, ToIncr) ->
-    redis:incr(C, ToIncr).
+    {ok, X} = eredis:q(C, ["INCR", ToIncr]),
+    list_to_integer(binary_to_list(X)).
 
 sethash(C, Key, Field, Value) ->
-    redis:hset(C, Key, Field, Value).
-    %% eredis:q(C, ["HSET", Key, Field, Value]).
+    eredis:q(C, ["HSET", Key, Field, Value]).
 
 delete(C, What) ->
-    redis:del(C, What).
-    %% eredis:q(C, ["DEL", What]).
+    eredis:q(C, ["DEL", What]).
 
 sadd(C, Path, What) ->
-    redis:sadd(C, Path, What).
+    eredis:q(C, ["SADD", Path, What]).
 
 set(C, Path, What) ->
-    redis:set(C, Path, What).
+    eredis:q(C, ["SET", Path, What]).
 
 srem(C, Path, What) ->
-    redis:srem(C, Path, What).
+    eredis:q(C, ["SREM", Path, What]).
 
 hget(C, Path, What) ->
-    redis:hget(C, Path, What).
+    eredis:q(C, ["HGET", Path, What]).
 
 hgetall(C, Path) ->
-    redis:hgetall(C, Path).
+    {ok, X} = eredis:q(C, ["HGETALL", Path]),
+    multi_hashlist(X).
+
+%% stolen from erlang-redis:
+multi_hashlist(Values) ->
+    multi_hashlist(Values, []).
+multi_hashlist([], Acc) -> lists:reverse(Acc);
+multi_hashlist([Name, Val|Rest], Acc) ->
+    multi_hashlist(Rest, [{Name, Val}|Acc]).
 
 hdel(C, Path, What) ->
-    redis:hdel(C, Path, What).
+    eredis:q(C, ["HDEL", Path, What]).
 
 db_get(C, What) ->
-    redis:get(C, What).
+    case eredis:q(C, ["GET", What]) of
+        {ok, undefined} ->
+            undefined;
+        Other ->
+            Other
+    end.
 
 lrange(C, Path, Id, Def) ->
-    redis:lrange(C, Path, Id, Def).
+    {ok, X} = eredis:q(C, ["LRANGE", Path, Id, Def]),
+    X.
 
 lrem(C, Path, Def, CharacterID) ->
-    redis:lrem(C, Path, Def, CharacterID).
+    eredis:q(C, ["LREM", Path, Def, CharacterID]).
 
 rpush(C, Path, What) ->
-    redis:rpush(C, Path, What).
+    eredis:q(C, ["RPUSH", Path, What]).
 
 smembers(C, Path) ->
-    redis:smembers(C, Path).
+    {ok, X} = eredis:q(C, ["SMEMBERS", Path]),
+    X.
+
+ping(C) ->
+    eredis:q(C, ["PING"]).
 
 %% TODO: this is probably only called with one form
 numeric(I) when is_binary(I) ->

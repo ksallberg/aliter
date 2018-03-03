@@ -19,15 +19,11 @@ start_link(_Conf) ->
     gen_server_tcp:start_link({local, char_server}, ?MODULE, ?CHAR_PORT, []).
 
 init(Port) ->
-    {ok, DB} = redis:connect(), % TODO: config
-
+    {ok, DB} = eredis:start_link(),
     {ok, _Keepalive} =
-        timer:apply_interval(timer:seconds(30), redis, ping, [DB]),
-
+        timer:apply_interval(timer:seconds(30), db, ping, [DB]),
     {ok,
-     {Port, char_fsm, char_packets_24},
-     {#state{db = DB, sessions = []}, [DB]}
-    }.
+     {Port, char_fsm, char_packets_24}, {#state{db = DB, sessions = []}, [DB]}}.
 
 handle_call(
   {verify_session, AccountID, CharacterID, SessionIDa},
