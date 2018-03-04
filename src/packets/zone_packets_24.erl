@@ -14,7 +14,6 @@
 packet_size(X) ->
     packets:packet_size(X).
 
-%% FIXME: what is 60, 8?
 unpack(<<16#083c:16/little,
          AccountID:32/little,
          CharacterID:32/little,
@@ -87,6 +86,7 @@ pack(accept, {Tick, {X, Y, D}}) ->
       5,   % X size(?), static
       5>>; % Y size(?), static
 pack(show_npc, N) -> % TODO: This isn't actually specific to NPCs
+    io:format("show npc...................... ~p \n", [N]),
     {X, Y} = N#npc.coordinates,
     D = case N#npc.direction of
             north -> 0;

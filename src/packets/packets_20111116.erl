@@ -5,6 +5,7 @@
 
 -export([packet_size/1]).
 
+packet_size(16#083c) -> 19;
 packet_size(16#0064) -> 55;
 packet_size(16#0065) -> 17;
 packet_size(16#0066) -> 3;

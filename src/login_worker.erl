@@ -65,6 +65,9 @@ handle_cast({login, PacketVer, RawLogin, Password, Region},
     end;
 handle_cast({set_server, Server}, State) ->
     {noreply, State#login_state{server = Server}};
+handle_cast(stop, State) ->
+    {noreply,
+     State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
 handle_cast(exit, State) ->
     {stop, normal, State}.
 

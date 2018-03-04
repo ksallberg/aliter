@@ -18,7 +18,7 @@
 
 start_link() ->
     Port = ?CHAR_PORT,
-    gen_server:start_link(?MODULE, Port, []).
+    gen_server:start_link({local, char_server}, ?MODULE, Port, []).
 
 init(Port) ->
     {ok, DB} = eredis:start_link(),
@@ -28,10 +28,9 @@ init(Port) ->
                                    ragnarok_proto, [char_packets_24, DB]),
     {ok, #state{db = DB, sessions = []}}.
 
-handle_call(
-  {verify_session, AccountID, CharacterID, SessionIDa},
-  _From,
-  State = #state{sessions = Sessions}) ->
+handle_call({verify_session, AccountID, CharacterID, SessionIDa},
+            _From,
+            State = #state{sessions = Sessions}) ->
     lager:log(info, self(), "Verifying session. ~p ~p ~p ~p",
               [{account, AccountID},
                {character, CharacterID},

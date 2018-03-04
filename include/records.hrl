@@ -62,7 +62,8 @@
          walk_changed,
          npc,
          char_worker,
-         is_walking=false
+         is_walking=false,
+         packet_handler
         }).
 
 -record(map_state,

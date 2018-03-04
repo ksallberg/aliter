@@ -22,15 +22,18 @@ init(Ref, Socket, Transport, [PacketHandler, DB]) ->
                                                   [Socket, DB, PacketHandler]);
                        char_packets_24 ->
                            supervisor:start_child(char_worker_sup,
-                                                  [Socket, DB, PacketHandler]);
-                       zone_packets ->
-                           supervisor:start_child(zone_worker_sup,
                                                   [Socket, DB, PacketHandler])
                    end,
+    ok = ranch:accept_ack(Ref),
+    parse_loop(Socket, Transport, PacketHandler, Worker);
+init(Ref, Socket, Transport, [PacketHandler, DB, Server]) ->
+    {ok, Worker} = supervisor:start_child(zone_worker_sup,
+                                          [Socket, DB, PacketHandler, Server]),
     ok = ranch:accept_ack(Ref),
     parse_loop(Socket, Transport, PacketHandler, Worker).
 
 verify({Packet, Data}, PacketHandler) ->
+    io:format("!!!!!!!!!!!!!!!!!!!PacketHandler: ~p\n", [PacketHandler]),
     Packed = iolist_to_binary(PacketHandler:pack(Packet, Data)),
     <<Header:16/little, _/binary>> = Packed,
     Size = PacketHandler:packet_size(Header),
@@ -44,17 +47,13 @@ verify({Packet, Data}, PacketHandler) ->
 
 %% @hidden Receive a packet, skipping unknown ones.
 parse_loop(Socket, Transport, PacketHandler, Worker) ->
-    io:format("apa1 ~p \n", [Transport]),
     case Transport:recv(Socket, 1, infinity) of
         {ok, <<H1>>} ->
-            io:format("apa2\n", []),
             case Transport:recv(Socket, 1, infinity) of
                 {ok, <<H2>>} ->
                     <<Header:16/little>> = <<H1, H2>>,
-                    io:format("apa3\n", []),
                     case PacketHandler:packet_size(Header) of
                         undefined ->
-                            io:format("NEEEEEJ\n", []),
                             lager:log(error, self(),
                                       "Received unknown packet ~p",
                                       [{header, Header}]),
@@ -62,7 +61,6 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                                        PacketHandler, Worker);
                         %% Variable-length packet
                         0 ->
-                            io:format("JAAAAAAAAAA1\n", []),
                             Next = fun() ->
                                            parse_loop(Socket,
                                                       Transport,
@@ -77,7 +75,9 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                                             Packet = <<Header:16/little,
                                                        Length:16/little,
                                                        Rest/binary>>,
-                                            send_bin(Socket, Packet),
+                                            io:format("oj da..\n", []),
+                                            handle_unpack(PacketHandler, Packet,
+                                                          Worker),
                                             parse_loop(Socket,
                                                        Transport,
                                                        PacketHandler,
@@ -110,11 +110,10 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                             end;
                         %% Already read all of it
                         2 ->
-                            io:format("JAAAAAAAAAA2\n", []),
-                            Worker ! {tcp, Socket, <<Header:16/little>>},
+                            handle_unpack(PacketHandler, <<Header:16/little>>,
+                                          Worker),
                             parse_loop(Socket, Transport, PacketHandler, Worker);
                         Size ->
-                            io:format("JAAAAAAAAAA3\n", []),
                             case Transport:recv(Socket, Size - 2, infinity) of
                                 {ok, Rest} ->
                                     Packet = <<Header:16/little, Rest/binary>>,
@@ -161,9 +160,11 @@ failed_remainder(Header, Size, Reason) ->
               ]).
 
 send_packet({Packet, Data}, Socket, PacketHandler) ->
+    io:format("Send: ~p\n", [{Packet, Data}]),
     Packed = iolist_to_binary(PacketHandler:pack(Packet, Data)),
     case verify({Packet, Data}, PacketHandler) of
         {ok, Binary} ->
+            io:format("!!!!!Send to client: ~p\n", [Binary]),
             send_bin(Socket, Binary);
         {badsize, Wanted} ->
             lager:log(error, self(),
@@ -182,11 +183,12 @@ send_packets(Socket, Packets, PacketHandler) ->
                              {ok, Binary} -> Binary
                          end
                  end, Packets),
-    gen_tcp:send(Socket, iolist_to_binary(Binaries)).
+    ranch_tcp:send(Socket, iolist_to_binary(Binaries)).
 
 
 send_bin(Socket, Packet) ->
-    gen_tcp:send(Socket, Packet).
+    io:format("sned bin...~p\n", [Packet]),
+    ranch_tcp:send(Socket, Packet).
 
 close_socket(Socket, _PacketHandler) ->
     ranch_tcp:close(Socket).
