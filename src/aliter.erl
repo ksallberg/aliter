@@ -10,6 +10,11 @@
 
 start(_Type, StartArgs) ->
     lager:start(),
+    ok = application:start(crypto),
+    ok = application:start(asn1),
+    ok = application:start(public_key),
+    ok = application:start(ssl),
+    ok = application:start(ranch),
     aliter_sup:start_link(StartArgs).
 
 shutdown() ->

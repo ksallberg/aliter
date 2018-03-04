@@ -5,7 +5,7 @@
 -include("records.hrl").
 -include("ro.hrl").
 
--export([ start_link/1 ]).
+-export([ start_link/3 ]).
 
 -export([ init/1
         , code_change/3
@@ -18,12 +18,12 @@
 -define(FEMALE, 0).
 -define(MALE, 1).
 
-start_link(TCP) ->
-    gen_server:start_link(?MODULE, TCP, []).
+start_link(TCP, DB, PacketHandler) ->
+    gen_server:start_link(?MODULE, [TCP, DB, PacketHandler], []).
 
-init({TCP, [DB]}) ->
+init([TCP, DB, PacketHandler]) ->
     process_flag(trap_exit, true),
-    {ok, #login_state{tcp = TCP, db = DB}}.
+    {ok, #login_state{tcp = TCP, db = DB, packet_handler = PacketHandler}}.
 
 handle_cast({login, PacketVer, RawLogin, Password, Region},
             State = #login_state{tcp = TCP, db = DB}) ->
@@ -36,16 +36,17 @@ handle_cast({login, PacketVer, RawLogin, Password, Region},
     GenderS = string:sub_string(RawLogin, length(RawLogin)-1, length(RawLogin)),
     Login = register_account(DB, RawLogin, Password, GenderS),
     Versioned = State#login_state{packet_ver = PacketVer},
+    PacketHandler = State#login_state.packet_handler,
     case Login of
         A = #account{} ->
             successful_login(A, Versioned);
-
         _ ->
             GetID = db:get_account_id(DB, Login),
             case GetID of
                 % Bad login
                 nil ->
-                    TCP ! {refuse, {0, ""}},
+                    ragnarok_proto:send_packet({refuse, {0, ""}},
+                                               TCP, PacketHandler),
                     {noreply, State};
                 ID ->
                     Account = db:get_account(DB, ID),
@@ -53,7 +54,8 @@ handle_cast({login, PacketVer, RawLogin, Password, Region},
                     if
                         % Bad password
                         Account#account.password /= Hashed ->
-                            TCP ! {refuse, {1, ""}},
+                            ragnarok_proto:send_packet({refuse, {1, ""}},
+                                                       TCP, PacketHandler),
                             {noreply, State};
                         % Successful auth
                         true ->
@@ -65,7 +67,6 @@ handle_cast({set_server, Server}, State) ->
     {noreply, State#login_state{server = Server}};
 handle_cast(exit, State) ->
     {stop, normal, State}.
-
 
 handle_call(switch_char, _From, State = #login_state{die = Die}) ->
     case Die of
@@ -80,6 +81,7 @@ handle_info(stop, State) ->
     {noreply,
      State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
 handle_info(exit, State) ->
+    io:format("close login_worker\n", []),
     {stop, normal, State}.
 
 code_change(_, State, _) ->
@@ -92,7 +94,6 @@ terminate(_Reason, _State) ->
     ok.
 
 %% --helpers
-
 successful_login(A, State) ->
     %% Generate random IDs using current time as initial seed
     {A1, A2, A3} = erlang:timestamp(),
@@ -105,8 +106,10 @@ successful_login(A, State) ->
     Servers = [{?CHAR_IP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
                 0, _Maint = 0, _New = 0}],
     M = {accept, {LoginIDa, LoginIDb, A#account.id, A#account.gender, Servers}},
-    State#login_state.tcp ! M,
-    State#login_state.tcp ! close,
+    Socket = State#login_state.tcp,
+    PacketHandler = State#login_state.packet_handler,
+    ragnarok_proto:send_packet(M, Socket, PacketHandler),
+    ragnarok_proto:close_socket(Socket, PacketHandler),
     handle_info(stop, State#login_state{account = A,
                                         id_a = LoginIDa,
                                         id_b = LoginIDb}).

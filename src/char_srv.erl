@@ -1,5 +1,6 @@
 -module(char_srv).
--behaviour(gen_server_tcp).
+
+-behaviour(gen_server).
 
 -include("records.hrl").
 -include("ro.hrl").

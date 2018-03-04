@@ -1,6 +1,6 @@
 -module(login_srv).
 
--behaviour(gen_server_tcp).
+-behaviour(gen_server).
 
 -include("records.hrl").
 -include("ro.hrl").
@@ -17,16 +17,20 @@
 start_link() ->
     Port = ?LOGIN_PORT,
     lager:log(info, self(), "Starting login server at port: ~p~n", [Port]),
-    gen_server_tcp:start_link({local, login_server}, ?MODULE, Port, []).
+    gen_server:start_link(?MODULE, Port, []).
 
 init(Port) ->
     case eredis:start_link() of
         {ok, DB} ->
+            %% Keep connection to redis
             {ok, _Keepalive} = timer:apply_interval(timer:seconds(30),
                                                     db,
                                                     ping,
                                                     [DB]),
-            {ok, {Port, login_worker, login_packets}, {[], [DB]}};
+            %% Start TCP listener, and worker
+            {ok, _} = ranch:start_listener(tcp_echo, ranch_tcp, [{port, Port}],
+                                           ragnarok_proto, [login_packets, DB]),
+            {ok, []};
         _ ->
             lager:log(error, self(), "No redis DB found! ~n", []),
             throw({exit, no_redis})

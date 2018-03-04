@@ -27,7 +27,8 @@
          account,
          id_a,
          id_b,
-         packet_ver}).
+         packet_ver,
+         packet_handler}).
 
 -record(char_state,
         {server,

@@ -24,7 +24,13 @@ init(_) ->
                   shutdown => 1000,
                   type => worker,
                   modules => [login_srv]},
-    {ok, {SupFlags, [LoginServ]}}.
+    LoginWorkerSup = #{id => login_worker_sup,
+                       start => {login_worker_sup, start_link, []},
+                       restart => permanent,
+                       shutdown => 1000,
+                       type => supervisor,
+                       modules => [login_worker_sup]},
+    {ok, {SupFlags, [LoginServ, LoginWorkerSup]}}.
 
 install() -> ok.
 uninstall() -> ok.
