@@ -28,8 +28,8 @@ handle_call({get_actor, ActorID}, _From,
                                npcs = NPCs,
                                mobs = Mobs}) ->
     case proplists:lookup(ActorID, Players) of
-        {ActorID, FSM} ->
-            {reply, {player, FSM}, State};
+        {ActorID, Worker} ->
+            {reply, {player, Worker}, State};
         none ->
             case lists:keyfind(ActorID, 2, NPCs) of
                 false ->
@@ -59,8 +59,8 @@ handle_cast({register_mob, NPC}, State = #map_state{mobs = NPCs}) ->
 handle_cast({remove_player, AccountID}, State = #map_state{players=Players}) ->
     {noreply, State#map_state{players=lists:keydelete(AccountID, 1, Players)}};
 handle_cast({send_to_players, Packet, Data}, State) ->
-    IterF = fun({_ID, FSM}) ->
-                    gen_statem:cast(FSM, {send_packet, Packet, Data})
+    IterF = fun({_ID, Worker}) ->
+                    gen_server:cast(Worker, {send_packet, Packet, Data})
             end,
     lists:foreach(IterF, State#map_state.players),
     {noreply, State};
@@ -68,8 +68,8 @@ handle_cast({send_to_other_players, Self, Packet, Data}, State) ->
     Cmp = fun(#zone_state{char = C}) ->
                   (C#char.id /= Self)
           end,
-    IterF = fun({_ID, FSM}) ->
-                    gen_statem:cast(FSM, {send_packet_if, Cmp, Packet, Data})
+    IterF = fun({_ID, Worker}) ->
+                    gen_server:cast(Worker, {send_packet_if, Cmp, Packet, Data})
             end,
     lists:foreach(IterF, State#map_state.players),
     {noreply, State};
@@ -77,8 +77,8 @@ handle_cast({send_to_players_in_sight, {X, Y}, Packet, Data}, State) ->
     Cmp = fun(#zone_state{char = C}) ->
                   in_range(C, {X, Y})
           end,
-    IterF = fun({_ID, FSM}) ->
-                    gen_statem:cast(FSM, {send_packet_if, Cmp, Packet, Data})
+    IterF = fun({_ID, Worker}) ->
+                    gen_server:cast(Worker, {send_packet_if, Cmp, Packet, Data})
             end,
     lists:foreach(IterF, State#map_state.players),
     {noreply, State};
@@ -88,26 +88,26 @@ handle_cast({send_to_other_players_in_sight, {X, Y}, Self, Packet, Data},
                   (C#char.id /= Self) and
                       in_range(C, {X, Y})
           end,
-    IterF = fun({_ID, FSM}) ->
-                    gen_statem:cast(FSM, {send_packet_if, Cmp, Packet, Data})
+    IterF = fun({_ID, Worker}) ->
+                    gen_server:cast(Worker, {send_packet_if, Cmp, Packet, Data})
             end,
     lists:foreach(IterF, State#map_state.players),
     {noreply, State};
-handle_cast({show_actors, {SelfID, SelfFSM}}, State) ->
+handle_cast({show_actors, {SelfID, SelfWorker}}, State) ->
     %% Show players
-    PlayerIterF = fun({ID, _FSM}) when ID == SelfID ->
+    PlayerIterF = fun({ID, _Worker}) when ID == SelfID ->
                           ok;
-                     ({_ID, FSM}) ->
-                          gen_statem:cast(FSM, {show_to, SelfFSM})
+                     ({_ID, Worker}) ->
+                          gen_server:cast(Worker, {show_to, SelfWorker})
                   end,
     lists:foreach(PlayerIterF, State#map_state.players),
     NPCIterF = fun(N) ->
-                       gen_statem:cast(SelfFSM, {send_packet, show_npc, N})
+                       gen_server:cast(SelfWorker, {send_packet, show_npc, N})
                end,
     lists:foreach(NPCIterF, State#map_state.npcs),
     MobIterF = fun(#npc{id=GID, sprite=Sprite, coordinates={X, Y}}) ->
                        Mob = {Sprite, X, Y, GID},
-                       gen_statem:cast(SelfFSM, {send_packet, monster, Mob})
+                       gen_server:cast(SelfWorker, {send_packet, monster, Mob})
                end,
     lists:foreach(MobIterF, State#map_state.mobs),
     {noreply, State};
@@ -135,8 +135,8 @@ in_range(C, {X, Y}) ->
 
 get_player_by(_Pred, []) ->
     none;
-get_player_by(Pred, [{_ID, FSM} | Players]) ->
-    case gen_statem:call(FSM, get_state) of
+get_player_by(Pred, [{_ID, Worker} | Players]) ->
+    case gen_server:call(Worker, get_state) of
         {ok, State} ->
             case Pred(State) of
                 false ->

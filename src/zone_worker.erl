@@ -1,6 +1,6 @@
--module(zone_fsm).
+-module(zone_worker).
 
--behaviour(gen_statem).
+-behaviour(gen_server).
 
 -include("records.hrl").
 -include("ro.hrl").
@@ -9,42 +9,39 @@
 
 -export([ start_link/1 ]).
 
--export([ init/1
-        , locked/3
-        , valid/3
-        , sitting/3
-        , walking/3
-        , terminate/3 ]).
+-export([ init/1 ]).
 
 -export([ show_actors/1
         , say/2 ]).
 
--export([ callback_mode/0 ]).
+-export([ code_change/3
+        , format_status/2
+        , handle_call/3
+        , handle_cast/2
+        , handle_info/2
+        , terminate/2 ]).
 
 -define(WALKSPEED, 150).
-
-callback_mode() ->
-    state_functions.
 
 send(State, Packet) ->
     State#zone_state.tcp ! Packet.
 
 start_link(TCP) ->
-    gen_statem:start_link(?MODULE, TCP, []).
+    gen_server:start_link(?MODULE, TCP, []).
 
 init({TCP, [DB]}) ->
     process_flag(trap_exit, true),
-    {ok, locked, #zone_state{db = DB, tcp = TCP}}.
+    {ok, #zone_state{db = DB, tcp = TCP}}.
 
-locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
+handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
     DB = State#zone_state.db,
     Session =
         gen_server:call(char_server,
                         {verify_session, AccountID, CharacterID, SessionIDa}),
     case Session of
-        {ok, FSM} ->
+        {ok, Worker} ->
             {ok, C = #char_state{char = Char}} =
-                gen_statem:call(FSM, switch_zone),
+                gen_server:call(Worker, switch_zone),
             {ok, Map, MapServer} =
                 gen_server:call(State#zone_state.server, {add_player,
                                                           Char#char.map,
@@ -85,86 +82,48 @@ locked(cast, {connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                                         id_a = C#char_state.id_a,
                                         id_b = C#char_state.id_b,
                                         packet_ver = C#char_state.packet_ver,
-                                        char_fsm = FSM},
-            {next_state, valid, NewState};
+                                        char_worker = Worker},
+            {noreply, NewState};
         invalid ->
             lager:log(warning, "Invalid zone login attempt caught ~p ~p",
                       [{account_id, AccountID},
                        {character_id, CharacterID}]),
-            {next_state, locked, State}
+            {noreply, State}
     end;
-locked(cast, {set_server, Server}, State) ->
-    {next_state, locked, State#zone_state{server = Server}};
-locked(Type, Event, State) ->
-    event(locked, Type, Event, State).
-
-valid(_, {npc_activate, ActorID}, State = #zone_state{map_server=MapServer}) ->
+handle_cast({set_server, Server}, State) ->
+    {noreply, State#zone_state{server = Server}};
+handle_cast({npc_activate, ActorID},
+            State = #zone_state{map_server=MapServer}) ->
     case gen_server:call(MapServer, {get_actor, ActorID}) of
         {npc, NPC} ->
-            ZoneFSM = self(),
+            ZoneWorker = self(),
             SpawnFun = fun() ->
-                               zone_npc:spawn_logic(ZoneFSM, ActorID,
+                               zone_npc:spawn_logic(ZoneWorker, ActorID,
                                                     NPC#npc.main)
                        end,
             Proc = spawn(SpawnFun),
-            {next_state, valid, State#zone_state{npc = {Proc, NPC}}};
+            {noreply, State#zone_state{npc = {Proc, NPC}}};
         _Invalid ->
             lager:log(error, self(), "NPC not found ~p", [{id, ActorID}]),
-            {next_state, valid, State}
+            {noreply, State}
     end;
 %% TODO: handle selecting 255 (Cancel button)
-valid(_, {npc_menu_select, _ActorID, Selection},
-      State = #zone_state{npc = {Pid, _NPC}}) ->
+handle_cast({npc_menu_select, _ActorID, Selection},
+            State = #zone_state{npc = {Pid, _NPC}}) ->
     Pid ! Selection,
-    {next_state, valid, State};
-valid(_, {npc_next, _ActorID}, State = #zone_state{npc = {Pid, _NPC}}) ->
+    {noreply, State};
+handle_cast({npc_next, _ActorID}, State = #zone_state{npc = {Pid, _NPC}}) ->
     Pid ! continue,
-    {next_state, valid, State};
-valid(_, {npc_close, _ActorID}, State = #zone_state{npc = {Pid, _NPC}}) ->
+    {noreply, State};
+handle_cast({npc_close, _ActorID}, State = #zone_state{npc = {Pid, _NPC}}) ->
     Pid ! close,
-    {next_state, valid, State};
-valid(_, map_loaded, State) ->
+    {noreply, State};
+handle_cast(map_loaded, State) ->
     show_actors(State),
-    {next_state, valid, State};
-valid(_, {walk, {ToX, ToY, _ToD}},
-      State = #zone_state{map = Map,
-                          map_server = MapServer,
-                          account = #account{id = AccountID},
-                          char = C = #char{id = CharacterID,
-                                           x = X,
-                                           y = Y}}) ->
-    PathFound = nif:pathfind(Map#map.id, [X | Y], [ToX | ToY]),
-    case PathFound of
-        [{SX, SY, SDir} | Path] ->
-            {ok, Timer} = walk_interval(SDir),
-            {FX, FY, _FDir} = lists:last(PathFound),
-
-            gen_server:cast(
-              MapServer,
-              { send_to_other_players_in_sight,
-                {X, Y},
-                CharacterID,
-                actor_move,
-                {AccountID, {X, Y}, {FX, FY}, zone_master:tick()}
-              }
-             ),
-            send(State, {move, {{X, Y}, {FX, FY}, zone_master:tick()}}),
-            { next_state,
-              walking,
-              State#zone_state{
-                char = C#char{x = SX, y = SY},
-                walk_timer = Timer,
-                walk_prev = {erlang:timestamp(), SDir},
-                walk_path = Path
-               }
-            };
-
-        _Error ->
-            {next_state, valid, State}
-    end;
-valid(_, {create_guild, CharId, GName},
-      State = #zone_state{db   = DB,
-                          char = Char}) ->
+    {noreply, State};
+handle_cast({create_guild, CharId, GName},
+            State = #zone_state{db   = DB,
+                                char = Char}) ->
     Guild = #guild{name      = GName,
                    master_id = CharId},
     GuildSaved = db:save_guild(DB, Guild),
@@ -176,64 +135,78 @@ valid(_, {create_guild, CharId, GName},
     send(State, {guild_status, master}),
     send(State, {update_gd_id, GuildSaved}),
     say("Welcome to guild " ++ GName ++ ".", State),
-    {next_state, valid, State#zone_state{char=NewChar}};
-valid(_, {action_request, _Target, 2},
-      State = #zone_state{map_server = MapServer,
-                          account = #account{id=AccountID},
-                          char = #char{x=X, y=Y}}) ->
+    {noreply, State#zone_state{char=NewChar}};
+handle_cast({action_request, _Target, 2},
+            State = #zone_state{map_server = MapServer,
+                                account = #account{id=AccountID},
+                                char = #char{x=X, y=Y}}) ->
     Msg = {AccountID, 0, zone_master:tick(), 0, 0, 0, 0, 2, 0},
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
-    {next_state, sitting, State};
-%% TODO use GuildID
-valid(_, {guild_emblem, _GuildID}, State) ->
-    send(State, {guild_relationships, []}),
-    {next_state, valid, State};
-valid(Type, Event, State) ->
-    event(valid, Type, Event, State).
-
-sitting(_, {action_request, _Target, 3}, State = #zone_state{
-                                                    map_server = MapServer,
-                                                    account = #account{
-                                                                 id = AID},
-                                                    char = #char{x = X,
-                                                                 y = Y}}) ->
+    {noreply, State};
+handle_cast({action_request, _Target, 3},
+            State = #zone_state{map_server = MapServer,
+                                account = #account{id = AID},
+                                char = #char{x = X, y = Y}}) ->
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, actor_effect,
                      {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
-    {next_state, valid, State};
-sitting(Type, Event, State) ->
-    event(sitting, Type, Event, State).
-
-walking(_, {walk, {ToX, ToY, _ToD}},
-        State = #zone_state{map = Map,
-                            char = #char{x = X,
-                                         y = Y}}) ->
+    {noreply, State};
+%% TODO use GuildID
+handle_cast({guild_emblem, _GuildID}, State) ->
+    send(State, {guild_relationships, []}),
+    {noreply, State};
+%% Change ongoing walk
+handle_cast({walk, {ToX, ToY, _ToD}},
+            State = #zone_state{map = Map,
+                                is_walking = true,
+                                char = #char{x = X,
+                                             y = Y}}) ->
     Path = nif:pathfind(Map#map.id, [X | Y], [ToX | ToY]),
-    {next_state, walking, State#zone_state{walk_path = Path,
-                                           walk_changed = {X, Y}}};
-walking(_, {send_packet_if, Pred, Packet, Data}, State) ->
-    case Pred(State) of
-        true ->
-            send(State, {Packet, Data});
-        false ->
-            ok
-    end,
-    {next_state, walking, State};
-walking(_, step, State = #zone_state{char = C,
-                                     account = A,
-                                     map_server = MapServer,
-                                     walk_timer = Timer,
-                                     walk_prev = {Time, PDir},
-                                     walk_path = Path,
-                                     walk_changed = Changed}) ->
+    {noreply, State#zone_state{walk_path = Path,
+                               walk_changed = {X, Y}}};
+handle_cast({walk, {ToX, ToY, _ToD}},
+            State = #zone_state{map = Map,
+                                map_server = MapServer,
+                                account = #account{id = AccountID},
+                                char = C = #char{id = CharacterID,
+                                                 x = X,
+                                                 y = Y}}) ->
+    PathFound = nif:pathfind(Map#map.id, [X | Y], [ToX | ToY]),
+    case PathFound of
+        [{SX, SY, SDir} | Path] ->
+            {ok, Timer} = walk_interval(SDir),
+            {FX, FY, _FDir} = lists:last(PathFound),
+            Msg = {send_to_other_players_in_sight,
+                   {X, Y},
+                   CharacterID,
+                   actor_move,
+                   {AccountID, {X, Y}, {FX, FY}, zone_master:tick()}},
+            gen_server:cast(MapServer, Msg),
+            send(State, {move, {{X, Y}, {FX, FY}, zone_master:tick()}}),
+            {noreply, State#zone_state{char = C#char{x = SX, y = SY},
+                                       is_walking = true,
+                                       walk_timer = Timer,
+                                       walk_prev = {erlang:timestamp(), SDir},
+                                       walk_path = Path}};
+        _Error ->
+            {noreply, State}
+    end;
+handle_cast(step, State = #zone_state{char = C,
+                                      account = A,
+                                      map_server = MapServer,
+                                      walk_timer = Timer,
+                                      walk_prev = {Time, PDir},
+                                      walk_path = Path,
+                                      walk_changed = Changed}) ->
     case Path of
         [] ->
             timer:cancel(Timer),
-            {next_state, valid,
-             State#zone_state{walk_timer = undefined,
-                              walk_path = undefined,
-                              walk_changed = false}};
+            NewState = State#zone_state{walk_timer = undefined,
+                                        walk_path = undefined,
+                                        is_walking = false,
+                                        walk_changed = false},
+            {noreply, NewState};
         [{CX, CY, CDir} | Rest] ->
             if
                 CDir == PDir ->
@@ -262,32 +235,28 @@ walking(_, step, State = #zone_state{char = C,
                                         walk_prev = {Time, CDir},
                                         walk_path = Rest,
                                         walk_changed = false},
-            {next_state, walking, NewState}
+            {noreply, NewState}
     end;
-walking(Type, Event, State) ->
-    event(walking, Type, Event, State).
-
-event(CurEvent, _, {send_packet_if, Pred, Packet, Data}, State) ->
+handle_cast({send_packet_if, Pred, Packet, Data}, State) ->
     case Pred(State) of
         true ->
             send(State, {Packet, Data});
-
         false ->
             ok
     end,
-    {next_state, CurEvent, State};
-event(CurEvent, _, quit, State) ->
+    {noreply, State};
+handle_cast(quit, State) ->
     send(State, {quit_response, 0}),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {char_select, _Type}, State) ->
+    {noreply, State};
+handle_cast({char_select, _Type}, State) ->
     send(State, {confirm_back_to_char, {1}}),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {request_name, ActorID},
-      State = #zone_state{account = #account{id = AccountID},
-                          db = DB,
-                          char = #char{name = CharacterName,
-                                       guild_id = GuildID},
-                          map_server = MapServer}) ->
+    {noreply, State};
+handle_cast({request_name, ActorID},
+            State = #zone_state{account = #account{id = AccountID},
+                                db = DB,
+                                char = #char{name = CharacterName,
+                                             guild_id = GuildID},
+                                map_server = MapServer}) ->
     Name =
         if
             ActorID == AccountID ->
@@ -302,10 +271,10 @@ event(CurEvent, _, {request_name, ActorID},
                          %%               party          guild position
             true ->
                 case gen_server:call(MapServer, {get_actor, ActorID}) of
-                    {player, FSM} ->
+                    {player, Worker} ->
                         {ok, #zone_state{char=#char{name=CharName,
                                                     guild_id=OtherGuildID}}}
-                            = gen_statem:call(FSM, get_state),
+                            = gen_server:call(Worker, get_state),
                         case OtherGuildID of
                             0 ->
                                 OtherGuildName = "";
@@ -327,37 +296,37 @@ event(CurEvent, _, {request_name, ActorID},
                 end
         end,
     send(State, Name),
-    {next_state, CurEvent, State};
-event(CurEvent, _, player_count, State) ->
+    {noreply, State};
+handle_cast(player_count, State) ->
     Num = gen_server:call(zone_master, player_count),
     send(State, {player_count, Num}),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {emotion, Id},
-      State = #zone_state{map_server = MapServer,
-                          account = #account{id = AccountID},
-                          char = #char{id = CharacterID,
-                                       x = X,
-                                       y = Y}}) ->
+    {noreply, State};
+handle_cast({emotion, Id},
+            State = #zone_state{map_server = MapServer,
+                                account = #account{id = AccountID},
+                                char = #char{id = CharacterID,
+                                             x = X,
+                                             y = Y}}) ->
     Map = {send_to_other_players_in_sight, {X, Y}, CharacterID,
            emotion, {AccountID, Id}},
     gen_server:cast(MapServer, Map),
     send(State, {emotion, {AccountID, Id}}),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {speak, Message},
-      State = #zone_state{map_server = MapServer,
-                          account = #account{id = AccountID},
-                          char = #char{id = CharacterID,
-                                       x = X,
-                                       y = Y}}) ->
+    {noreply, State};
+handle_cast({speak, Message},
+            State = #zone_state{map_server = MapServer,
+                                account = #account{id = AccountID},
+                                char = #char{id = CharacterID,
+                                             x = X,
+                                             y = Y}}) ->
     [_Name | Rest] = re:split(Message, " : ", [{return, list}]),
     Said = lists:concat(Rest),
     if
         (hd(Said) == 92) and (length(Said) > 1) -> % GM command
             [Command | Args] = zone_commands:parse(tl(Said)),
-            FSM = self(),
+            Worker = self(),
             spawn(
               fun() ->
-                      zone_commands:execute(FSM, Command, Args, State)
+                      zone_commands:execute(Worker, Command, Args, State)
               end
              );
         true ->
@@ -366,15 +335,15 @@ event(CurEvent, _, {speak, Message},
                                         {AccountID, Message}}),
             send(State, {message, Message})
     end,
-    {next_state, CurEvent, State};
-event(CurEvent, _, {broadcast, Message}, State) ->
+    {noreply, State};
+handle_cast({broadcast, Message}, State) ->
     gen_server:cast(zone_master,
                     {send_to_all, {send_to_all,
                                    {send_to_players, broadcast, Message}}}),
-    {next_state, CurEvent, State};
-event(_CurEvent, _, {switch_zones, Update}, State) ->
+    {noreply, State};
+handle_cast({switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
-event(CurEvent, _, {hat_sprite, SpriteID},
+handle_cast({hat_sprite, SpriteID},
       #zone_state{char=#char{x=X, y=Y, id=_CharacterID, account_id=AID},
                   map_server=MapServer} = State) ->
     send(State, {sprite, {AID, 4, SpriteID}}),
@@ -383,8 +352,8 @@ event(CurEvent, _, {hat_sprite, SpriteID},
            sprite,
            {AID, 4, SpriteID}},
     gen_server:cast(MapServer, Msg),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {change_job, JobID},
+    {noreply, State};
+handle_cast({change_job, JobID},
       #zone_state{db=DB, char=#char{x=X, y=Y, account_id=AID}=Char,
                   map_server=MapServer}=State) ->
     NewChar = Char#char{job=JobID},
@@ -396,10 +365,10 @@ event(CurEvent, _, {change_job, JobID},
            sprite,
            {AID, 0, JobID}},
     gen_server:cast(MapServer, Msg),
-    {next_state, CurEvent, NewState};
-event(CurEvent, _, {monster, SpriteID, X, Y},
-      #zone_state{map=Map, map_server=MapServer,
-                  char=#char{account_id=AID}} = State) ->
+    {noreply, NewState};
+handle_cast({monster, SpriteID, X, Y},
+            #zone_state{map=Map, map_server=MapServer,
+                        char=#char{account_id=AID}} = State) ->
     MonsterID = gen_server:call(monster_srv, next_id),
     NPC = #npc{id=MonsterID,
                name=monsters:strname(SpriteID),
@@ -415,10 +384,10 @@ event(CurEvent, _, {monster, SpriteID, X, Y},
            monster,
            {SpriteID, X, Y, MonsterID}},
     gen_server:cast(MapServer, Msg),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {npc, SpriteID, X, Y},
-      #zone_state{map=Map, map_server=MapServer,
-                  char=#char{account_id=AID}} = State) ->
+    {noreply, State};
+handle_cast({npc, SpriteID, X, Y},
+            #zone_state{map=Map, map_server=MapServer,
+                        char=#char{account_id=AID}} = State) ->
     MonsterID = gen_server:call(monster_srv, next_id),
     NPC = #npc{id=MonsterID,
                name="npc",
@@ -435,44 +404,41 @@ event(CurEvent, _, {npc, SpriteID, X, Y},
            show_npc,
            NPC},
     gen_server:cast(MapServer, Msg),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {give_item, ID, Amount},
-      State = #zone_state{
-                 tcp = TCP,
-                 db = DB,
-                 char = #char{id = CharacterID}}) ->
+    {noreply, State};
+handle_cast({give_item, ID, Amount},
+            State = #zone_state{
+                       tcp = TCP,
+                       db = DB,
+                       char = #char{id = CharacterID}}) ->
     give_item(TCP, DB, CharacterID, ID, Amount),
-    {next_state, CurEvent, State};
-event(_CurEvent, _, stop, State = #zone_state{char_fsm = Char}) ->
-    gen_statem:cast(Char, exit),
+    {noreply, State};
+handle_cast(stop, State = #zone_state{char_worker = Char}) ->
+    gen_server:cast(Char, exit),
     {stop, normal, State};
-event(CurEvent, _, {tick, _Tick}, State) ->
+handle_cast({tick, _Tick}, State) ->
     send(State, {tick, zone_master:tick()}),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {send_packet, Packet, Data}, State) ->
+    {noreply, State};
+handle_cast({send_packet, Packet, Data}, State) ->
     lager:log(info, self(), "Send packet ~p ~p", [{packet, Packet},
                                                   {data, Data}]),
     send(State, {Packet, Data}),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {send_packets, Packets}, State) ->
+    {noreply, State};
+handle_cast({send_packets, Packets}, State) ->
     send(State, {send_packets, Packets}),
-    {next_state, CurEvent, State};
-event(CurEvent, _, {show_to, FSM},
-      State = #zone_state{account = A, char = C }) ->
-    gen_statem:cast(FSM, {send_packet, change_look, C}),
-    gen_statem:cast(FSM, {send_packet, actor, {normal, A, C}}),
-    {next_state, CurEvent, State};
-event(CurEvent, {call, From}, get_state, State) ->
-    Actions = [{reply, From, {ok, State}}],
-    {next_state, CurEvent, State, Actions};
-event(CurEvent, _, {update_state, Fun}, State) ->
-    {next_state, CurEvent, Fun(State)};
-event(_CurEvent, _, crash, _) ->
+    {noreply, State};
+handle_cast({show_to, Worker},
+            State = #zone_state{account = A, char = C }) ->
+    gen_server:cast(Worker, {send_packet, change_look, C}),
+    gen_server:cast(Worker, {send_packet, actor, {normal, A, C}}),
+    {noreply, State};
+handle_cast({update_state, Fun}, State) ->
+    {noreply, Fun(State)};
+handle_cast(crash, _) ->
     exit('crash induced');
-event(CurEvent, _, request_guild_status,
-      State = #zone_state{db = DB,
-                          char = #char{id = CharacterID,
-                                       guild_id = GuildID}}) ->
+handle_cast(request_guild_status,
+            State = #zone_state{db = DB,
+                                char = #char{id = CharacterID,
+                                             guild_id = GuildID}}) ->
     if
         GuildID /= 0 ->
             GetGuildMaster = db:get_guild_master(DB, GuildID),
@@ -485,12 +451,12 @@ event(CurEvent, _, request_guild_status,
         true ->
             send(State, {guild_status, none})
     end,
-    {next_state, CurEvent, State};
-event(CurEvent, _, {request_guild_info, 0},
-      State = #zone_state{
-                 db = DB,
-                 char = #char{guild_id = GuildID}
-                }) when GuildID /= 0 ->
+    {noreply, State};
+handle_cast({request_guild_info, 0},
+            State = #zone_state{
+                       db = DB,
+                       char = #char{guild_id = GuildID}
+                      }) when GuildID /= 0 ->
     GetGuild = db:get_guild(DB, GuildID),
     case GetGuild of
         %% TODO?
@@ -499,12 +465,12 @@ event(CurEvent, _, {request_guild_info, 0},
             send(State, {guild_info, G}),
             send(State, {guild_relationships, G#guild.relationships})
     end,
-    {next_state, CurEvent, State};
-event(CurEvent, _, {request_guild_info, 1},
-  State = #zone_state{
-             db = DB,
-             char = #char{guild_id = GuildID}
-            }) when GuildID /= 0 ->
+    {noreply, State};
+handle_cast({request_guild_info, 1},
+            State = #zone_state{
+                       db = DB,
+                       char = #char{guild_id = GuildID}
+                      }) when GuildID /= 0 ->
     GetMembers =
         gen_server:call(char_server,
                         {get_chars, db:get_guild_members(DB, GuildID)}),
@@ -515,20 +481,20 @@ event(CurEvent, _, {request_guild_info, 1},
         _Error ->
             ok
     end,
-    {next_state, CurEvent, State};
-event(CurEvent, _, {request_guild_info, 2}, State) ->
-    {next_state, CurEvent, State};
-event(CurEvent, _, {less_effect, _IsLess}, State) ->
-    {next_state, CurEvent, State};
-event(CurEvent, _, {drop, Slot, Amount},
-      State = #zone_state{
-                 db = DB,
-                 map_server = MapServer,
-                 char = #char{
-                           id = CharacterID,
-                           map = Map,
-                           x = X,
-                           y = Y}}) ->
+    {noreply, State};
+handle_cast({request_guild_info, 2}, State) ->
+    {noreply, State};
+handle_cast({less_effect, _IsLess}, State) ->
+    {noreply, State};
+handle_cast({drop, Slot, Amount},
+            State = #zone_state{
+                       db = DB,
+                       map_server = MapServer,
+                       char = #char{
+                                 id = CharacterID,
+                                 map = Map,
+                                 x = X,
+                                 y = Y}}) ->
     send(State, {drop_item, {Slot, Amount}}),
     case db:get_player_item(DB, CharacterID, Slot) of
         nil ->
@@ -550,17 +516,17 @@ event(CurEvent, _, {drop, Slot, Amount},
                             {send_to_players_in_sight, {X, Y},
                              item_on_ground, Msg})
     end,
-    {next_state, CurEvent, State};
-event(CurEvent, _, {pick_up, ObjectID},
-      State = #zone_state{tcp = TCP,
-                          db = DB,
-                          map_server = MapServer,
-                          account = #account{id = AccountID},
-                          char = #char{id = CharacterID,
-                                       map = Map,
-                                       x = X,
-                                       y = Y
-                                      }}) ->
+    {noreply, State};
+handle_cast({pick_up, ObjectID},
+            State = #zone_state{tcp = TCP,
+                                db = DB,
+                                map_server = MapServer,
+                                account = #account{id = AccountID},
+                                char = #char{id = CharacterID,
+                                             map = Map,
+                                             x = X,
+                                             y = Y
+                                            }}) ->
     gen_server:cast(MapServer, {send_to_players, item_disappear, ObjectID}),
     Msg = {AccountID, ObjectID, zone_master:tick(), 0, 0, 0, 0, 1, 0},
     gen_server:cast(MapServer,
@@ -573,45 +539,49 @@ event(CurEvent, _, {pick_up, ObjectID},
             give_item(TCP, DB, CharacterID,
                       Item#world_item.item, Item#world_item.amount)
     end,
-    {next_state, CurEvent, State};
-event(CurEvent, _, {change_direction, Head, Body},
-      State = #zone_state{map_server = MapServer,
-                          account = #account{id = AccountID},
-                          char = #char{id = CharacterID,
-                                       x = X,
-                                       y = Y}}) ->
+    {noreply, State};
+handle_cast({change_direction, Head, Body},
+            State = #zone_state{map_server = MapServer,
+                                account = #account{id = AccountID},
+                                char = #char{id = CharacterID,
+                                             x = X,
+                                             y = Y}}) ->
     Msg = {send_to_other_players_in_sight, {X, Y},
            CharacterID,
            change_direction,
            {AccountID, Head, Body}},
     gen_server:cast(MapServer, Msg),
-    {next_state, CurEvent, State};
-event(_CurEvent, _, step, State) ->
-    {next_state, walking, State};
-event(_CurEvent, _, exit, State) ->
-    lager:log(error, self(), "Zone FSM got EXIT signal", []),
+    {noreply, State};
+handle_cast(exit, State) ->
+    lager:log(error, self(), "Zone Worker got EXIT signal", []),
     {stop, normal, State};
-event(CurEvent, _, Event, State) ->
-    lager:log(warning, self(), "Zone FSM received unknown event ~p in state ~p",
-              [Event, valid]),
-    {next_state, CurEvent, State}.
+handle_cast(Other, State) ->
+    lager:log(warning, self(), "Zone Worker got unknown request: ~p", [Other]),
+    {noreply, State}.
 
 %% FIXME: Not used right now:
 %%        How to integrate?
-terminate(_Reason, _StateName, #zone_state{map_server = MapServer,
-                                           account = #account{id = AccountID},
-                                           char = Character}) ->
-    gen_server:cast(
-      MapServer,
-      { send_to_other_players,
-        Character#char.id,
-        vanish,
-        {AccountID, 3}
-      }
-     ),
+terminate(_Reason, #zone_state{map_server = MapServer,
+                               account = #account{id = AccountID},
+                               char = Character}) ->
+    Msg = {send_to_other_players, Character#char.id, vanish, {AccountID, 3}},
+    gen_server:cast(MapServer, Msg),
     gen_server:cast(char_server, {save_char, Character}),
     gen_server:cast(MapServer, {remove_player, AccountID});
-terminate(_Reason, _StateName, _State) ->
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_, State, _) ->
+    {ok, State}.
+
+format_status(_Opt, _) ->
+    ok.
+
+handle_call(get_state, From, State) ->
+    Actions = [{reply, From, {ok, State}}],
+    {reply, Actions, State}.
+
+handle_info(_, _) ->
     ok.
 
 %% Helper walking function
@@ -624,7 +594,7 @@ walk_interval(N) ->
                        %% Walking straight.
                        ?WALKSPEED
                end,
-    timer:apply_interval(Interval, gen_statem, cast, [self(), step]).
+    timer:apply_interval(Interval, gen_server, cast, [self(), step]).
 
 show_actors(#zone_state{map_server = MapServer,
                         char = C,

@@ -9,7 +9,7 @@
 parse(String) ->
     string:tokens(String, " ").
 
-execute(_FSM, "caps", Args,
+execute(_Worker, "caps", Args,
         State = #zone_state{tcp = TCP,
                             map_server = MapServer,
                             account = #account{id = AccountID},
@@ -26,20 +26,20 @@ execute(_FSM, "caps", Args,
                     }),
     TCP ! {message, Capitalized},
     {ok, State};
-execute(FSM, "crash", _Args, _State) ->
-    gen_statem:cast(FSM, crash);
-execute(FSM, "load", _Args, State = #zone_state{char = C}) ->
-    warp_to(FSM, C#char.save_map, C#char.save_x, C#char.save_y, State);
-execute(FSM, "warp", [Map | [XStr | [YStr | _]]], State) ->
+execute(Worker, "crash", _Args, _State) ->
+    gen_server:cast(Worker, crash);
+execute(Worker, "load", _Args, State = #zone_state{char = C}) ->
+    warp_to(Worker, C#char.save_map, C#char.save_x, C#char.save_y, State);
+execute(Worker, "warp", [Map | [XStr | [YStr | _]]], State) ->
     case {string:to_integer(XStr), string:to_integer(YStr)} of
         {{X,_}, {Y,_}} when is_integer(X), is_integer(Y) ->
-            warp_to(FSM, list_to_binary(Map), X, Y, State);
+            warp_to(Worker, list_to_binary(Map), X, Y, State);
 
         _Invalid ->
-            zone_fsm:say("Invalid coordinates.", State),
+            zone_worker:say("Invalid coordinates.", State),
             {ok, State}
     end;
-execute(FSM, "jumpto", [PlayerName | _], State) ->
+execute(Worker, "jumpto", [PlayerName | _], State) ->
     case gen_server:call(zone_master,
                          {get_player_by,
                           fun(#zone_state{char = C}) ->
@@ -47,60 +47,60 @@ execute(FSM, "jumpto", [PlayerName | _], State) ->
                           end
                          }) of
         {ok, #zone_state{char = C}} ->
-            warp_to(FSM, C#char.map, C#char.x, C#char.y, State);
+            warp_to(Worker, C#char.map, C#char.x, C#char.y, State);
         none ->
-            zone_fsm:say("Player not found.", State)
+            zone_worker:say("Player not found.", State)
     end;
-execute(FSM, "zeny", [AddZeny], State) ->
+execute(Worker, "zeny", [AddZeny], State) ->
     case string:to_integer(AddZeny) of
-        {Zeny, _} when is_integer(Zeny) -> add_zeny(FSM, State, Zeny);
-        _Invalid -> zone_fsm:say("Enter a number.", State)
+        {Zeny, _} when is_integer(Zeny) -> add_zeny(Worker, State, Zeny);
+        _Invalid -> zone_worker:say("Enter a number.", State)
     end;
-execute(FSM, "item", [ID], State) ->
+execute(Worker, "item", [ID], State) ->
     case string:to_integer(ID) of
-        {error, _} -> zone_fsm:say("Invalid item ID.", State);
+        {error, _} -> zone_worker:say("Invalid item ID.", State);
         {ItemID, _} ->
-            give_item(FSM, State, ItemID, 1)
+            give_item(Worker, State, ItemID, 1)
     end;
-execute(FSM, "hat", [ID], State) ->
+execute(Worker, "hat", [ID], State) ->
     case string:to_integer(ID) of
-        {error, _} -> zone_fsm:say("Invalid item ID.", State);
+        {error, _} -> zone_worker:say("Invalid item ID.", State);
         {SpriteID, _} ->
-            change_hat(FSM, State, SpriteID)
+            change_hat(Worker, State, SpriteID)
     end;
-execute(FSM, "monster", [ID, X, Y], State) ->
+execute(Worker, "monster", [ID, X, Y], State) ->
     case string:to_integer(ID) of
-        {error, _} -> zone_fsm:say("Invalid monster ID.", State);
+        {error, _} -> zone_worker:say("Invalid monster ID.", State);
         {MonsterID, _} ->
             {XParse, _} = string:to_integer(X),
             {YParse, _} = string:to_integer(Y),
-            spawn_monster(FSM, State, MonsterID, XParse, YParse)
+            spawn_monster(Worker, State, MonsterID, XParse, YParse)
     end;
-execute(FSM, "npc", [ID, X, Y], State) ->
+execute(Worker, "npc", [ID, X, Y], State) ->
     case string:to_integer(ID) of
-        {error, _} -> zone_fsm:say("Invalid NPC ID.", State);
+        {error, _} -> zone_worker:say("Invalid NPC ID.", State);
         {NPCID, _} ->
             {XParse, _} = string:to_integer(X),
             {YParse, _} = string:to_integer(Y),
-            spawn_npc(FSM, State, NPCID, XParse, YParse)
+            spawn_npc(Worker, State, NPCID, XParse, YParse)
     end;
-execute(FSM, "job", [ID], State) ->
+execute(Worker, "job", [ID], State) ->
     case string:to_integer(ID) of
-        {error, _} -> zone_fsm:say("Invalid Job ID.", State);
-        {JobID, _} -> change_job(FSM, State, JobID)
+        {error, _} -> zone_worker:say("Invalid Job ID.", State);
+        {JobID, _} -> change_job(Worker, State, JobID)
     end;
-execute(_FSM, Unknown, _Args, State) ->
-    zone_fsm:say("Unknown command `" ++ Unknown ++ "'.", State),
+execute(_Worker, Unknown, _Args, State) ->
+    zone_worker:say("Unknown command `" ++ Unknown ++ "'.", State),
     ok.
 
-warp_to(FSM, Map, X, Y,
+warp_to(Worker, Map, X, Y,
         #zone_state{tcp = TCP,
                     map_server = MapServer,
                     account = #account{id = AccountID},
                     char = C} = State) ->
     case gen_server:call(zone_master, {who_serves, Map}) of
         {zone, Port, ZoneServer} ->
-            zone_fsm:say(
+            zone_worker:say(
               ["Warped to ", Map, " (",
                integer_to_list(X), ", ", integer_to_list(Y), ")."],
               State
@@ -119,7 +119,7 @@ warp_to(FSM, Map, X, Y,
                 = gen_server:call(ZoneServer,
                                   {add_player,
                                    Map,
-                                   {AccountID, FSM}}),
+                                   {AccountID, Worker}}),
             NewStateFun = fun(St) ->
                                   St#zone_state{server = ZoneServer,
                                                 map = NewMap,
@@ -128,30 +128,30 @@ warp_to(FSM, Map, X, Y,
                                                               x = X,
                                                               y = Y}}
                           end,
-            zone_fsm:show_actors(NewStateFun(State)),
-            gen_statem:cast(FSM, {switch_zones, NewStateFun}),
+            zone_worker:show_actors(NewStateFun(State)),
+            gen_server:cast(Worker, {switch_zones, NewStateFun}),
             TCP ! {warp_zone, {Map, X, Y, ?ZONE_IP, Port}};
         none ->
-            zone_fsm:say("Invalid map provided.", State),
+            zone_worker:say("Invalid map provided.", State),
             ok
     end.
 
-give_item(FSM, _State, ID, Amount) ->
-    gen_statem:cast(FSM, {give_item, ID, Amount}).
+give_item(Worker, _State, ID, Amount) ->
+    gen_server:cast(Worker, {give_item, ID, Amount}).
 
-change_hat(FSM, _State, ID) ->
-    gen_statem:cast(FSM, {hat_sprite, ID}).
+change_hat(Worker, _State, ID) ->
+    gen_server:cast(Worker, {hat_sprite, ID}).
 
-change_job(FSM, _State, JobID) ->
-    gen_statem:cast(FSM, {change_job, JobID}).
+change_job(Worker, _State, JobID) ->
+    gen_server:cast(Worker, {change_job, JobID}).
 
-spawn_monster(FSM, _State, ID, X, Y) ->
-    gen_statem:cast(FSM, {monster, ID, X, Y}).
+spawn_monster(Worker, _State, ID, X, Y) ->
+    gen_server:cast(Worker, {monster, ID, X, Y}).
 
-spawn_npc(FSM, _State, ID, X, Y) ->
-    gen_statem:cast(FSM, {npc, ID, X, Y}).
+spawn_npc(Worker, _State, ID, X, Y) ->
+    gen_server:cast(Worker, {npc, ID, X, Y}).
 
-add_zeny(FSM, State, Zeny) ->
+add_zeny(Worker, State, Zeny) ->
     C = State#zone_state.char,
     OldZeny = C#char.zeny,
     TempNewZeny = OldZeny + Zeny,
@@ -163,5 +163,5 @@ add_zeny(FSM, State, Zeny) ->
     NewStateFun = fun(St) ->
                           St#zone_state{char = C#char{zeny = NewZeny}}
                   end,
-    gen_statem:cast(FSM, {update_state, NewStateFun}),
+    gen_server:cast(Worker, {update_state, NewStateFun}),
     State#zone_state.tcp ! {param_change_long, {?SP_ZENY, NewZeny}}.

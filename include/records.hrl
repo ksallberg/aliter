@@ -40,7 +40,7 @@
          id_b,
          packet_ver,
          rename,
-         login_fsm}).
+         login_worker}).
 
 -record(zone_state,
         {server,
@@ -59,7 +59,9 @@
          walk_path,
          walk_changed,
          npc,
-         char_fsm}).
+         char_worker,
+         is_walking=false
+        }).
 
 -record(map_state,
         {map,
@@ -71,8 +73,8 @@
    nb_state,
    { port,
      packet_handler,
-     fsm_module,
-     fsm_args,
+     worker_module,
+     worker_args,
      server
    }
   ).

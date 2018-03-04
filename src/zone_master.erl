@@ -31,21 +31,17 @@ init(_Conf) ->
 
 handle_call({who_serves, Map}, _From, State) ->
     {reply, who_serves(Map, State#state.servers), State};
-
 handle_call({get_player, ActorID}, _From, State) ->
     Player = get_player(ActorID, State#state.servers),
     {reply, Player, State};
-
 handle_call({get_player_by, Pred}, _From, State) ->
     Player = get_player_by(
                Pred,
                State#state.servers
               ),
     {reply, Player, State};
-
 handle_call(player_count, _from, State) ->
     {reply, player_count(State#state.servers), State};
-
 handle_call(Request, _From, State) ->
     {reply, {illegal_request, Request}, State}.
 
@@ -55,7 +51,6 @@ handle_cast({send_to_all, Msg}, State) ->
               gen_server:cast(Server, Msg)
       end, State#state.servers),
     {noreply, State};
-
 handle_cast({register_npc, Name, Sprite, Map, {X, Y}, Direction, Object},
             State = #state{npc_id = Id}) ->
     lists:foreach(
@@ -73,7 +68,6 @@ handle_cast({register_npc, Name, Sprite, Map, {X, Y}, Direction, Object},
       State#state.servers
      ),
     {noreply, State#state{npc_id = Id + 1}};
-
 handle_cast(_Cast, State) ->
     {noreply, State}.
 
@@ -81,7 +75,6 @@ handle_info({'EXIT', From, Reason}, State) ->
     lager:log(error, self(), "Zone master got EXIT signal ~p ~p",
               [{from, From}, {reason, Reason}]),
     {stop, normal, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -93,7 +86,6 @@ code_change(_OldVsn, State, _Extra) ->
 
 who_serves(_Map, []) ->
     none;
-
 who_serves(Map, [Server | Servers]) ->
     case gen_server:call(Server, {provides, Map}) of
         {yes, Port} ->
@@ -103,30 +95,24 @@ who_serves(Map, [Server | Servers]) ->
             who_serves(Map, Servers)
     end.
 
-
 player_count([]) ->
     0;
-
 player_count([Server | Servers]) ->
     gen_server:call(Server, player_count) +
         player_count(Servers).
 
-
 get_player(_ActorID, []) ->
     none;
-
 get_player(ActorID, [Server | Servers]) ->
     case gen_server:call(Server, {get_player, ActorID}) of
-        {ok, FSM} ->
-            {ok, FSM};
-
+        {ok, Worker} ->
+            {ok, Worker};
         none ->
             get_player(ActorID, Servers)
     end.
 
 get_player_by(_Pred, []) ->
     none;
-
 get_player_by(Pred, [Server | Servers]) ->
     case gen_server:call(Server, {get_player_by, Pred}) of
         {ok, State} ->

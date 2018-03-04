@@ -31,40 +31,40 @@ load_all() ->
             erlang:halt()
     end.
 
-do_all(FSM, Packets) ->
-    gen_statem:cast(FSM, {send_packets, Packets}).
+do_all(Worker, Packets) ->
+    gen_server:cast(Worker, {send_packets, Packets}).
 
-say(FSM, NPC, Message) ->
-    gen_statem:cast(FSM, {send_packet, dialog, {NPC, Message}}).
+say(Worker, NPC, Message) ->
+    gen_server:cast(Worker, {send_packet, dialog, {NPC, Message}}).
 
-menu(FSM, NPC, Choices) ->
-    gen_statem:cast(FSM, {send_packet, dialog_menu, {NPC, Choices}}).
+menu(Worker, NPC, Choices) ->
+    gen_server:cast(Worker, {send_packet, dialog_menu, {NPC, Choices}}).
 
-next(FSM, NPC) ->
-    gen_statem:cast(FSM, {send_packet, dialog_next, NPC}).
+next(Worker, NPC) ->
+    gen_server:cast(Worker, {send_packet, dialog_next, NPC}).
 
-close(FSM, NPC) ->
-    gen_statem:cast(FSM, {send_packet, dialog_close, NPC}).
+close(Worker, NPC) ->
+    gen_server:cast(Worker, {send_packet, dialog_close, NPC}).
 
 spawn_logic(_, _, []) ->
     ok;
-spawn_logic(FSM, ActorID, [close | ActionObjectRest]) ->
-    zone_npc:close(FSM, ActorID),
-    spawn_logic(FSM, ActorID, ActionObjectRest);
-spawn_logic(FSM, ActorID, [next | ActionObjectRest]) ->
-    zone_npc:next(FSM, ActorID),
+spawn_logic(Worker, ActorID, [close | ActionObjectRest]) ->
+    zone_npc:close(Worker, ActorID),
+    spawn_logic(Worker, ActorID, ActionObjectRest);
+spawn_logic(Worker, ActorID, [next | ActionObjectRest]) ->
+    zone_npc:next(Worker, ActorID),
     receive
         continue ->
-            spawn_logic(FSM, ActorID, ActionObjectRest)
+            spawn_logic(Worker, ActorID, ActionObjectRest)
     end;
-spawn_logic(FSM, ActorID, [{say, SayMsg} | ActionObjectRest]) ->
-    zone_npc:say(FSM, ActorID, SayMsg),
-    spawn_logic(FSM, ActorID, ActionObjectRest);
-spawn_logic(FSM, ActorID, [{menu, MenuList} | ActionObjectRest]) ->
+spawn_logic(Worker, ActorID, [{say, SayMsg} | ActionObjectRest]) ->
+    zone_npc:say(Worker, ActorID, SayMsg),
+    spawn_logic(Worker, ActorID, ActionObjectRest);
+spawn_logic(Worker, ActorID, [{menu, MenuList} | ActionObjectRest]) ->
     MenuAlts = [MenuChoice || {MenuChoice, _MenuAction} <- MenuList],
-    zone_npc:menu(FSM, ActorID, MenuAlts),
+    zone_npc:menu(Worker, ActorID, MenuAlts),
     receive
         Selected ->
             {_, Action} = lists:nth(Selected, MenuList),
-            spawn_logic(FSM, ActorID, Action ++ ActionObjectRest)
+            spawn_logic(Worker, ActorID, Action ++ ActionObjectRest)
     end.

@@ -73,12 +73,12 @@ init({gen_server_tcp, Module, InitArgs}) ->
     lager:log(info, self(), "Starting generic TCP server ~p",
               [{module, Module}]),
     case Module:init(InitArgs) of
-        {ok, {Port, FSMModule, PacketHandler}, ModState} ->
+        {ok, {Port, WorkerModule, PacketHandler}, ModState} ->
             lager:log(info, self(),
                       "TCP server started. ~p ~p ~p ~p",
                       [ {module, Module},
                         {port, Port},
-                        {fsm, FSMModule},
+                        {worker, WorkerModule},
                         {handler, PacketHandler}
                       ]),
             {MState, FArgs} =
@@ -89,8 +89,8 @@ init({gen_server_tcp, Module, InitArgs}) ->
             St = #nb_state{
                     port = Port,
                     packet_handler = PacketHandler,
-                    fsm_module = FSMModule,
-                    fsm_args = FArgs,
+                    worker_module = WorkerModule,
+                    worker_args = FArgs,
                     server = self()
                    },
             {ok, Sup} = supervisor:start_link(?MODULE, {all, St}),
@@ -112,8 +112,8 @@ init({gen_server_tcp, Module, InitArgs}) ->
             {stop, Other}
     end;
 
-%% initialize & supervise both the listener and the FSM
-init({all, #nb_state{port = Port, fsm_module = FSMModule} = St}) ->
+%% initialize & supervise both the listener and the worker
+init({all, #nb_state{port = Port, worker_module = WorkerModule} = St}) ->
     { ok,
       { {one_for_one, 2, 60},
         [
@@ -137,7 +137,7 @@ init({all, #nb_state{port = Port, fsm_module = FSMModule} = St}) ->
              start_link,
              [ {local, client_sup(Port)},
                ?MODULE,
-               {clients, FSMModule}
+               {clients, WorkerModule}
              ]
            },
            permanent,
@@ -149,16 +149,16 @@ init({all, #nb_state{port = Port, fsm_module = FSMModule} = St}) ->
       }
     };
 
-%% initialize the FSM
-init({clients, FSMModule}) ->
+%% initialize the worker
+init({clients, WorkerModule}) ->
     { ok,
       { {simple_one_for_one, 2, 60},
         [ { undefined,
-            {FSMModule, start_link, []},
+            {WorkerModule, start_link, []},
             temporary,
-            301000, % FSMs wait <=5 mins for a signal to keep the login IDs.
+            301000, % workers wait <=5 mins for a signal to keep the login IDs.
             worker,
-            [FSMModule]
+            [WorkerModule]
           }
         ]
       }

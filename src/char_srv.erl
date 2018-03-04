@@ -23,7 +23,8 @@ init(Port) ->
     {ok, _Keepalive} =
         timer:apply_interval(timer:seconds(30), db, ping, [DB]),
     {ok,
-     {Port, char_fsm, char_packets_24}, {#state{db = DB, sessions = []}, [DB]}}.
+     {Port, char_worker, char_packets_24},
+     {#state{db = DB, sessions = []}, [DB]}}.
 
 handle_call(
   {verify_session, AccountID, CharacterID, SessionIDa},
@@ -35,8 +36,8 @@ handle_call(
                {id, SessionIDa},
                {sessions, Sessions}]),
     case proplists:lookup(AccountID, Sessions) of
-        {AccountID, FSM, SessionIDa, _SessionIDb} ->
-            {reply, {ok, FSM}, State};
+        {AccountID, Worker, SessionIDa, _SessionIDb} ->
+            {reply, {ok, Worker}, State};
         _ ->
             {reply, invalid, State}
     end;
@@ -57,9 +58,9 @@ handle_cast({remove_session, AccountID}, State = #state{sessions = Sessions}) ->
 handle_cast({save_char, C}, State = #state{db = DB, sessions = Sessions}) ->
     db:save_char(DB, C),
     case proplists:lookup(C#char.account_id, Sessions) of
-        {_AccountID, FSM, _SessionIDa, _SessionIDb} ->
+        {_AccountID, Worker, _SessionIDa, _SessionIDb} ->
             ChF = fun(St) ->St#char_state{char = C} end,
-            gen_statem:cast(FSM, {update_state, ChF});
+            gen_server:cast(Worker, {update_state, ChF});
         _ ->
             ok
     end,

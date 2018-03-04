@@ -26,7 +26,7 @@ init(Port) ->
                                                     db,
                                                     ping,
                                                     [DB]),
-            {ok, {Port, login_fsm, login_packets}, {[], [DB]}};
+            {ok, {Port, login_worker, login_packets}, {[], [DB]}};
         _ ->
             lager:log(error, self(), "No redis DB found! ~n", []),
             throw({exit, no_redis})
@@ -34,8 +34,8 @@ init(Port) ->
 
 handle_call({verify_session, AccountID, LoginIDa, LoginIDb}, _From, Sessions) ->
     case proplists:lookup(AccountID, Sessions) of
-        {AccountID, FSM, LoginIDa, LoginIDb} ->
-            {reply, {ok, FSM}, Sessions};
+        {AccountID, Worker, LoginIDa, LoginIDb} ->
+            {reply, {ok, Worker}, Sessions};
         _ ->
             {reply, invalid, Sessions}
     end;

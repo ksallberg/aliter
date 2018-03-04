@@ -1,34 +1,33 @@
--module(char_fsm).
+-module(char_worker).
 
--behaviour(gen_statem).
+-behaviour(gen_server).
 
 -include("records.hrl").
 -include("ro.hrl").
 
 -include_lib("stdlib/include/qlc.hrl").
 
--export([ start_link/1
-        , init/1
-        , locked/3
-        , valid/3
-        , renaming/3
-        , chosen/3
-        , callback_mode/0 ]).
+-export([ start_link/1 ]).
 
-callback_mode() ->
-    state_functions.
+-export([ init/1
+        , code_change/3
+        , format_status/2
+        , handle_call/3
+        , handle_cast/2
+        , handle_info/2
+        , terminate/2 ]).
 
 start_link(TCP) ->
-    gen_statem:start_link(?MODULE, TCP, []).
+    gen_server:start_link(?MODULE, TCP, []).
 
 init({TCP, [DB]}) ->
     process_flag(trap_exit, true),
-    {ok, locked, #char_state{tcp = TCP, db = DB}}.
+    {ok, #char_state{tcp = TCP, db = DB}}.
 
-locked(_, {set_server, Server}, State) ->
-    {next_state, locked, State#char_state{server = Server}};
-locked(_, {connect, AccountID, LoginIDa, LoginIDb, _Gender},
-       State = #char_state{tcp = TCP, db = DB}) ->
+handle_cast({set_server, Server}, State) ->
+    {noreply, State#char_state{server = Server}};
+handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
+            State = #char_state{tcp = TCP, db = DB}) ->
     TCP ! <<AccountID:32/little>>,
     Verify =
         gen_server:call(login_server,
@@ -38,16 +37,13 @@ locked(_, {connect, AccountID, LoginIDa, LoginIDb, _Gender},
                {ids, {LoginIDa, LoginIDb}},
                {verified, Verify}]),
     case Verify of
-        {ok, FSM} ->
-            {ok, L} = gen_statem:call(FSM, switch_char),
-            gen_server:cast(char_server,
-                            {add_session, {AccountID,
-                                           self(),
-                                           L#login_state.id_a,
-                                           L#login_state.id_b
-                                          }
-                            }
-                           ),
+        {ok, Worker} ->
+            {ok, L} = gen_server:call(Worker, switch_char),
+            gen_server:cast(char_server, {add_session, {AccountID,
+                                                        self(),
+                                                        L#login_state.id_a,
+                                                        L#login_state.id_b
+                                                       }}),
             Chars = db:get_account_chars(DB, AccountID),
             TCP ! {parse, char_packets:new(L#login_state.packet_ver)},
             TCP ! {characters, {Chars, ?MAX_SLOTS, ?AVAILABLE_SLOTS,
@@ -56,34 +52,32 @@ locked(_, {connect, AccountID, LoginIDa, LoginIDb, _Gender},
                                         id_a = L#login_state.id_a,
                                         id_b = L#login_state.id_b,
                                         packet_ver = L#login_state.packet_ver,
-                                        login_fsm = FSM
-                                       },
-            {next_state, valid, NewState};
+                                        login_worker = Worker},
+            {noreply, NewState};
         invalid ->
             TCP ! {refuse, 0},
-            {next_state, locked, State}
-    end.
-
-valid(_, {choose, Num},
-      #char_state{db = DB, account = #account{id = AccountID}} = State) ->
+            {noreply, State}
+    end;
+handle_cast({choose, Num},
+            #char_state{db = DB, account = #account{id = AccountID}} = State) ->
     GetChar = db:get_account_char(DB, AccountID, Num),
     case GetChar of
         nil ->
             lager:log(warning, self(), "Selected invalid character. ~p",
                       [{account,AccountID}]),
             State#char_state.tcp ! {refuse, 1},
-            {next_state, valid, State};
+            {noreply, State};
         C ->
             lager:log(info, self(), "Player selected character. ~p ~p",
                       [{account, AccountID}, {character, C#char.id}]),
             {zone, ZonePort, _ZoneServer} =
                 gen_server:call(zone_master, {who_serves, C#char.map}),
             State#char_state.tcp ! {zone_connect, {C, ?ZONE_IP, ZonePort}},
-            {next_state, chosen, State#char_state{char = C}}
+            {noreply, State#char_state{char = C}}
     end;
-valid(_, {create, Name, Str, Agi, Vit, Int, Dex,
-          Luk, Num, HairColour, HairStyle},
-      State = #char_state{db = DB, account = Account}) ->
+handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
+             Luk, Num, HairColour, HairStyle},
+            State = #char_state{db = DB, account = Account}) ->
     Exists = db:get_char_id(DB, Name),
     case Exists of
         nil ->
@@ -105,12 +99,12 @@ valid(_, {create, Name, Str, Agi, Vit, Int, Dex,
         _ ->
             State#char_state.tcp ! {creation_failed, 0}
     end,
-    {next_state, valid, State};
-valid(_, {delete, CharacterID, EMail},
-      State = #char_state{
-                 db = DB,
-                 account = #account{id = AccountID, email = AccountEMail}
-                }) ->
+    {noreply, State};
+handle_cast({delete, CharacterID, EMail},
+            State = #char_state{
+                       db = DB,
+                       account = #account{id = AccountID, email = AccountEMail}
+                      }) ->
     Address =
         case EMail of
             "" -> nil;
@@ -137,60 +131,38 @@ valid(_, {delete, CharacterID, EMail},
         _Invalid ->
             State#char_state.tcp ! {deletion_failed, 0}
     end,
-    {next_state, valid, State};
-valid(_, {check_name, AccountID, CharacterID, NewName},
-      State = #char_state{db = DB, account = #account{id = AccountID}}) ->
+    {noreply, State};
+handle_cast({check_name, AccountID, CharacterID, NewName},
+            State = #char_state{db = DB, account = #account{id = AccountID}}) ->
     Check = db:get_char_id(DB, NewName),
     case Check of
         nil ->
             State#char_state.tcp ! {name_check_result, 1},
             Char = db:get_char(DB, CharacterID),
             NewState = State#char_state{rename = {Char, NewName}},
-            {next_state, renaming, NewState};
+            {noreply, NewState};
         _Exists ->
             State#char_state.tcp ! {name_check_result, 0},
-            {next_state, valid, State}
+            {noreply, State}
     end;
-valid({call, From}, switch_zone, StateData = #char_state{die = Die}) ->
-    case Die of
-        undefined ->
-            ok;
-        _ ->
-            erlang:cancel_timer(Die)
-    end,
-    {next_state, valid, StateData, [{reply, From, {ok, StateData}}]};
-valid(_, {keepalive, _AccountID}, State) ->
-    {keep_state, State};
-valid(_CastOrInfo, stop, State) ->
+handle_cast({keepalive, _AccountID}, State) ->
+    {noreply, State};
+handle_cast(stop, State) ->
     NewState = State#char_state{
                  die = erlang:send_after(5 * 60 * 1000, self(), exit)},
-    {next_state, valid, NewState};
-valid(cast, {update_state, UpdateFun}, State) ->
-    {keep_state, UpdateFun(State)};
-valid(_, exit, State = #char_state{account=#account{id=AccountID}}) ->
-    lager:log(info, self(), "Character FSM exiting."),
+    {noreply, NewState};
+handle_cast({update_state, UpdateFun}, State) ->
+    {noreply, UpdateFun(State)};
+handle_cast(exit, State = #char_state{account=#account{id=AccountID}}) ->
+    lager:log(info, self(), "Character worker exiting."),
     gen_server:cast(char_server, {remove_session, AccountID}),
-    {stop, normal, State}.
-
-chosen(_EventType, stop, State) ->
-    NewState = State#char_state{
-                 die = erlang:send_after(5 * 60 * 1000, self(), exit)},
-    {next_state, valid, NewState};
-chosen({call, From}, switch_zone, StateData = #char_state{die = Die}) ->
-    case Die of
-        undefined ->
-            ok;
-        _ ->
-            erlang:cancel_timer(Die)
-    end,
-    {next_state, chosen, StateData, [{reply, From, {ok, StateData}}]}.
-
-renaming(_, {rename, CharacterID},
-         #char_state{db = DB,
-                     rename = {#char{name = OldName,
-                                     id = CharacterID,
-                                     renamed = 0
-                                    }, NewName}} = State) ->
+    {stop, normal, State};
+handle_cast({rename, CharacterID},
+            #char_state{db = DB,
+                        rename = {#char{name = OldName,
+                                        id = CharacterID,
+                                        renamed = 0
+                                       }, NewName}} = State) ->
     Check = db:get_char_id(DB, NewName),
     case Check of
         nil ->
@@ -199,8 +171,31 @@ renaming(_, {rename, CharacterID},
         _Exists ->
             State#char_state.tcp ! {rename_result, 3}
     end,
-    {next_state, valid, State#char_state{rename = undefined}};
-renaming(_, {rename, _CharacterID},
-         State = #char_state{rename = {#char{renamed = 1}, _NewName}}) ->
+    {noreply, State#char_state{rename = undefined}};
+handle_cast({rename, _CharacterID},
+            State = #char_state{rename = {#char{renamed = 1}, _NewName}}) ->
     State#char_state.tcp ! {rename_result, 1},
-    {next_state, valid, State}.
+    {noreply, State}.
+
+handle_call(switch_zone, _From, StateData = #char_state{die = Die}) ->
+    case Die of
+        undefined ->
+            ok;
+        _ ->
+            erlang:cancel_timer(Die)
+    end,
+    {reply, {ok, StateData}, StateData}.
+
+handle_info(stop, State) ->
+    NewState = State#char_state{
+                 die = erlang:send_after(5 * 60 * 1000, self(), exit)},
+    {noreply, NewState}.
+
+code_change(_, State, _) ->
+    {ok, State}.
+
+format_status(_Opt, _) ->
+    ok.
+
+terminate(_Reason, _State) ->
+    ok.

@@ -27,7 +27,7 @@ init(State) ->
     {ok, _Keepalive} =
         timer:apply_interval(timer:seconds(30), db, ping, [DB]),
     %% TODO: don't assume 24; guess from packet?
-    {ok, {State#state.port, zone_fsm, zone_packets:new(24)}, {State, [DB]}}.
+    {ok, {State#state.port, zone_worker, zone_packets:new(24)}, {State, [DB]}}.
 
 handle_call(
   {provides, MapName},
