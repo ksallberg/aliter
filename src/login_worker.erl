@@ -81,7 +81,6 @@ handle_info(stop, State) ->
     {noreply,
      State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
 handle_info(exit, State) ->
-    io:format("!!!!!!!!!!!!!!!!!!!!!close login_worker\n", []),
     {stop, normal, State}.
 
 code_change(_, State, _) ->

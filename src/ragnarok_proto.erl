@@ -5,6 +5,7 @@
 -export([ start_link/4
         , init/4
         , send_packet/3
+        , send_packets/3
         , send_bin/2
         , close_socket/2 ]).
 
@@ -14,8 +15,7 @@ start_link(Ref, Socket, Transport, Opts) ->
     Pid = spawn_link(?MODULE, init, [Ref, Socket, Transport, Opts]),
     {ok, Pid}.
 
-init(Ref, Socket, Transport, [PacketHandler, DB] = Opts) ->
-    io:format("Opts: ~p\n", [Opts]),
+init(Ref, Socket, Transport, [PacketHandler, DB]) ->
     {ok, Worker} = case PacketHandler of
                        login_packets ->
                            supervisor:start_child(login_worker_sup,
@@ -27,7 +27,6 @@ init(Ref, Socket, Transport, [PacketHandler, DB] = Opts) ->
                            supervisor:start_child(zone_worker_sup,
                                                   [Socket, DB, PacketHandler])
                    end,
-    io:format("!!!!!!WORKER: ~p\n", [Worker]),
     ok = ranch:accept_ack(Ref),
     parse_loop(Socket, Transport, PacketHandler, Worker).
 
@@ -41,21 +40,7 @@ verify({Packet, Data}, PacketHandler) ->
             {ok, Packed};
         true ->
             {badsize, Size}
-end.
-
-%% Event = PacketHandler:unpack(Packet),
-%%             gen_server:cast(Worker, Event),
-%% ?MODULE:client_worker(Socket, Worker, PacketHandler);
-
-%% {send_packets, Packets} ->
-%%             Binaries = lists:map(
-%%                          fun(Packet) ->
-%%                                  case verify(Packet, PacketHandler) of
-%%                                      {ok, Binary} -> Binary
-%%                                  end
-%%                          end, Packets),
-%%             gen_tcp:send(Socket, iolist_to_binary(Binaries)),
-%% ?MODULE:client_worker(Socket, Worker, PacketHandler);
+    end.
 
 %% @hidden Receive a packet, skipping unknown ones.
 parse_loop(Socket, Transport, PacketHandler, Worker) ->
@@ -69,31 +54,30 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                     io:format("apa3\n", []),
                     case PacketHandler:packet_size(Header) of
                         undefined ->
-                            io:format("NEEEEEJ!\n", []),
+                            io:format("NEEEEEJ\n", []),
                             lager:log(error, self(),
                                       "Received unknown packet ~p",
                                       [{header, Header}]),
-                            parse_loop(Socket, Transport, PacketHandler, Worker);
+                            parse_loop(Socket, Transport,
+                                       PacketHandler, Worker);
                         %% Variable-length packet
                         0 ->
-                            io:format("JAAAAAAAAAA1!\n", []),
+                            io:format("JAAAAAAAAAA1\n", []),
                             Next = fun() ->
                                            parse_loop(Socket,
                                                       Transport,
                                                       PacketHandler,
                                                       Worker)
                                    end,
-                            case gen_tcp:recv(Socket, 2) of
+                            case Transport:recv(Socket, 2, infinity) of
                                 {ok, <<Length:16/little>>} ->
-                                    case gen_tcp:recv(Socket, Length - 4) of
+                                    case Transport:recv(Socket, Length - 4,
+                                                        infinity) of
                                         {ok, Rest} ->
-                                            Worker !
-                                                { tcp,
-                                                  Socket,
-                                                  <<Header:16/little,
-                                                    Length:16/little,
-                                                    Rest/binary>>
-                                                },
+                                            Packet = <<Header:16/little,
+                                                       Length:16/little,
+                                                       Rest/binary>>,
+                                            send_bin(Socket, Packet),
                                             parse_loop(Socket,
                                                        Transport,
                                                        PacketHandler,
@@ -111,13 +95,12 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                                                     Next()
                                             end
                                     end;
-
                                 {error, Reason} ->
                                     failed_remainder(Header, {length, 2},
                                                      Reason),
                                     case Reason of
                                         closed ->
-                                            Worker ! {tcp_closed, Socket};
+                                            gen_server:cast(Worker, stop);
                                         _ ->
                                             parse_loop(Socket,
                                                        Transport,
@@ -125,16 +108,14 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                                                        Worker)
                                     end
                             end;
-                        %% Already read all of it!
+                        %% Already read all of it
                         2 ->
-                            io:format("JAAAAAAAAAA2!\n", []),
-
+                            io:format("JAAAAAAAAAA2\n", []),
                             Worker ! {tcp, Socket, <<Header:16/little>>},
                             parse_loop(Socket, Transport, PacketHandler, Worker);
-
                         Size ->
-                            io:format("JAAAAAAAAAA3!\n", []),
-                            case gen_tcp:recv(Socket, Size - 2) of
+                            io:format("JAAAAAAAAAA3\n", []),
+                            case Transport:recv(Socket, Size - 2, infinity) of
                                 {ok, Rest} ->
                                     Packet = <<Header:16/little, Rest/binary>>,
                                     handle_unpack(PacketHandler, Packet,
@@ -146,10 +127,9 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                                     failed_remainder(Header,
                                                      {packet_size, Size - 2},
                                                      Reason),
-
                                     case Reason of
                                         closed ->
-                                            Worker ! {tcp_closed, Socket};
+                                            gen_server:cast(Worker, stop);
                                         _ ->
                                             parse_loop(Socket,
                                                        Transport,
@@ -162,14 +142,11 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                     lager:log(error, self(), "Ignore rest ~p",
                               [{got, H1}]),
                     parse_loop(Socket, Transport, PacketHandler, Worker);
-
                 {error, closed} ->
-                    Worker ! {tcp_closed, Socket}
+                    gen_server:cast(Worker, stop)
             end;
-
         {error, closed} ->
-            io:format("buuuuuuuuu\n", []),
-            gen_server:cast(Worker, exit)
+            gen_server:cast(Worker, stop)
     end.
 
 handle_unpack(PacketHandler, Packet, Worker) ->
@@ -187,7 +164,7 @@ send_packet({Packet, Data}, Socket, PacketHandler) ->
     Packed = iolist_to_binary(PacketHandler:pack(Packet, Data)),
     case verify({Packet, Data}, PacketHandler) of
         {ok, Binary} ->
-            gen_tcp:send(Socket, Binary);
+            send_bin(Socket, Binary);
         {badsize, Wanted} ->
             lager:log(error, self(),
                       "Ignored attempt to send packet "
@@ -197,6 +174,16 @@ send_packet({Packet, Data}, Socket, PacketHandler) ->
                        {wanted, Wanted},
                        {got, byte_size(Packed)}])
     end.
+
+send_packets(Socket, Packets, PacketHandler) ->
+    Binaries = lists:map(
+                 fun(Packet) ->
+                         case verify(Packet, PacketHandler) of
+                             {ok, Binary} -> Binary
+                         end
+                 end, Packets),
+    gen_tcp:send(Socket, iolist_to_binary(Binaries)).
+
 
 send_bin(Socket, Packet) ->
     gen_tcp:send(Socket, Packet).
