@@ -81,7 +81,7 @@ handle_info(stop, State) ->
     {noreply,
      State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
 handle_info(exit, State) ->
-    io:format("close login_worker\n", []),
+    io:format("!!!!!!!!!!!!!!!!!!!!!close login_worker\n", []),
     {stop, normal, State}.
 
 code_change(_, State, _) ->
@@ -109,7 +109,7 @@ successful_login(A, State) ->
     Socket = State#login_state.tcp,
     PacketHandler = State#login_state.packet_handler,
     ragnarok_proto:send_packet(M, Socket, PacketHandler),
-    ragnarok_proto:close_socket(Socket, PacketHandler),
+    %% ragnarok_proto:close_socket(Socket, PacketHandler),
     handle_info(stop, State#login_state{account = A,
                                         id_a = LoginIDa,
                                         id_b = LoginIDb}).

@@ -4,32 +4,26 @@
 
 -include("records.hrl").
 
--export([
-    start_link/1,
-    init/1,
-    install/0,
-    uninstall/0,
-    stop/0]).
+-export([ start_link/0
+        , init/1 ]).
 
-start_link(Config) ->
-  Supervisor = supervisor:start_link({local, ?MODULE}, ?MODULE, []),
-  supervisor:start_child(?MODULE, [node(), char_srv, start_link, [Config]]),
-  Supervisor.
+start_link() ->
+  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-init([]) ->
-    SupFlags = {simple_one_for_one, 2, 60},
-    CharSrv = { undefined,
-                {rpc, block_call, []},
-                permanent,
-                1000,
-                worker,
-                [char_srv]
-              },
-    {ok, {SupFlags, [CharSrv]}}.
-
-install() -> ok.
-uninstall() -> ok.
-
-stop() ->
-  lager:log(info, self(), "Stopping Char server."),
-  ok.
+init(_) ->
+    SupFlags = #{strategy => one_for_one,
+                 intensity => 2,
+                 period => 60},
+    CharSrv = #{id => char_srv,
+                start => {char_srv, start_link, []},
+                restart => permanent,
+                shutdown => 1000,
+                type => worker,
+                modules => [char_srv]},
+    CharWorkerSup = #{id => char_worker_sup,
+                      start => {char_worker_sup, start_link, []},
+                      restart => permanent,
+                      shutdown => 1000,
+                      type => supervisor,
+                      modules => [char_worker_sup]},
+    {ok, {SupFlags, [CharSrv, CharWorkerSup]}}.

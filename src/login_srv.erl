@@ -17,7 +17,7 @@
 start_link() ->
     Port = ?LOGIN_PORT,
     lager:log(info, self(), "Starting login server at port: ~p~n", [Port]),
-    gen_server:start_link(?MODULE, Port, []).
+    gen_server:start_link({local, login_server}, ?MODULE, Port, []).
 
 init(Port) ->
     case eredis:start_link() of
@@ -28,8 +28,9 @@ init(Port) ->
                                                     ping,
                                                     [DB]),
             %% Start TCP listener, and worker
-            {ok, _} = ranch:start_listener(tcp_echo, ranch_tcp, [{port, Port}],
-                                           ragnarok_proto, [login_packets, DB]),
+            {ok, _} = ranch:start_listener(login_listener, ranch_tcp,
+                                           [{port, Port}], ragnarok_proto,
+                                           [login_packets, DB]),
             {ok, []};
         _ ->
             lager:log(error, self(), "No redis DB found! ~n", []),

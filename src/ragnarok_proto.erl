@@ -5,6 +5,7 @@
 -export([ start_link/4
         , init/4
         , send_packet/3
+        , send_bin/2
         , close_socket/2 ]).
 
 -define(PACKET_HANDLER, login_packets).
@@ -15,11 +16,19 @@ start_link(Ref, Socket, Transport, Opts) ->
 
 init(Ref, Socket, Transport, [PacketHandler, DB] = Opts) ->
     io:format("Opts: ~p\n", [Opts]),
-    {ok, Worker} = supervisor:start_child(login_worker_sup,
-                                          [Socket, DB, PacketHandler]),
+    {ok, Worker} = case PacketHandler of
+                       login_packets ->
+                           supervisor:start_child(login_worker_sup,
+                                                  [Socket, DB, PacketHandler]);
+                       char_packets_24 ->
+                           supervisor:start_child(char_worker_sup,
+                                                  [Socket, DB, PacketHandler]);
+                       zone_packets ->
+                           supervisor:start_child(zone_worker_sup,
+                                                  [Socket, DB, PacketHandler])
+                   end,
     io:format("!!!!!!WORKER: ~p\n", [Worker]),
     ok = ranch:accept_ack(Ref),
-    %% ok = Transport:setopts(Socket, [{active, once}]),
     parse_loop(Socket, Transport, PacketHandler, Worker).
 
 verify({Packet, Data}, PacketHandler) ->
@@ -48,18 +57,13 @@ end.
 %%             gen_tcp:send(Socket, iolist_to_binary(Binaries)),
 %% ?MODULE:client_worker(Socket, Worker, PacketHandler);
 
-
-%% Packet when is_binary(Packet) ->
-%%             gen_tcp:send(Socket, Packet),
-%% ?MODULE:client_worker(Socket, Worker, PacketHandler);
-
 %% @hidden Receive a packet, skipping unknown ones.
 parse_loop(Socket, Transport, PacketHandler, Worker) ->
     io:format("apa1 ~p \n", [Transport]),
-    case Transport:recv(Socket, 1, 5000) of
+    case Transport:recv(Socket, 1, infinity) of
         {ok, <<H1>>} ->
             io:format("apa2\n", []),
-            case gen_tcp:recv(Socket, 1, 0) of
+            case Transport:recv(Socket, 1, infinity) of
                 {ok, <<H2>>} ->
                     <<Header:16/little>> = <<H1, H2>>,
                     io:format("apa3\n", []),
@@ -193,6 +197,9 @@ send_packet({Packet, Data}, Socket, PacketHandler) ->
                        {wanted, Wanted},
                        {got, byte_size(Packed)}])
     end.
+
+send_bin(Socket, Packet) ->
+    gen_tcp:send(Socket, Packet).
 
 close_socket(Socket, _PacketHandler) ->
     ranch_tcp:close(Socket).

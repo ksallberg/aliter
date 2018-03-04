@@ -27,8 +27,8 @@
          account,
          id_a,
          id_b,
-         packet_ver,
-         packet_handler}).
+         packet_handler,
+         packet_ver}).
 
 -record(char_state,
         {server,
@@ -39,6 +39,7 @@
          account,
          id_a,
          id_b,
+         packet_handler,
          packet_ver,
          rename,
          login_worker}).
