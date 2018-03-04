@@ -33,8 +33,6 @@ exposing the port towards my server like this:
 
 ## PACKETVER
 The packetver is configured in include/ro.hrl, currently I use 20111116.
-The server was previously using 20090901 and it seems that many package
-are still parsed that way and thus the server(s) cannot many requests.
 
 ## Client
 I have only tested this with the [roBrowser](https://www.robrowser.com)
