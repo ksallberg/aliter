@@ -7,7 +7,7 @@
 
 -include_lib("stdlib/include/qlc.hrl").
 
--export([ start_link/1 ]).
+-export([ start_link/4 ]).
 
 -export([ init/1 ]).
 
@@ -23,15 +23,16 @@
 
 -define(WALKSPEED, 150).
 
-send(State, Packet) ->
-    State#zone_state.tcp ! Packet.
+send(#zone_state{tcp = TCP, packet_handler = PacketHandler}, Packet) ->
+    ragnarok_proto:send_packet(Packet, TCP, PacketHandler).
 
-start_link(TCP) ->
-    gen_server:start_link(?MODULE, TCP, []).
+start_link(TCP, DB, PacketHandler, Server) ->
+    gen_server:start_link(?MODULE, [TCP, DB, PacketHandler, Server], []).
 
-init({TCP, [DB]}) ->
+init([TCP, DB, PacketHandler, Server]) ->
     process_flag(trap_exit, true),
-    {ok, #zone_state{db = DB, tcp = TCP}}.
+    {ok, #zone_state{db = DB, tcp = TCP,
+                     packet_handler = PacketHandler, server = Server}}.
 
 handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
     DB = State#zone_state.db,
@@ -46,7 +47,6 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                 gen_server:call(State#zone_state.server, {add_player,
                                                           Char#char.map,
                                                           {AccountID, self()}}),
-            send(State, {parse, zone_packets:new(C#char_state.packet_ver)}),
             send(State, {account_id, AccountID}),
             send(State, {accept, {zone_master:tick(),
                                   {Char#char.x, Char#char.y, 0}}}),
@@ -267,7 +267,7 @@ handle_cast({request_name, ActorID},
                         #guild{name=GuildName} = db:get_guild(DB, GuildID)
                 end,
                 {actor_name_full,
-                 {ActorID, CharacterName, "", GuildName, ""}};
+                 {ActorID, CharacterName, <<"">>, GuildName, <<"">>}};
                          %%               party          guild position
             true ->
                 case gen_server:call(MapServer, {get_actor, ActorID}) of
@@ -423,8 +423,10 @@ handle_cast({send_packet, Packet, Data}, State) ->
                                                   {data, Data}]),
     send(State, {Packet, Data}),
     {noreply, State};
-handle_cast({send_packets, Packets}, State) ->
-    send(State, {send_packets, Packets}),
+handle_cast({send_packets, Packets},
+            #zone_state{tcp = Socket,
+                        packet_handler = PacketHandler} = State) ->
+    ragnarok_proto:send_packets(Socket, Packets, PacketHandler),
     {noreply, State};
 handle_cast({show_to, Worker},
             State = #zone_state{account = A, char = C }) ->
@@ -533,7 +535,7 @@ handle_cast({pick_up, ObjectID},
                     {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
     case db:get_world_item(DB, ObjectID) of
         nil ->
-            say("Item already picked up!", State);
+            say("Item already picked up", State);
         Item ->
             db:remove_world_item(DB, Map, ObjectID),
             give_item(TCP, DB, CharacterID,
@@ -581,8 +583,8 @@ handle_call(get_state, From, State) ->
     Actions = [{reply, From, {ok, State}}],
     {reply, Actions, State}.
 
-handle_info(_, _) ->
-    ok.
+handle_info(Msg, State) ->
+    {noreply, State}.
 
 %% Helper walking function
 walk_interval(N) ->

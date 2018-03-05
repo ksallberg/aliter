@@ -14,7 +14,6 @@
 packet_size(X) ->
     packets:packet_size(X).
 
-%% FIXME: what is 60, 8?
 unpack(<<16#083c:16/little,
          AccountID:32/little,
          CharacterID:32/little,

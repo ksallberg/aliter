@@ -27,6 +27,7 @@
          account,
          id_a,
          id_b,
+         packet_handler,
          packet_ver}).
 
 -record(char_state,
@@ -38,6 +39,7 @@
          account,
          id_a,
          id_b,
+         packet_handler,
          packet_ver,
          rename,
          login_worker}).
@@ -60,7 +62,8 @@
          walk_changed,
          npc,
          char_worker,
-         is_walking=false
+         is_walking=false,
+         packet_handler
         }).
 
 -record(map_state,

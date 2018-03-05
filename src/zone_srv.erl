@@ -1,38 +1,41 @@
 -module(zone_srv).
 
--behaviour(gen_server_tcp).
+-behaviour(gen_server).
+
 -include("records.hrl").
 
--export([start_link/2, server_for/1]).
+-export([ start_link/2
+        , server_for/1]).
 
--export([
-         init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
-         terminate/2,
-         code_change/3]).
+-export([ init/1
+        , handle_call/3
+        , handle_cast/2
+        , handle_info/2
+        , terminate/2
+        , code_change/3 ]).
 
--record(state, {port, maps}).
+-record(state, {port, maps, list_name}).
 
 start_link(Port, MapPairs) ->
     lager:log(info, self(), "Starting zone server ~p", [{port, Port}]),
-    gen_server_tcp:start_link({local, server_for(Port)},
-                              ?MODULE,
-                              #state{port = Port, maps = MapPairs},
-                              []).
+    Name = server_for(Port),
+    ListName = listener_for(Port),
+    gen_server:start_link({local, Name}, ?MODULE,
+                          #state{port = Port,
+                                 maps = MapPairs,
+                                 list_name = ListName}, []).
 
-init(State) ->
-    {ok, DB} = eredis:start_link(), % TODO: config
-    {ok, _Keepalive} =
-        timer:apply_interval(timer:seconds(30), db, ping, [DB]),
-    %% TODO: don't assume 24; guess from packet?
-    {ok, {State#state.port, zone_worker, zone_packets:new(24)}, {State, [DB]}}.
+init(#state{list_name = ListName, port = Port} = State) ->
+    {ok, DB} = eredis:start_link(),
+    {ok, _Keepalive} = timer:apply_interval(timer:seconds(30), db, ping, [DB]),
+    {ok, _} = ranch:start_listener(ListName, ranch_tcp,
+                                   [{port, Port}], ragnarok_proto,
+                                   [zone_packets_24, DB, self()]),
+    {ok, State}.
 
-handle_call(
-  {provides, MapName},
-  _From,
-  State = #state{port = Port, maps = Maps}) ->
+handle_call({provides, MapName},
+            _From,
+            State = #state{port = Port, maps = Maps}) ->
     case proplists:lookup(MapName, Maps) of
         none ->
             {reply, no, State};
@@ -118,3 +121,6 @@ get_player_by(Pred, [{_Name, Map} | Maps]) ->
 
 server_for(Port) ->
     list_to_atom(lists:concat(["zone_server_", Port])).
+
+listener_for(Port) ->
+    list_to_atom(lists:concat(["zone_listener_", Port])).

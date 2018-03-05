@@ -1,10 +1,11 @@
 -module(char_srv).
--behaviour(gen_server_tcp).
+
+-behaviour(gen_server).
 
 -include("records.hrl").
 -include("ro.hrl").
 
--export([ start_link/1 ]).
+-export([ start_link/0 ]).
 
 -export([ init/1
         , handle_call/3
@@ -15,21 +16,21 @@
 
 -record(state, {db, sessions}).
 
-start_link(_Conf) ->
-    gen_server_tcp:start_link({local, char_server}, ?MODULE, ?CHAR_PORT, []).
+start_link() ->
+    Port = ?CHAR_PORT,
+    gen_server:start_link({local, char_server}, ?MODULE, Port, []).
 
 init(Port) ->
     {ok, DB} = eredis:start_link(),
     {ok, _Keepalive} =
         timer:apply_interval(timer:seconds(30), db, ping, [DB]),
-    {ok,
-     {Port, char_worker, char_packets_24},
-     {#state{db = DB, sessions = []}, [DB]}}.
+    {ok, _} = ranch:start_listener(char_listener, ranch_tcp, [{port, Port}],
+                                   ragnarok_proto, [char_packets_24, DB]),
+    {ok, #state{db = DB, sessions = []}}.
 
-handle_call(
-  {verify_session, AccountID, CharacterID, SessionIDa},
-  _From,
-  State = #state{sessions = Sessions}) ->
+handle_call({verify_session, AccountID, CharacterID, SessionIDa},
+            _From,
+            State = #state{sessions = Sessions}) ->
     lager:log(info, self(), "Verifying session. ~p ~p ~p ~p",
               [{account, AccountID},
                {character, CharacterID},

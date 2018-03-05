@@ -17,21 +17,19 @@ init({Port, Maps}) ->
 
     { ok,
       { {one_for_one, 0, 60},
-        [ { zone_maps_sup:server_for(Port),
-            {zone_maps_sup, start_link, [Port, Maps]},
-            permanent,
-            infinity,
-            supervisor,
-            [zone_maps_sup]
-          },
+        [ {zone_maps_sup:server_for(Port),
+           {zone_maps_sup, start_link, [Port, Maps]},
+           permanent,
+           infinity,
+           supervisor,
+           [zone_maps_sup]},
 
-          { zone_srv:server_for(Port),
-            {zone_srv, start_link, [Port, MapPairs]},
-            permanent,
-            1000,
-            worker,
-            [zone_srv]
-          }
+          {zone_srv:server_for(Port),
+           {zone_srv, start_link, [Port, MapPairs]},
+           permanent,
+           1000,
+           worker,
+           [zone_srv]}
         ]
       }
     }.

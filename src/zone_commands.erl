@@ -155,7 +155,6 @@ add_zeny(Worker, State, Zeny) ->
     C = State#zone_state.char,
     OldZeny = C#char.zeny,
     TempNewZeny = OldZeny + Zeny,
-
     NewZeny = if TempNewZeny > 1000000000 -> 1000000000;
                  TempNewZeny < 0 -> 0;
                  true -> TempNewZeny

@@ -17,14 +17,20 @@ start_link() ->
 init(_) ->
     SupFlags = #{strategy  => one_for_one,
                  intensity => 10,
-                 preiod    => 60},
+                 period    => 60},
     LoginServ = #{id => login_srv,
                   start => {login_srv, start_link, []},
                   restart => permanent,
                   shutdown => 1000,
                   type => worker,
                   modules => [login_srv]},
-    {ok, {SupFlags, [LoginServ]}}.
+    LoginWorkerSup = #{id => login_worker_sup,
+                       start => {login_worker_sup, start_link, []},
+                       restart => permanent,
+                       shutdown => 1000,
+                       type => supervisor,
+                       modules => [login_worker_sup]},
+    {ok, {SupFlags, [LoginServ, LoginWorkerSup]}}.
 
 install() -> ok.
 uninstall() -> ok.
