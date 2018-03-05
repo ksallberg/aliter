@@ -91,7 +91,6 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             {noreply, State}
     end;
 handle_cast({set_server, Server}, State) ->
-    io:format("SET SERVER!!!!!!!!: ~p\n", [Server]),
     {noreply, State#zone_state{server = Server}};
 handle_cast({npc_activate, ActorID},
             State = #zone_state{map_server=MapServer}) ->
@@ -296,8 +295,6 @@ handle_cast({request_name, ActorID},
                         "Unknown"
                 end
         end,
-
-    io:format("ASK NANME!!!!! ~p \n", [Name]),
     send(State, Name),
     {noreply, State};
 handle_cast(player_count, State) ->
@@ -392,7 +389,6 @@ handle_cast({npc, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
                         char=#char{account_id=AID}} = State) ->
     MonsterID = gen_server:call(monster_srv, next_id),
-    io:format("______________________ dags for show npc", []),
     NPC = #npc{id=MonsterID,
                name="npc",
                sprite=SpriteID,
@@ -423,10 +419,6 @@ handle_cast({tick, _Tick}, State) ->
     send(State, {tick, zone_master:tick()}),
     {noreply, State};
 handle_cast({send_packet, Packet, Data}, State) ->
-
-
-    io:format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1\n"),
-
     lager:log(info, self(), "Send packet ~p ~p", [{packet, Packet},
                                                   {data, Data}]),
     send(State, {Packet, Data}),
@@ -592,7 +584,6 @@ handle_call(get_state, From, State) ->
     {reply, Actions, State}.
 
 handle_info(Msg, State) ->
-    io:format("Unkown info: ~p\n", [Msg]),
     {noreply, State}.
 
 %% Helper walking function

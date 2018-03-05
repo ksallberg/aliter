@@ -33,7 +33,6 @@ init(Ref, Socket, Transport, [PacketHandler, DB, Server]) ->
     parse_loop(Socket, Transport, PacketHandler, Worker).
 
 verify({Packet, Data}, PacketHandler) ->
-    io:format("!!!!!!!!!!!!!!!!!!!PacketHandler: ~p\n", [PacketHandler]),
     Packed = iolist_to_binary(PacketHandler:pack(Packet, Data)),
     <<Header:16/little, _/binary>> = Packed,
     Size = PacketHandler:packet_size(Header),
@@ -75,7 +74,6 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                                             Packet = <<Header:16/little,
                                                        Length:16/little,
                                                        Rest/binary>>,
-                                            io:format("oj da..\n", []),
                                             handle_unpack(PacketHandler, Packet,
                                                           Worker),
                                             parse_loop(Socket,
@@ -112,7 +110,8 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                         2 ->
                             handle_unpack(PacketHandler, <<Header:16/little>>,
                                           Worker),
-                            parse_loop(Socket, Transport, PacketHandler, Worker);
+                            parse_loop(Socket, Transport,
+                                       PacketHandler, Worker);
                         Size ->
                             case Transport:recv(Socket, Size - 2, infinity) of
                                 {ok, Rest} ->
@@ -160,11 +159,9 @@ failed_remainder(Header, Size, Reason) ->
               ]).
 
 send_packet({Packet, Data}, Socket, PacketHandler) ->
-    io:format("Send: ~p\n", [{Packet, Data}]),
     Packed = iolist_to_binary(PacketHandler:pack(Packet, Data)),
     case verify({Packet, Data}, PacketHandler) of
         {ok, Binary} ->
-            io:format("!!!!!Send to client: ~p\n", [Binary]),
             send_bin(Socket, Binary);
         {badsize, Wanted} ->
             lager:log(error, self(),
@@ -187,7 +184,6 @@ send_packets(Socket, Packets, PacketHandler) ->
 
 
 send_bin(Socket, Packet) ->
-    io:format("sned bin...~p\n", [Packet]),
     ranch_tcp:send(Socket, Packet).
 
 close_socket(Socket, _PacketHandler) ->

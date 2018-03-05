@@ -18,8 +18,6 @@
 
 start_link(Port, MapPairs) ->
     lager:log(info, self(), "Starting zone server ~p", [{port, Port}]),
-
-    io:format("MapPairs: ~p\n", [MapPairs]),
     Name = server_for(Port),
     ListName = listener_for(Port),
     gen_server:start_link({local, Name}, ?MODULE,
@@ -68,7 +66,6 @@ handle_cast({send_to_all, Msg}, State) ->
     {noreply, State};
 handle_cast({register_npc, NPC = #npc{map = MapName}},
   State = #state{maps = Maps}) ->
-    io:format("zone_srv registernpc ~p \n", [NPC]),
     case proplists:lookup(MapName, Maps) of
         none ->
             {noreply, State};
