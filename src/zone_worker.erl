@@ -12,7 +12,8 @@
 -export([ init/1 ]).
 
 -export([ show_actors/1
-        , say/2 ]).
+        , say/2
+        , send/2]).
 
 -export([ code_change/3
         , format_status/2
@@ -406,11 +407,8 @@ handle_cast({npc, SpriteID, X, Y},
     gen_server:cast(MapServer, Msg),
     {noreply, State};
 handle_cast({give_item, ID, Amount},
-            State = #zone_state{
-                       tcp = TCP,
-                       db = DB,
-                       char = #char{id = CharacterID}}) ->
-    give_item(TCP, DB, CharacterID, ID, Amount),
+            State = #zone_state{char = #char{id = CharacterID}}) ->
+    give_item(State, CharacterID, ID, Amount),
     {noreply, State};
 handle_cast(stop, State = #zone_state{char_worker = Char}) ->
     gen_server:cast(Char, exit),
@@ -520,8 +518,7 @@ handle_cast({drop, Slot, Amount},
     end,
     {noreply, State};
 handle_cast({pick_up, ObjectID},
-            State = #zone_state{tcp = TCP,
-                                db = DB,
+            State = #zone_state{db = DB,
                                 map_server = MapServer,
                                 account = #account{id = AccountID},
                                 char = #char{id = CharacterID,
@@ -538,7 +535,7 @@ handle_cast({pick_up, ObjectID},
             say("Item already picked up", State);
         Item ->
             db:remove_world_item(DB, Map, ObjectID),
-            give_item(TCP, DB, CharacterID,
+            give_item(State, CharacterID,
                       Item#world_item.item, Item#world_item.amount)
     end,
     {noreply, State};
@@ -583,7 +580,7 @@ handle_call(get_state, From, State) ->
     Actions = [{reply, From, {ok, State}}],
     {reply, Actions, State}.
 
-handle_info(Msg, State) ->
+handle_info(_Msg, State) ->
     {noreply, State}.
 
 %% Helper walking function
@@ -619,21 +616,20 @@ show_actors(#zone_state{map_server = MapServer,
 say(Message, State) ->
     send(State, {message, Message}).
 
-give_item(TCP, DB, CharacterID, ID, Amount) ->
+give_item(#zone_state{db = DB} = State, CharacterID, ID, Amount) ->
     Slot = db:give_player_item(DB, CharacterID, ID, Amount),
-    TCP !
-        {give_item, {Slot,   %% Index
-                     Amount, %% Amount
-                     ID,     %% ID
-                     1,      %% Identified
-                     0,      %% Damaged
-                     0,      %% Refined
-                     0,      %% Card1
-                     0,      %%     2
-                     0,      %%     3
-                     0,      %%     4
-                     2,      %% EquipLocation
-                     4,      %% Type
-                     0,      %% Result
-                     0,      %% ExpireTime
-                     0}}.    %% BindOnEquipType
+    send(State, {give_item, {Slot,   %% Index
+                             Amount, %% Amount
+                             ID,     %% ID
+                             1,      %% Identified
+                             0,      %% Damaged
+                             0,      %% Refined
+                             0,      %% Card1
+                             0,      %%     2
+                             0,      %%     3
+                             0,      %%     4
+                             2,      %% EquipLocation
+                             4,      %% Type
+                             0,      %% Result
+                             0,      %% ExpireTime
+                             0}}).    %% BindOnEquipType

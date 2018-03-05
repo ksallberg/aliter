@@ -10,8 +10,7 @@ parse(String) ->
     string:tokens(String, " ").
 
 execute(_Worker, "caps", Args,
-        State = #zone_state{tcp = TCP,
-                            map_server = MapServer,
+        State = #zone_state{map_server = MapServer,
                             account = #account{id = AccountID},
                             char = #char{id = CharacterID,
                                          x = X,
@@ -24,7 +23,7 @@ execute(_Worker, "caps", Args,
                      actor_message,
                      {AccountID, Capitalized}
                     }),
-    TCP ! {message, Capitalized},
+    zone_worker:send(State, {message, Capitalized}),
     {ok, State};
 execute(Worker, "crash", _Args, _State) ->
     gen_server:cast(Worker, crash);
@@ -94,8 +93,7 @@ execute(_Worker, Unknown, _Args, State) ->
     ok.
 
 warp_to(Worker, Map, X, Y,
-        #zone_state{tcp = TCP,
-                    map_server = MapServer,
+        #zone_state{map_server = MapServer,
                     account = #account{id = AccountID},
                     char = C} = State) ->
     case gen_server:call(zone_master, {who_serves, Map}) of
@@ -130,7 +128,7 @@ warp_to(Worker, Map, X, Y,
                           end,
             zone_worker:show_actors(NewStateFun(State)),
             gen_server:cast(Worker, {switch_zones, NewStateFun}),
-            TCP ! {warp_zone, {Map, X, Y, ?ZONE_IP, Port}};
+            zone_worker:send(State, {warp_zone, {Map, X, Y, ?ZONE_IP, Port}});
         none ->
             zone_worker:say("Invalid map provided.", State),
             ok
@@ -163,4 +161,4 @@ add_zeny(Worker, State, Zeny) ->
                           St#zone_state{char = C#char{zeny = NewZeny}}
                   end,
     gen_server:cast(Worker, {update_state, NewStateFun}),
-    State#zone_state.tcp ! {param_change_long, {?SP_ZENY, NewZeny}}.
+    zone_worker:send(State, {param_change_long, {?SP_ZENY, NewZeny}}).

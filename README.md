@@ -72,6 +72,7 @@ var ROConfig = {
 \hat 422             - Fire bursting out of ears
 \monster 1373 50 50  - Spawn LOD to tile X:50, Y:50
 \npc 20 50 50        - Spawn NPC to tile X:50, Y:50
+\job 20              - Become assassin
 ```
 
 ### Supporter RO Commands

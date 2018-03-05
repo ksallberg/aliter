@@ -46,7 +46,6 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                                                         L#login_state.id_b
                                                        }}),
             Chars = db:get_account_chars(DB, AccountID),
-            %% TCP ! {parse, char_packets:new(L#login_state.packet_ver)},
             M = {characters, {Chars, ?MAX_SLOTS, ?AVAILABLE_SLOTS,
                               ?PREMIUM_SLOTS}},
             ragnarok_proto:send_packet(M, TCP, PacketHandler),
@@ -214,7 +213,9 @@ handle_call(switch_zone, _From, StateData = #char_state{die = Die}) ->
 handle_info(stop, State) ->
     NewState = State#char_state{
                  die = erlang:send_after(5 * 60 * 1000, self(), exit)},
-    {noreply, NewState}.
+    {noreply, NewState};
+handle_info(exit, State) ->
+    {stop, normal, State}.
 
 code_change(_, State, _) ->
     {ok, State}.
