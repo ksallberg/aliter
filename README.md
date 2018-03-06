@@ -132,3 +132,18 @@ Example of nested 'if-statement':
          "regardless of what you chose."},
    close]}.
 ```
+
+# System design
+
+Ranch is used as a tcp pool to create a pair of {worker, ragnarok_proto}
+per connection *and* server. So {login_worker, ragnarok_proto},
+{char_worker, ragnarok_proto} and {zone_worker, ragnarok_proto}.
+
+The workers are responsible for actual business logic and are all gen_servers.
+The ragnarok_proto only reads and writes TCP. 'src/packets' contains the code
+for parsing and serializing to binary.
+
+login_srv, char_srv and all zone_srv's are mostly used for book keeping.
+
+## Supervisor tree:
+![alt tag](https://i.imgur.com/gVsfYY8.png)
