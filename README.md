@@ -135,7 +135,7 @@ Example of nested 'if-statement':
 
 # System design
 
-Ranch is used as a tcp pool to create a pair of {worker, ragnarok_proto}
+[https://github.com/ninenines/ranch](Ranch) is used as a tcp pool to create a pair of {worker, ragnarok_proto}
 per connection *and* server. So {login_worker, ragnarok_proto},
 {char_worker, ragnarok_proto} and {zone_worker, ragnarok_proto}.
 
