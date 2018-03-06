@@ -576,9 +576,8 @@ code_change(_, State, _) ->
 format_status(_Opt, _) ->
     ok.
 
-handle_call(get_state, From, State) ->
-    Actions = [{reply, From, {ok, State}}],
-    {reply, Actions, State}.
+handle_call(get_state, _From, State) ->
+    {reply, {ok, State}, State}.
 
 handle_info(_Msg, State) ->
     {noreply, State}.
