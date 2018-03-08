@@ -417,8 +417,6 @@ handle_cast({tick, _Tick}, State) ->
     send(State, {tick, zone_master:tick()}),
     {noreply, State};
 handle_cast({send_packet, Packet, Data}, State) ->
-    lager:log(info, self(), "Send packet ~p ~p", [{packet, Packet},
-                                                  {data, Data}]),
     send(State, {Packet, Data}),
     {noreply, State};
 handle_cast({send_packets, Packets},

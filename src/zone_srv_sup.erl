@@ -29,7 +29,7 @@ init({Port, Maps}) ->
                 shutdown => 1000,
                 type => worker,
                 modules => [zone_srv]},
-    {ok, {SupFlags, [ZoneMapsSup, ZoneSrv]}.
+    {ok, {SupFlags, [ZoneMapsSup, ZoneSrv]}}.
 
 server_for(Port) ->
     list_to_atom(lists:concat(["zone_server_", Port, "_sup"])).
