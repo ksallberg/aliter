@@ -11,7 +11,7 @@ start_link(StartArgs) ->
 init(_) ->
     SupFlags = #{strategy  => one_for_one,
                  intensity => 10,
-                 preiod    => 60},
+                 period    => 60},
     LoginSup = #{id => login_sup,
                  start => {login_sup, start_link, []},
                  restart => permanent,

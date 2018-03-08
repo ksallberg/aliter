@@ -13,6 +13,9 @@ start_link(Conf) ->
 
 init(_Conf) ->
     {zones, Zones} = zone_map:zones(),
+    SupFlags = #{strategy  => one_for_one,
+                 intensity => 2,
+                 period    => 60},
     AllMaps = aliter_maps:read_cache("priv/maps"),
     MapF = fun({Port, ZoneMaps}) ->
                    Names = [list_to_binary(X) || X <- ZoneMaps],
@@ -22,12 +25,12 @@ init(_Conf) ->
                                      lists:member(M#map.name, Names)
                              end,
                    Maps = lists:filter(FiltFun, AllMaps),
-                   {zone_srv_sup:server_for(Port),
-                    {zone_srv_sup, start_link, [Port, Maps]},
-                    permanent,
-                    infinity,
-                    supervisor,
-                    [zone_srv_sup]}
+                   #{id => zone_srv_sup:server_for(Port),
+                     start => {zone_srv_sup, start_link, [Port, Maps]},
+                     restart => permanent,
+                     shutdown => infinity,
+                     type => supervisor,
+                     modules =>[zone_srv_sup]}
            end,
     Specs = lists:map(MapF, Zones),
     ZoneWorkerSup = #{id => zone_worker_sup,
@@ -36,4 +39,4 @@ init(_Conf) ->
                       shutdown => 1000,
                       type => supervisor,
                       modules => [zone_worker_sup]},
-    {ok, {{one_for_one, 2, 60}, [ZoneWorkerSup | Specs]}}.
+    {ok, {SupFlags, [ZoneWorkerSup | Specs]}}.

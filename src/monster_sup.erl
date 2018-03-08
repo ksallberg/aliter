@@ -13,7 +13,7 @@ start_link() ->
 init(_) ->
     SupFlags = #{strategy  => one_for_one,
                  intensity => 10,
-                 preiod    => 60},
+                 period    => 60},
     MonsterServ = #{id => monster_srv,
                     start => {monster_srv, start_link, []},
                     restart => permanent,

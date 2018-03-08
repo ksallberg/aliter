@@ -13,13 +13,15 @@ start_link(Config) ->
     Supervisor.
 
 init(_Ok) ->
-    SupFlags = {simple_one_for_one, 2, 60},
-    ZoneMasterSup = { undefined,
-                      {rpc, block_call, []},
-                      permanent,
-                      infinity,
-                      supervisor,
-                      [zone_master_sup]
+    SupFlags = #{strategy  => simple_one_for_one,
+                 intensity => 2,
+                 period    => 60},
+    ZoneMasterSup = #{id => undefined,
+                      start => {rpc, block_call, []},
+                      restart => permanent,
+                      shutdown => infinity,
+                      type => supervisor,
+                      modules => [zone_master_sup]
                     },
     {ok, {SupFlags, [ZoneMasterSup]}}.
 

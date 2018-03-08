@@ -12,22 +12,19 @@ start_link(Conf) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, Conf).
 
 init(Conf) ->
-    {ok, {{one_for_all, 0, 60},
-          [{zone_zones_sup,
-            {zone_zones_sup, start_link, [Conf]},
-            permanent,
-            infinity,
-            supervisor,
-            [zone_zones_sup]
-           },
-
-           {zone_master,
-            {zone_master, start_link, [Conf]},
-            permanent,
-            5000,
-            worker,
-            [zone_master]
-           }
-          ]
-         }
-    }.
+    SupFlags = #{strategy  => one_for_all,
+                 intensity => 0,
+                 period    => 60},
+    ZoneZonesSup = #{id => zone_zones_sup,
+                     start => {zone_zones_sup, start_link, [Conf]},
+                     restart => permanent,
+                     shutdown => infinity,
+                     type => supervisor,
+                     modules => [zone_zones_sup]},
+    ZoneMaster = #{id => zone_master,
+                   start => {zone_master, start_link, [Conf]},
+                   restart => permanent,
+                   shutdown => 5000,
+                   type => worker,
+                   modules => [zone_master]},
+    {ok, {SupFlags, [ZoneZonesSup, ZoneMaster]}}.
