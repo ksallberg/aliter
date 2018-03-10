@@ -74,6 +74,9 @@ unpack(<<16#0165:16/little,
          GuildName/binary>>) ->
     GName = string:strip(binary_to_list(GuildName), right, 0),
     {create_guild, CharId, GName};
+unpack(<<16#0118:16/little>>) ->
+    cease_attack;
+%% unpack(<<16#
 unpack(Unknown) ->
     lager:log(warning, self(), "zone packets Got unknown data ~p",
               [Unknown]),

@@ -153,6 +153,18 @@ handle_cast({action_request, _Target, 3},
                     {send_to_players_in_sight, {X, Y}, actor_effect,
                      {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
     {noreply, State};
+handle_cast({action_request, Target, 7},
+            State = #zone_state{map_server = _MapServer,
+                                account = #account{id = _AID},
+                                char = #char{x = X, y = Y}}) ->
+    %% gen_server:cast(MapServer,
+    %%                 {send_to_players_in_sight, {X, Y}, actor_effect,
+    %%                  {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
+    io:format("Attack monster: ~p (~p, ~p)\n", [Target, X, Y]),
+    {noreply, State};
+handle_cast(cease_attack, State) ->
+    io:format("Stop attacking\n", []),
+    {noreply, State};
 %% TODO use GuildID
 handle_cast({guild_emblem, _GuildID}, State) ->
     send(State, {guild_relationships, []}),
