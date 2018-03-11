@@ -168,11 +168,12 @@ handle_cast({action_request, Target, 7},
     Msg2 = {Target, ?VANISH_DIED},
     {mob, Mob} = gen_server:call(MapServer, {get_actor, Target}),
     {ok, NewHp} = gen_server:call(Mob#npc.monster_srv, {dec_hp, Dmg}),
+    send(State, {attack, Msg}),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, attack, Msg}),
     case NewHp =< 0 of
         false ->
-            send(State, {attack, Msg}),
-            gen_server:cast(MapServer,
-                            {send_to_players_in_sight, {X, Y}, attack, Msg});
+            ok;
         true ->
             gen_server:cast(MapServer, {remove_mob, Mob}),
             gen_server:cast(Mob#npc.monster_srv, stop),
