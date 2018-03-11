@@ -154,16 +154,24 @@ handle_cast({action_request, _Target, 3},
                      {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
     {noreply, State};
 handle_cast({action_request, Target, 7},
-            State = #zone_state{map_server = _MapServer,
-                                account = #account{id = _AID},
+            State = #zone_state{map_server = MapServer,
+                                account = #account{id = AID},
                                 char = #char{x = X, y = Y}}) ->
-    %% gen_server:cast(MapServer,
-    %%                 {send_to_players_in_sight, {X, Y}, actor_effect,
-    %%                  {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
-    io:format("Attack monster: ~p (~p, ~p)\n", [Target, X, Y]),
+    SrcSpeed = 100,
+    DstSpeed = 100,
+    Dmg = 99999,
+    IsSPDamage = 0,
+    Div = 1,
+    Dmg2 = 1,
+    Msg = {AID, Target, zone_master:tick(), SrcSpeed, DstSpeed,
+           Dmg, IsSPDamage, Div, Dmg2},
+    Msg2 = {Target, ?VANISH_DIED},
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, attack, Msg}),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
     {noreply, State};
 handle_cast(cease_attack, State) ->
-    io:format("Stop attacking\n", []),
     {noreply, State};
 %% TODO use GuildID
 handle_cast({guild_emblem, _GuildID}, State) ->
@@ -573,7 +581,8 @@ handle_cast(Other, State) ->
 terminate(_Reason, #zone_state{map_server = MapServer,
                                account = #account{id = AccountID},
                                char = Character}) ->
-    Msg = {send_to_other_players, Character#char.id, vanish, {AccountID, 3}},
+    Msg = {send_to_other_players, Character#char.id, vanish,
+           {AccountID, ?VANISH_LOGGED_OUT}},
     gen_server:cast(MapServer, Msg),
     gen_server:cast(char_server, {save_char, Character}),
     gen_server:cast(MapServer, {remove_player, AccountID});

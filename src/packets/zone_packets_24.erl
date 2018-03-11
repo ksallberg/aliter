@@ -4,6 +4,7 @@
 %% it defines length in terms of bytes. So, (bits / 8).
 
 -include("records.hrl").
+-include("ro.hrl").
 
 -export([ unpack/1
         , pack/2
@@ -545,6 +546,20 @@ pack(monster, {SpriteID, X, Y, GID}) ->
       X2:8, Y2:8, D:8,
       0:8/little, %% xSize
       0:8/little>>; %% ySize
+pack(attack, {Caller, Callee, Time, SrcSpeed, DstSpeed, %% ZC_NOTIFY_ACT2
+              Damage, IsSPDamage, Div, Damage2}) ->
+    Type = ?BDT_CRIT,
+    <<16#08c8:16/little,
+      Caller:32/little,
+      Callee:32/little,
+      Time:32/little,
+      SrcSpeed:32/little,
+      DstSpeed:32/little,
+      Damage:32/little,
+      IsSPDamage:8,
+      Div:16/little,
+      Type:8,
+      Damage2:32/little>>;
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
               [Header, Data]),

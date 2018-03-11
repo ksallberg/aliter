@@ -22,3 +22,19 @@
 -define(MAX_SLOTS,            9).
 -define(AVAILABLE_SLOTS,      9).
 -define(PREMIUM_SLOTS,        9).
+
+-define(BDT_NORMAL,           0).
+-define(BDT_ENDURE,           4).
+-define(BDT_SPLASH,           5).
+-define(BDT_SKILL,            6).
+-define(BDT_MULTIHIT,         8).
+-define(BDT_MULTIHITENDURE,   9).
+-define(BDT_CRIT,             10).
+-define(BDT_PDODGE,           11).
+
+%% out of sight
+-define(VANISH_OOS,           0).
+-define(VANISH_DIED,          1).
+-define(VANISH_LOGGED_OUT,    2).
+-define(VANISH_TELEPORT,      3).
+-define(VANISH_TRICKDEAD,     4).

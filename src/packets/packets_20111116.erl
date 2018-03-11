@@ -1003,4 +1003,5 @@ packet_size(16#0817) -> 6;
 packet_size(16#088a) -> 6;
 packet_size(16#08aa) -> 7;
 packet_size(16#08B9) -> 12;
+packet_size(16#08c8) -> 34;
 packet_size(_Other)  -> undefined.
