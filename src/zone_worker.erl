@@ -159,17 +159,27 @@ handle_cast({action_request, Target, 7},
                                 char = #char{x = X, y = Y}}) ->
     SrcSpeed = 100,
     DstSpeed = 100,
-    Dmg = 99999,
+    Dmg = 120,
     IsSPDamage = 0,
-    Div = 1,
-    Dmg2 = 1,
+    Div = 0,
+    Dmg2 = 0,
     Msg = {AID, Target, zone_master:tick(), SrcSpeed, DstSpeed,
-           Dmg, IsSPDamage, Div, Dmg2},
+           Dmg, IsSPDamage, Div, Dmg2, ?BDT_NORMAL},
     Msg2 = {Target, ?VANISH_DIED},
-    gen_server:cast(MapServer,
-                    {send_to_players_in_sight, {X, Y}, attack, Msg}),
-    gen_server:cast(MapServer,
-                    {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
+    {mob, Mob} = gen_server:call(MapServer, {get_actor, Target}),
+    {ok, NewHp} = gen_server:call(Mob#npc.monster_srv, {dec_hp, Dmg}),
+    case NewHp =< 0 of
+        false ->
+            send(State, {attack, Msg}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, attack, Msg});
+        true ->
+            gen_server:cast(MapServer, {remove_mob, Mob}),
+            gen_server:cast(Mob#npc.monster_srv, stop),
+            send(State, {vanish, Msg2}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2})
+    end,
     {noreply, State};
 handle_cast(cease_attack, State) ->
     {noreply, State};
@@ -390,10 +400,12 @@ handle_cast({change_job, JobID},
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
                         char=#char{account_id=AID}} = State) ->
-    MonsterID = gen_server:call(monster_srv, next_id),
+    {ok, MonsterSrv} = supervisor:start_child(monster_sup, [1200]),
+    MonsterID = gen_server:call(MapServer, next_id),
     NPC = #npc{id=MonsterID,
                name=monsters:strname(SpriteID),
                sprite=SpriteID,
+               monster_srv=MonsterSrv,
                map=Map,
                coordinates={X, Y},
                direction=north,
@@ -409,7 +421,7 @@ handle_cast({monster, SpriteID, X, Y},
 handle_cast({npc, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
                         char=#char{account_id=AID}} = State) ->
-    MonsterID = gen_server:call(monster_srv, next_id),
+    MonsterID = gen_server:call(MapServer, next_id),
     NPC = #npc{id=MonsterID,
                name="npc",
                sprite=SpriteID,

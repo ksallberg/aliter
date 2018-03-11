@@ -547,8 +547,7 @@ pack(monster, {SpriteID, X, Y, GID}) ->
       0:8/little, %% xSize
       0:8/little>>; %% ySize
 pack(attack, {Caller, Callee, Time, SrcSpeed, DstSpeed, %% ZC_NOTIFY_ACT2
-              Damage, IsSPDamage, Div, Damage2}) ->
-    Type = ?BDT_CRIT,
+              Damage, IsSPDamage, Div, Damage2, Type}) ->
     <<16#08c8:16/little,
       Caller:32/little,
       Callee:32/little,

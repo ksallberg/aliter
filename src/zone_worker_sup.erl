@@ -12,10 +12,10 @@ init(_WhatEver) ->
     SupFlags = #{strategy => simple_one_for_one,
                  intensity => 10,
                  period => 60},
-    ChildSpec = [#{id      => zone_worker_sup,
-                   start   => {zone_worker, start_link, []},
-                   restart => transient,
-                   shutdown => 1000,
-                   type => worker,
-                   modules => [zone_worker]}],
-    {ok, {SupFlags, ChildSpec}}.
+    ChildSpec = #{id      => zone_worker,
+                  start   => {zone_worker, start_link, []},
+                  restart => transient,
+                  shutdown => 1000,
+                  type => worker,
+                  modules => [zone_worker]},
+    {ok, {SupFlags, [ChildSpec]}}.

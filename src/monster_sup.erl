@@ -10,14 +10,14 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-init(_) ->
-    SupFlags = #{strategy  => one_for_one,
+init(_WhatEver) ->
+    SupFlags = #{strategy => simple_one_for_one,
                  intensity => 10,
-                 period    => 60},
-    MonsterServ = #{id => monster_srv,
-                    start => {monster_srv, start_link, []},
-                    restart => permanent,
+                 period => 60},
+    MonsterServ = #{id => monster_worker,
+                    start => {monster_worker, start_link, []},
+                    restart => transient,
                     shutdown => 1000,
                     type => worker,
-                    modules => [monster_srv]},
+                    modules => [monster_worker]},
     {ok, {SupFlags, [MonsterServ]}}.

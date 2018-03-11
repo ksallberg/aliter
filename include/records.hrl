@@ -17,6 +17,7 @@
          map,
          coordinates,
          direction,
+         monster_srv,
          main}).
 
 -record(login_state,
@@ -69,6 +70,7 @@
 -record(map_state,
         {map,
          players = [],
+         counter = 1000,
          npcs = [],
          mobs = []}).
 
