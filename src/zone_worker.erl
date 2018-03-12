@@ -400,9 +400,12 @@ handle_cast({change_job, JobID},
     {noreply, NewState};
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
-                        char=#char{account_id=AID}} = State) ->
-    {ok, MonsterSrv} = supervisor:start_child(monster_sup, [1200]),
+                        char=#char{account_id=AID},
+                        tcp=TCP, packet_handler=PacketHandler} = State) ->
     MonsterID = gen_server:call(MapServer, next_id),
+    {ok, MonsterSrv} = supervisor:start_child(monster_sup,
+                                              [1200, TCP,
+                                               MonsterID, PacketHandler]),
     NPC = #npc{id=MonsterID,
                name=monsters:strname(SpriteID),
                sprite=SpriteID,
