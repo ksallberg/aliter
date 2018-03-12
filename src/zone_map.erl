@@ -55,6 +55,8 @@ handle_call(Request, _From, State) ->
 
 handle_cast({add_player, Player}, State = #map_state{players = Players}) ->
     {noreply, State#map_state{players = [Player | Players]}};
+handle_cast({register_npc, NPC}, State = #map_state{npcs = NPCs}) ->
+    {noreply, State#map_state{npcs = [NPC | NPCs]}};
 handle_cast({register_mob, Mob}, State = #map_state{mobs = Mobs}) ->
     NewState = State#map_state{mobs = [Mob | Mobs]},
     {noreply, NewState};

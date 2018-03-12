@@ -38,6 +38,8 @@ execute(Worker, "warp", [Map | [XStr | [YStr | _]]], State) ->
             zone_worker:say("Invalid coordinates.", State),
             {ok, State}
     end;
+execute(Worker, "square", _Args, State) ->
+    warp_to(Worker, <<"prontera">>, 147, 203, State);
 execute(Worker, "jumpto", [PlayerName | _], State) ->
     case gen_server:call(zone_master,
                          {get_player_by,
