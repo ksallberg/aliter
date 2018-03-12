@@ -48,17 +48,16 @@ handle_call({get_player_by, Pred}, _From, State=#map_state{players=Players}) ->
     {reply, get_player_by(Pred, Players), State};
 handle_call(player_count, _From, State = #map_state{players = Players}) ->
     {reply, length(Players), State};
-handle_call(next_id, _From, #map_state{counter=C}) ->
-    {reply, C+1, #map_state{counter=C+1}};
+handle_call(next_id, _From, #map_state{counter=C} = State) ->
+    {reply, C+1, State#map_state{counter=C+1}};
 handle_call(Request, _From, State) ->
     {reply, {illegal_request, Request}, State}.
 
 handle_cast({add_player, Player}, State = #map_state{players = Players}) ->
     {noreply, State#map_state{players = [Player | Players]}};
-handle_cast({register_npc, NPC}, State = #map_state{npcs = NPCs}) ->
-    {noreply, State#map_state{npcs = [NPC | NPCs]}};
 handle_cast({register_mob, Mob}, State = #map_state{mobs = Mobs}) ->
-    {noreply, State#map_state{mobs = [Mob | Mobs]}};
+    NewState = State#map_state{mobs = [Mob | Mobs]},
+    {noreply, NewState};
 handle_cast({remove_mob, Mob}, State = #map_state{mobs = Mobs}) ->
     {noreply, State#map_state{mobs = Mobs -- [Mob]}};
 handle_cast({remove_player, AccountID}, State = #map_state{players=Players}) ->

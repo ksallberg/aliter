@@ -50,6 +50,6 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 ping(TCP, ID, PacketHandler) ->
-    Emo = rand:uniform(80),
+    Emo = rand:uniform(79) + 1,
     Packet = {emotion, {ID, Emo}},
     ragnarok_proto:send_packet(Packet, TCP, PacketHandler).
