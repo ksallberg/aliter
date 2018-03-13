@@ -30,9 +30,10 @@ init([Hp, TCP, ID, PacketHandler]) ->
 terminate(_, _State) ->
     ok.
 
-handle_info(emo, #monster_state{tcp = TCP,
-                                id = ID,
-                                packet_handler = PacketHandler} = State) ->
+handle_info({timeout, _Ref, emo},
+            #monster_state{tcp = TCP,
+                           id = ID,
+                           packet_handler = PacketHandler} = State) ->
     Emo = rand:uniform(79) + 1,
     Packet = {emotion, {ID, Emo}},
     ragnarok_proto:send_packet(Packet, TCP, PacketHandler),
