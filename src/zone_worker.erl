@@ -154,6 +154,9 @@ handle_cast({action_request, _Target, 3},
                      {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
     {noreply, State};
 handle_cast({action_request, Target, 7},
+            State = #zone_state{account=#account{id=ID}}) when Target =:= ID ->
+    {noreply, State};
+handle_cast({action_request, Target, 7},
             State = #zone_state{map_server=MapServer,
                                 account=#account{id=AID},
                                 char=Char}) ->
@@ -581,8 +584,6 @@ handle_cast(Other, State) ->
     lager:log(warning, self(), "Zone Worker got unknown request: ~p", [Other]),
     {noreply, State}.
 
-%% FIXME: Not used right now:
-%%        How to integrate?
 terminate(_Reason, #zone_state{map_server = MapServer,
                                account = #account{id = AccountID},
                                char = Character}) ->
@@ -600,6 +601,11 @@ code_change(_, State, _) ->
 format_status(_Opt, _) ->
     ok.
 
+handle_call({dec_hp, Dmg}, _From,
+            #zone_state{char=#char{hp=Hp}=Char} = State) ->
+    NewHp = Hp - Dmg,
+    NewChar = Char#char{hp=NewHp},
+    {reply, {ok, NewHp}, State#zone_state{char=NewChar}};
 handle_call(get_state, _From, State) ->
     {reply, {ok, State}, State}.
 
@@ -691,7 +697,7 @@ attack(State, AID, Target, {mob, Mob}, #char{x=X, y=Y, str=Str, agi=Agi},
                             {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
             {error, dead}
     end;
-attack(State, AID, Target, {player, _Worker},
+attack(State, AID, Target, {player, Worker},
        #char{x=X, y=Y, str=Str, agi=_Agi}, _Target, MapServer) ->
     SrcSpeed = 100,
     DstSpeed = 100,
@@ -701,8 +707,18 @@ attack(State, AID, Target, {player, _Worker},
     Dmg2 = 0,
     Msg = {AID, Target, zone_master:tick(), SrcSpeed, DstSpeed,
            Dmg, IsSPDamage, Div, Dmg2, ?BDT_NORMAL},
+    Msg2 = {Target, ?VANISH_DIED},
+    {ok, NewHp} = gen_server:call(Worker, {dec_hp, Dmg}),
     send(State, {attack, Msg}),
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, attack, Msg}),
-    TimerRef = erlang:start_timer(300, self(), keep_attacking),
-    {ok, TimerRef}.
+    case NewHp =< 0 of
+        false ->
+            TimerRef = erlang:start_timer(300, self(), keep_attacking),
+            {ok, TimerRef};
+        true ->
+            send(State, {vanish, Msg2}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
+            {error, dead}
+    end.
