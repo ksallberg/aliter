@@ -64,7 +64,9 @@
          npc,
          char_worker,
          is_walking=false,
-         packet_handler
+         packet_handler,
+         attack_timer,
+         attack_target
         }).
 
 -record(map_state,

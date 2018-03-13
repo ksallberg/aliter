@@ -173,15 +173,17 @@ handle_cast({action_request, Target, 7},
                     {send_to_players_in_sight, {X, Y}, attack, Msg}),
     case NewHp =< 0 of
         false ->
-            ok;
+            {noreply, State};
         true ->
+            TimerRef = erlang:start_timer(5000, self(), keep_attacking),
             gen_server:cast(MapServer, {remove_mob, Mob}),
             gen_server:cast(Mob#npc.monster_srv, stop),
             send(State, {vanish, Msg2}),
             gen_server:cast(MapServer,
-                            {send_to_players_in_sight, {X, Y}, vanish, Msg2})
-    end,
-    {noreply, State};
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
+            {noreply, State#zone_state{attack_timer=TimerRef,
+                                       attack_target=Target}}
+    end;
 handle_cast(cease_attack, State) ->
     {noreply, State};
 %% TODO use GuildID
@@ -615,6 +617,9 @@ format_status(_Opt, _) ->
 handle_call(get_state, _From, State) ->
     {reply, {ok, State}, State}.
 
+handle_info(keep_attacking, State) ->
+    io:format("Keep attacking!\n", []),
+    {noreply, State};
 handle_info(_Msg, State) ->
     {noreply, State}.
 
