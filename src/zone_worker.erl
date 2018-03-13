@@ -154,36 +154,20 @@ handle_cast({action_request, _Target, 3},
                      {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
     {noreply, State};
 handle_cast({action_request, Target, 7},
-            State = #zone_state{map_server = MapServer,
-                                account = #account{id = AID},
-                                char = #char{x = X, y = Y}}) ->
-    SrcSpeed = 100,
-    DstSpeed = 100,
-    Dmg = 120,
-    IsSPDamage = 0,
-    Div = 0,
-    Dmg2 = 0,
-    Msg = {AID, Target, zone_master:tick(), SrcSpeed, DstSpeed,
-           Dmg, IsSPDamage, Div, Dmg2, ?BDT_NORMAL},
-    Msg2 = {Target, ?VANISH_DIED},
-    {mob, Mob} = gen_server:call(MapServer, {get_actor, Target}),
-    {ok, NewHp} = gen_server:call(Mob#npc.monster_srv, {dec_hp, Dmg}),
-    send(State, {attack, Msg}),
-    gen_server:cast(MapServer,
-                    {send_to_players_in_sight, {X, Y}, attack, Msg}),
-    case NewHp =< 0 of
-        false ->
-            TimerRef = erlang:start_timer(100, self(), keep_attacking),
+            State = #zone_state{map_server=MapServer,
+                                account=#account{id=AID},
+                                char=Char}) ->
+    Victim = gen_server:call(MapServer, {get_actor, Target}),
+    AttackRes = attack(State, AID, Target, Victim, Char, Target, MapServer),
+    case AttackRes of
+        {ok, TimerRef} ->
             {noreply, State#zone_state{attack_timer=TimerRef,
                                        attack_target=Target}};
-        true ->
-            gen_server:cast(MapServer, {remove_mob, Mob}),
-            gen_server:cast(Mob#npc.monster_srv, stop),
-            send(State, {vanish, Msg2}),
-            gen_server:cast(MapServer,
-                            {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
+        {error, dead} ->
             {noreply, State}
     end;
+handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
+    {noreply, State};
 handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
     {noreply, State};
@@ -207,6 +191,7 @@ handle_cast({walk, {ToX, ToY, _ToD}},
                                 char = C = #char{id = CharacterID,
                                                  x = X,
                                                  y = Y}}) ->
+    gen_server:cast(self(), cease_attack),
     PathFound = nif:pathfind(Map#map.id, [X | Y], [ToX | ToY]),
     case PathFound of
         [{SX, SY, SDir} | Path] ->
@@ -407,7 +392,7 @@ handle_cast({monster, SpriteID, X, Y},
                         tcp=TCP, packet_handler=PacketHandler} = State) ->
     MonsterID = gen_server:call(MapServer, next_id),
     {ok, MonsterSrv} = supervisor:start_child(monster_sup,
-                                              [1200, TCP,
+                                              [10000, TCP,
                                                MonsterID, PacketHandler]),
     NPC = #npc{id=MonsterID,
                name=monsters:strname(SpriteID),
@@ -675,3 +660,49 @@ give_item(#zone_state{db = DB} = State, CharacterID, ID, Amount) ->
                              0,      %% Result
                              0,      %% ExpireTime
                              0}}).    %% BindOnEquipType
+
+attack(_State, _AID, _Target, none, _Char, _Target, _MapServer) ->
+    {error, dead};
+attack(State, AID, Target, {mob, Mob}, #char{x=X, y=Y, str=Str, agi=Agi},
+       _Target, MapServer) ->
+    SrcSpeed = 100,
+    DstSpeed = 100,
+    Dmg = 200 + rand:uniform(100) - rand:uniform(100) + Str,
+    IsSPDamage = 0,
+    Div = 0,
+    Dmg2 = 0,
+    Msg = {AID, Target, zone_master:tick(), SrcSpeed, DstSpeed,
+           Dmg, IsSPDamage, Div, Dmg2, ?BDT_NORMAL},
+    Msg2 = {Target, ?VANISH_DIED},
+    {ok, NewHp} = gen_server:call(Mob#npc.monster_srv, {dec_hp, Dmg}),
+    send(State, {attack, Msg}),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, attack, Msg}),
+    case NewHp =< 0 of
+        false ->
+            Delay = 75 + (100 - Agi) * 3,
+            TimerRef = erlang:start_timer(Delay, self(), keep_attacking),
+            {ok, TimerRef};
+        true ->
+            gen_server:cast(MapServer, {remove_mob, Mob}),
+            gen_server:cast(Mob#npc.monster_srv, stop),
+            send(State, {vanish, Msg2}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
+            {error, dead}
+    end;
+attack(State, AID, Target, {player, _Worker},
+       #char{x=X, y=Y, str=Str, agi=_Agi}, _Target, MapServer) ->
+    SrcSpeed = 100,
+    DstSpeed = 100,
+    Dmg = 200 + rand:uniform(100) - rand:uniform(100) + Str,
+    IsSPDamage = 0,
+    Div = 0,
+    Dmg2 = 0,
+    Msg = {AID, Target, zone_master:tick(), SrcSpeed, DstSpeed,
+           Dmg, IsSPDamage, Div, Dmg2, ?BDT_NORMAL},
+    send(State, {attack, Msg}),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, attack, Msg}),
+    TimerRef = erlang:start_timer(300, self(), keep_attacking),
+    {ok, TimerRef}.

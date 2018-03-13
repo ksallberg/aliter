@@ -65,7 +65,7 @@
          char_worker,
          is_walking=false,
          packet_handler,
-         attack_timer,
+         attack_timer=undefined,
          attack_target
         }).
 
