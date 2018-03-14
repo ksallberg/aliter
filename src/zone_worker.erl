@@ -153,9 +153,16 @@ handle_cast({action_request, _Target, 3},
                     {send_to_players_in_sight, {X, Y}, actor_effect,
                      {AID, 0, zone_master:tick(), 0, 0, 0, 0, 3, 0}}),
     {noreply, State};
+%% trying to attack self
 handle_cast({action_request, Target, 7},
             State = #zone_state{account=#account{id=ID}}) when Target =:= ID ->
     {noreply, State};
+%% re-attack is already ongoing
+handle_cast({action_request, Target, 7},
+            #zone_state{attack_timer=Timer, attack_target=Target}=State)
+  when Timer /= undefined ->
+    {noreply, State};
+%% initiate attack
 handle_cast({action_request, Target, 7},
             State = #zone_state{map_server=MapServer,
                                 account=#account{id=AID},
@@ -167,13 +174,26 @@ handle_cast({action_request, Target, 7},
             {noreply, State#zone_state{attack_timer=TimerRef,
                                        attack_target=Target}};
         {error, dead} ->
-            {noreply, State}
+            {noreply, State#zone_state{attack_timer=undefined}}
+    end;
+handle_cast({re_attack, Target, 7},
+            State = #zone_state{map_server=MapServer,
+                                account=#account{id=AID},
+                                char=Char}) ->
+    Victim = gen_server:call(MapServer, {get_actor, Target}),
+    AttackRes = attack(State, AID, Target, Victim, Char, Target, MapServer),
+    case AttackRes of
+        {ok, TimerRef} ->
+            {noreply, State#zone_state{attack_timer=TimerRef,
+                                       attack_target=Target}};
+        {error, dead} ->
+            {noreply, State#zone_state{attack_timer=undefined}}
     end;
 handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
     {noreply, State};
 handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
-    {noreply, State};
+    {noreply, State#zone_state{attack_timer=undefined}};
 %% TODO use GuildID
 handle_cast({guild_emblem, _GuildID}, State) ->
     send(State, {guild_relationships, []}),
@@ -611,7 +631,7 @@ handle_call(get_state, _From, State) ->
 
 handle_info({timeout, _Ref, keep_attacking},
             #zone_state{attack_target=Target} = State) ->
-    gen_server:cast(self(), {action_request, Target, 7}),
+    gen_server:cast(self(), {re_attack, Target, 7}),
     {noreply, State};
 handle_info(_Msg, State) ->
     {noreply, State}.
@@ -698,10 +718,10 @@ attack(State, AID, Target, {mob, Mob}, #char{x=X, y=Y, str=Str, agi=Agi},
             {error, dead}
     end;
 attack(State, AID, Target, {player, Worker},
-       #char{x=X, y=Y, str=Str, agi=_Agi}, _Target, MapServer) ->
+       #char{x=X, y=Y, str=_Str, agi=_Agi}, _Target, MapServer) ->
     SrcSpeed = 100,
     DstSpeed = 100,
-    Dmg = 200 + rand:uniform(100) - rand:uniform(100) + Str,
+    Dmg = 1,
     IsSPDamage = 0,
     Div = 0,
     Dmg2 = 0,
