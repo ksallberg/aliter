@@ -409,6 +409,9 @@ handle_cast({change_job, JobID},
            {AID, 0, JobID}},
     gen_server:cast(MapServer, Msg),
     {noreply, NewState};
+handle_cast(heal, #zone_state{char=#char{max_hp=MaxHp}=Char} = State) ->
+    NewChar = Char#char{hp=MaxHp},
+    {noreply, State#zone_state{char=NewChar}};
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
                         char=#char{account_id=AID},
@@ -649,15 +652,16 @@ walk_interval(N) ->
     timer:apply_interval(Interval, gen_server, cast, [self(), step]).
 
 show_actors(#zone_state{map_server = MapServer,
-                        char = C,
+                        char = #char{hp=Hp, max_hp=MaxHp,
+                                     sp=Sp, max_sp=MaxSp} = C,
                         account = A
                        } = State) ->
     send(State, {status, C}), %% Send stats to client
     send(State, {status, C}),
-    send(State, {param_change, {?SP_MAX_HP, 100}}),
-    send(State, {param_change, {?SP_CUR_HP, 90}}),
-    send(State, {param_change, {?SP_MAX_SP, 60}}),
-    send(State, {param_change, {?SP_CUR_SP, 50}}),
+    send(State, {param_change, {?SP_MAX_HP, MaxHp}}),
+    send(State, {param_change, {?SP_CUR_HP, Hp}}),
+    send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
+    send(State, {param_change, {?SP_CUR_SP, Sp}}),
     send(State, {equipment, whatever}), %% FIXME: Needs db support
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),

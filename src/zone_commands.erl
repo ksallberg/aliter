@@ -90,6 +90,8 @@ execute(Worker, "job", [ID], State) ->
         {error, _} -> zone_worker:say("Invalid Job ID.", State);
         {JobID, _} -> change_job(Worker, State, JobID)
     end;
+execute(Worker, "heal", _Args, State) ->
+    heal(Worker, State);
 execute(_Worker, Unknown, _Args, State) ->
     zone_worker:say("Unknown command `" ++ Unknown ++ "'.", State),
     ok.
@@ -144,6 +146,9 @@ change_hat(Worker, _State, ID) ->
 
 change_job(Worker, _State, JobID) ->
     gen_server:cast(Worker, {change_job, JobID}).
+
+heal(Worker, _State) ->
+    gen_server:cast(Worker, heal).
 
 spawn_monster(Worker, _State, ID, X, Y) ->
     gen_server:cast(Worker, {monster, ID, X, Y}).
