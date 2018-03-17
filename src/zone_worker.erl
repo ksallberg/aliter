@@ -157,11 +157,18 @@ handle_cast({action_request, _Target, 3},
 handle_cast({action_request, Target, 7},
             State = #zone_state{account=#account{id=ID}}) when Target =:= ID ->
     {noreply, State};
-%% re-attack is already ongoing
+%% re-attack is already ongoing, target is the same
 handle_cast({action_request, Target, 7},
             #zone_state{attack_timer=Timer, attack_target=Target}=State)
   when Timer /= undefined ->
     {noreply, State};
+%% switching attack target
+handle_cast({action_request, _Target, 7} = Msg,
+            #zone_state{attack_timer=Timer}=State)
+  when Timer /= undefined ->
+    erlang:cancel_timer(Timer),
+    gen_server:cast(self(), Msg),
+    {noreply, State#zone_state{attack_timer=undefined}};
 %% initiate attack
 handle_cast({action_request, Target, 7},
             State = #zone_state{map_server=MapServer,
