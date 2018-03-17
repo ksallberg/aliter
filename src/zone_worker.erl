@@ -409,8 +409,13 @@ handle_cast({change_job, JobID},
            {AID, 0, JobID}},
     gen_server:cast(MapServer, Msg),
     {noreply, NewState};
-handle_cast(heal, #zone_state{char=#char{max_hp=MaxHp}=Char} = State) ->
-    NewChar = Char#char{hp=MaxHp},
+handle_cast(heal,
+            #zone_state{char=#char{max_hp=MaxHp, max_sp=MaxSp}=Char} = State) ->
+    NewChar = Char#char{hp=MaxHp, sp=MaxSp},
+    send(State, {param_change, {?SP_MAX_HP, MaxHp}}),
+    send(State, {param_change, {?SP_CUR_HP, MaxHp}}),
+    send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
+    send(State, {param_change, {?SP_CUR_SP, MaxSp}}),
     {noreply, State#zone_state{char=NewChar}};
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
@@ -628,6 +633,7 @@ handle_call({dec_hp, Dmg}, _From,
             #zone_state{char=#char{hp=Hp}=Char} = State) ->
     NewHp = Hp - Dmg,
     NewChar = Char#char{hp=NewHp},
+    send(State, {param_change, {?SP_CUR_HP, NewHp}}),
     {reply, {ok, NewHp}, State#zone_state{char=NewChar}};
 handle_call(get_state, _From, State) ->
     {reply, {ok, State}, State}.
