@@ -75,6 +75,9 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                     Guild = db:get_guild(DB, GuildID),
                     send(State, {update_gd_id, Guild})
             end,
+            Skills = [ {50, 0, 9, 1, 0, "TF_STEAL", 1}
+                     , {28, 1, 9, 1, 0, "TF_HEAL", 1}],
+            send(State, {skill_list, Skills}),
             say("Welcome to Aliter.", State),
             NewState = State#zone_state{map = Map,
                                         map_server = MapServer,
