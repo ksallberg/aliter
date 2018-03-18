@@ -199,6 +199,9 @@ handle_cast({re_attack, Target, 7},
         {error, dead} ->
             {noreply, State#zone_state{attack_timer=undefined}}
     end;
+handle_cast({use_skill, SkillLvl, SkillID, Target}, State) ->
+    io:format("SkillLvl: ~p ID: ~p Target: ~p\n", [SkillLvl, SkillID, Target]),
+    {noreply, State};
 handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
     {noreply, State};
 handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->

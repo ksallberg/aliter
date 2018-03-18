@@ -77,7 +77,11 @@ unpack(<<16#0165:16/little,
     {create_guild, CharId, GName};
 unpack(<<16#0118:16/little>>) ->
     cease_attack;
-%% unpack(<<16#
+unpack(<<16#02c4:16/little,
+         SkillLvl:16/little,
+         SkillID:16/little,
+         Target:32/little>>) ->
+    {use_skill, SkillLvl, SkillID, Target};
 unpack(Unknown) ->
     lager:log(warning, self(), "zone packets Got unknown data ~p",
               [Unknown]),

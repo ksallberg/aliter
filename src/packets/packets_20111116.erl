@@ -591,7 +591,7 @@ packet_size(16#02BB) -> 8;
 packet_size(16#02BC) -> 6;
 packet_size(16#02C1) -> 0;
 packet_size(16#02C2) -> 0;
-packet_size(16#02C4) -> 26;
+packet_size(16#02C4) -> 10;
 packet_size(16#02C5) -> 30;
 packet_size(16#02C6) -> 30;
 packet_size(16#02C7) -> 7;
