@@ -42,8 +42,13 @@ handle_info({timeout, _Ref, emo},
 handle_info(_, State) ->
     {noreply, State}.
 
-handle_call({dec_hp, Dmg}, _From, #monster_state{hp = Hp} = State) ->
-    NewHp = Hp - Dmg,
+handle_call({dec_hp, Dmg}, _From, #monster_state{hp=Hp} = State) ->
+    NewHp = max(Hp - Dmg, 0),
+    {reply, {ok, NewHp}, State#monster_state{hp = NewHp}};
+handle_call({inc_hp, Dmg}, _From,
+            #monster_state{hp=Hp} = State) ->
+    MaxHp = 10000,
+    NewHp = min(MaxHp, Hp - Dmg),
     {reply, {ok, NewHp}, State#monster_state{hp = NewHp}}.
 
 handle_cast(stop, #monster_state{timer = TimerRef} = State) ->

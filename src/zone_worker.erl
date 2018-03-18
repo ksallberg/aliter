@@ -203,32 +203,57 @@ handle_cast({re_attack, Target, 7},
     end;
 handle_cast({use_skill, SkillLvl, 136=SkillID, TargetID},
             State = #zone_state{map_server=MapServer,
-                                account=#account{id=AID}}) ->
+                                account=#account{id=AID},
+                                char=#char{x=X, y=Y}}) ->
     Dmg = 1000,
-    {player, Worker} = gen_server:call(MapServer, {get_actor, TargetID}),
-    {ok, _NewHp} = gen_server:call(Worker, {dec_hp, Dmg}),
+    ActorRes = gen_server:call(MapServer, {get_actor, TargetID}),
+    {PlayerOrMob, _} = ActorRes,
+    Worker = get_actor_worker(ActorRes),
+    {ok, NewHp} = gen_server:call(Worker, {dec_hp, Dmg}),
     SrcDelay = 0,
     TargetDelay = 0,
     Div = 10,
     Type = 1,
     Msg = {SkillID, AID, TargetID, zone_master:tick(),
            SrcDelay, TargetDelay, Dmg, SkillLvl, Div, Type},
+    Msg2 = {TargetID, ?VANISH_DIED},
     send(State, {notify_skill, Msg}),
+
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, notify_skill, Msg}),
+    case NewHp of
+        0 when PlayerOrMob == player ->
+            send(State, {vanish, Msg2}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2});
+        0 when PlayerOrMob == mob ->
+            {_, Mob} = ActorRes,
+            gen_server:cast(MapServer, {remove_mob, Mob}),
+            gen_server:cast(Worker, stop),
+            send(State, {vanish, Msg2}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2});
+        _ ->
+            ok
+    end,
     {noreply, State};
 %% heal
 handle_cast({use_skill, SkillLvl, 28=SkillID, TargetID},
             State = #zone_state{map_server=MapServer,
-                                account=#account{id=AID}}) ->
-    SrcDelay = 0,
-    TargetDelay = 0,
+                                account=#account{id=AID},
+                                char=#char{x=X, y=Y}}) ->
     Dmg = 1000,
-    {player, Worker} = gen_server:call(MapServer, {get_actor, TargetID}),
+    ActorRes = gen_server:call(MapServer, {get_actor, TargetID}),
+    Worker = get_actor_worker(ActorRes),
     {ok, _NewHp} = gen_server:call(Worker, {inc_hp, Dmg}),
-    Div = 1,
-    Type = 1,
-    Msg = {SkillID, AID, TargetID, zone_master:tick(),
-           SrcDelay, TargetDelay, Dmg, SkillLvl, Div, Type},
-    send(State, {notify_skill, Msg}),
+    Msg = {SkillID, SkillLvl, TargetID, AID, 1},
+    Msg2 = {46, AID, 1, 1000},
+    send(State, {use_skill, Msg}),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, use_skill, Msg}),
+    send(State, {state_change, Msg2}),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y}, state_change, Msg2}),
     {noreply, State};
 handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
     {noreply, State};
@@ -672,13 +697,13 @@ format_status(_Opt, _) ->
 
 handle_call({dec_hp, Dmg}, _From,
             #zone_state{char=#char{hp=Hp}=Char} = State) ->
-    NewHp = Hp - Dmg,
+    NewHp = max(Hp - Dmg, 0),
     NewChar = Char#char{hp=NewHp},
     send(State, {param_change, {?SP_CUR_HP, NewHp}}),
     {reply, {ok, NewHp}, State#zone_state{char=NewChar}};
 handle_call({inc_hp, Dmg}, _From,
-            #zone_state{char=#char{hp=Hp}=Char} = State) ->
-    NewHp = Hp + Dmg,
+            #zone_state{char=#char{hp=Hp, max_hp=MaxHp}=Char} = State) ->
+    NewHp = min(Hp + Dmg, MaxHp),
     NewChar = Char#char{hp=NewHp},
     send(State, {param_change, {?SP_CUR_HP, NewHp}}),
     {reply, {ok, NewHp}, State#zone_state{char=NewChar}};
@@ -799,3 +824,8 @@ attack(State, AID, Target, {player, Worker},
                             {send_to_players_in_sight, {X, Y}, vanish, Msg2}),
             {error, dead}
     end.
+
+get_actor_worker({player, Worker}) ->
+    Worker;
+get_actor_worker({mob, #npc{monster_srv=Worker}}) ->
+    Worker.

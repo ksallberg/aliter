@@ -243,6 +243,22 @@ pack(attack_range, Range) ->
     <<16#13a:16/little, Range:16/little>>;
 pack(status_change, {Stat, Value, Bonus}) ->
     <<16#141:16/little, Stat:32/little, Value:32/little, Bonus:32/little>>;
+% 043f
+% <index>.W
+% <id>.L
+% <state>.B
+% <remain msec>.L
+% { <val>.L }*3
+% (ZC_MSG_STATE_CHANGE2) [used exclusively for starting statuses on pcs]
+pack(state_change, {Index, ID, State, Remain}) ->
+    <<16#043f:16/little,
+      Index:16/little,
+      ID:32/little,
+      State:8/little,
+      Remain:32/little,
+      0:32/little,
+      0:32/little,
+      0:32/little>>;
 pack(guild_relationships, Relationships) ->
     [ <<16#014c:16/little,
         (32 * length(Relationships) + 4):16/little>>,
@@ -587,6 +603,13 @@ pack(notify_skill, {SkillID, CasterID, TargetID, Tick,
       Level:16/little,
       Div:16/little,
       Type:8/little>>;
+pack(use_skill, {SKID, Level, TargetID, SourceID, Result}) ->
+    <<16#011a:16/little,
+      SKID:16/little,
+      Level:16/little,
+      TargetID:32/little,
+      SourceID:32/little,
+      Result:8/little>>;
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
               [Header, Data]),
