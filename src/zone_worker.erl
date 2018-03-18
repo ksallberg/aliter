@@ -75,8 +75,10 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                     Guild = db:get_guild(DB, GuildID),
                     send(State, {update_gd_id, Guild})
             end,
-            Skills = [ {50, 0, 9, 1, 0, "TF_STEAL", 1}
-                     , {28, 1, 9, 1, 0, "TF_HEAL", 1}],
+            Skills = [ {50,  0, 9, 1, 0, "TF_STEAL", 1}
+                     , {28,  1, 9, 1, 0, "TF_HEAL", 1}
+                     , {394, 1, 9, 1, 0, "TF_ARROW_VULCAN", 1}
+                     , {136, 1, 9, 1, 0, "TF_SONIC_BLOW", 1}],
             send(State, {skill_list, Skills}),
             say("Welcome to Aliter.", State),
             NewState = State#zone_state{map = Map,
@@ -199,8 +201,34 @@ handle_cast({re_attack, Target, 7},
         {error, dead} ->
             {noreply, State#zone_state{attack_timer=undefined}}
     end;
-handle_cast({use_skill, SkillLvl, SkillID, Target}, State) ->
-    io:format("SkillLvl: ~p ID: ~p Target: ~p\n", [SkillLvl, SkillID, Target]),
+handle_cast({use_skill, SkillLvl, 136=SkillID, TargetID},
+            State = #zone_state{map_server=MapServer,
+                                account=#account{id=AID}}) ->
+    Dmg = 1000,
+    {player, Worker} = gen_server:call(MapServer, {get_actor, TargetID}),
+    {ok, _NewHp} = gen_server:call(Worker, {dec_hp, Dmg}),
+    SrcDelay = 0,
+    TargetDelay = 0,
+    Div = 10,
+    Type = 1,
+    Msg = {SkillID, AID, TargetID, zone_master:tick(),
+           SrcDelay, TargetDelay, Dmg, SkillLvl, Div, Type},
+    send(State, {notify_skill, Msg}),
+    {noreply, State};
+%% heal
+handle_cast({use_skill, SkillLvl, 28=SkillID, TargetID},
+            State = #zone_state{map_server=MapServer,
+                                account=#account{id=AID}}) ->
+    SrcDelay = 0,
+    TargetDelay = 0,
+    Dmg = 1000,
+    {player, Worker} = gen_server:call(MapServer, {get_actor, TargetID}),
+    {ok, _NewHp} = gen_server:call(Worker, {inc_hp, Dmg}),
+    Div = 1,
+    Type = 1,
+    Msg = {SkillID, AID, TargetID, zone_master:tick(),
+           SrcDelay, TargetDelay, Dmg, SkillLvl, Div, Type},
+    send(State, {notify_skill, Msg}),
     {noreply, State};
 handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
     {noreply, State};
@@ -645,6 +673,12 @@ format_status(_Opt, _) ->
 handle_call({dec_hp, Dmg}, _From,
             #zone_state{char=#char{hp=Hp}=Char} = State) ->
     NewHp = Hp - Dmg,
+    NewChar = Char#char{hp=NewHp},
+    send(State, {param_change, {?SP_CUR_HP, NewHp}}),
+    {reply, {ok, NewHp}, State#zone_state{char=NewChar}};
+handle_call({inc_hp, Dmg}, _From,
+            #zone_state{char=#char{hp=Hp}=Char} = State) ->
+    NewHp = Hp + Dmg,
     NewChar = Char#char{hp=NewHp},
     send(State, {param_change, {?SP_CUR_HP, NewHp}}),
     {reply, {ok, NewHp}, State#zone_state{char=NewChar}};

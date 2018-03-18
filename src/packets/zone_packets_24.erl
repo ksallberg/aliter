@@ -563,6 +563,30 @@ pack(attack, {Caller, Callee, Time, SrcSpeed, DstSpeed, %% ZC_NOTIFY_ACT2
       Div:16/little,
       Type:8,
       Damage2:32/little>>;
+% 01de
+% <skill id>.W
+% <src id>.L
+% <dst id>.L
+% <tick>.L
+% <src delay>.L
+% <dst delay>.L
+% <damage>.L
+% <level>.W
+% <div>.W
+% <type>.B (ZC_NOTIFY_SKILL2)
+pack(notify_skill, {SkillID, CasterID, TargetID, Tick,
+                    SrcDelay, TargetDelay, Dmg, Level, Div, Type}) ->
+    <<16#01de:16/little,
+      SkillID:16/little,
+      CasterID:32/little,
+      TargetID:32/little,
+      Tick:32/little,
+      SrcDelay:32/little,
+      TargetDelay:32/little,
+      Dmg:32/little,
+      Level:16/little,
+      Div:16/little,
+      Type:8/little>>;
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
               [Header, Data]),
