@@ -453,7 +453,9 @@ handle_cast({broadcast, Message}, State) ->
 handle_cast({switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
 handle_cast({hat_sprite, SpriteID},
-      #zone_state{char=#char{x=X, y=Y, id=_CharacterID, account_id=AID},
+      #zone_state{db=DB,
+                  char=#char{x=X, y=Y, id=_CharacterID,
+                             account_id=AID} = Char,
                   map_server=MapServer} = State) ->
     send(State, {sprite, {AID, 4, SpriteID}}),
     Msg = {send_to_other_players_in_sight, {X, Y},
@@ -461,7 +463,9 @@ handle_cast({hat_sprite, SpriteID},
            sprite,
            {AID, 4, SpriteID}},
     gen_server:cast(MapServer, Msg),
-    {noreply, State};
+    NewChar = Char#char{view_head_top=SpriteID},
+    db:save_char(DB, NewChar),
+    {noreply, State#zone_state{char=NewChar}};
 handle_cast({change_job, JobID},
       #zone_state{db=DB, char=#char{x=X, y=Y, account_id=AID}=Char,
                   map_server=MapServer}=State) ->
