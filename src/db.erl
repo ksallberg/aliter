@@ -40,6 +40,8 @@
         , get_player_item/3
         , remove_player_item/3 ]).
 
+-export([ get_equips/2 ]).
+
 save_account(C, Account) ->
     ID =
         case Account#account.id of
@@ -142,7 +144,122 @@ save_char(C, Char) ->
       Char#char.num,
       ID
      ),
+    Eq1 = #equip{index = 0,
+                 id = 1201,
+                 type = 5,
+                 identified = 1,
+                 location = 2,
+                 wearstate = 2,
+                 is_damaged = 0,
+                 refining_level = 0,
+                 card1 = 0,
+                 card2 = 0,
+                 card3 = 0,
+                 card4 = 0,
+                 hire_expire_date = 0,
+                 bind_on_equip_type = 0,
+                 sprite_number = 0},
+    Eq2 = #equip{index = 3,
+                 id = 2376,
+                 type = 4,
+                 identified = 1,
+                 location = 16,
+                 wearstate = 16,
+                 is_damaged = 0,
+                 refining_level = 0,
+                 card1 = 0,
+                 card2 = 0,
+                 card3 = 0,
+                 card4 = 0,
+                 hire_expire_date = 0,
+                 bind_on_equip_type = 0,
+                 sprite_number = 0},
+    Eq3 = #equip{index = 5,
+                 id = 5025,
+                 type = 4,
+                 identified = 1,
+                 location = 256,
+                 wearstate = 256,
+                 is_damaged = 0,
+                 refining_level = 0,
+                 card1 = 0,
+                 card2 = 0,
+                 card3 = 0,
+                 card4 = 0,
+                 hire_expire_date = 0,
+                 bind_on_equip_type = 0,
+                 sprite_number = 110},
+    save_equips(C, Hash, Eq1),
+    save_equips(C, Hash, Eq2),
+    save_equips(C, Hash, Eq3),
     Char#char{id = ID}.
+
+save_equips(C, Hash,
+            #equip{index = Index,
+                   id = ID,
+                   type = Type,
+                   identified = Identified,
+                   location = Location,
+                   wearstate = WearState,
+                   is_damaged = IsDamaged,
+                   refining_level = RefiningLevel,
+                   card1 = Card1,
+                   card2 = Card2,
+                   card3 = Card3,
+                   card4 = Card4,
+                   hire_expire_date = HireExpireDate,
+                   bind_on_equip_type = BindOnEquipType,
+                   sprite_number = SpriteNumber}) ->
+    %% char equips
+    EquipIndex = "eq" ++ integer_to_list(Index),
+    %% collect info about this equip
+    sadd(C, [Hash, ":equips"], EquipIndex),
+    sethash(C, Hash, EquipIndex ++ ":index", integer_to_list(Index)),
+    sethash(C, Hash, EquipIndex ++ ":id", integer_to_list(ID)),
+    sethash(C, Hash, EquipIndex ++ ":type", integer_to_list(Type)),
+    sethash(C, Hash, EquipIndex ++ ":identified", integer_to_list(Identified)),
+    sethash(C, Hash, EquipIndex ++ ":location", integer_to_list(Location)),
+    sethash(C, Hash, EquipIndex ++ ":wearstate", integer_to_list(WearState)),
+    sethash(C, Hash, EquipIndex ++ ":is_damaged", integer_to_list(IsDamaged)),
+    sethash(C, Hash, EquipIndex ++ ":refining_level",
+            integer_to_list(RefiningLevel)),
+    sethash(C, Hash, EquipIndex ++ ":card1", integer_to_list(Card1)),
+    sethash(C, Hash, EquipIndex ++ ":card2", integer_to_list(Card2)),
+    sethash(C, Hash, EquipIndex ++ ":card3", integer_to_list(Card3)),
+    sethash(C, Hash, EquipIndex ++ ":card4", integer_to_list(Card4)),
+    sethash(C, Hash, EquipIndex ++ ":hire_expire_date",
+            integer_to_list(HireExpireDate)),
+    sethash(C, Hash, EquipIndex ++ ":bind_on_equip_type",
+            integer_to_list(BindOnEquipType)),
+    sethash(C, Hash, EquipIndex ++ ":sprite_number",
+            integer_to_list(SpriteNumber)).
+
+get_equips(C, CharID) ->
+    Hash = "char:" ++ integer_to_list(CharID),
+    Members = smembers(C, [Hash, ":equips"]),
+    [get_equip(C, Hash, Member) || Member <- Members].
+
+get_equip(C, Hash, Index) ->
+    EquipIndex = binary_to_list(Index),
+    #equip{index = numeric(gethash(C, Hash, EquipIndex ++ ":index")),
+           id = numeric(gethash(C, Hash, EquipIndex ++ ":id")),
+           type = numeric(gethash(C, Hash, EquipIndex ++ ":type")),
+           identified = numeric(gethash(C, Hash, EquipIndex ++ ":identified")),
+           location = numeric(gethash(C, Hash, EquipIndex ++ ":location")),
+           wearstate = numeric(gethash(C, Hash, EquipIndex ++ ":wearstate")),
+           is_damaged = numeric(gethash(C, Hash, EquipIndex ++ ":is_damaged")),
+           refining_level =
+               numeric(gethash(C, Hash, EquipIndex ++ ":refining_level")),
+           card1 = numeric(gethash(C, Hash, EquipIndex ++ ":card1")),
+           card2 = numeric(gethash(C, Hash, EquipIndex ++ ":card2")),
+           card3 = numeric(gethash(C, Hash, EquipIndex ++ ":card3")),
+           card4 = numeric(gethash(C, Hash, EquipIndex ++ ":card4")),
+           hire_expire_date =
+               numeric(gethash(C, Hash, EquipIndex ++ ":hire_expire_date")),
+           bind_on_equip_type =
+               numeric(gethash(C, Hash, EquipIndex ++ ":bind_on_equip_type")),
+           sprite_number =
+               numeric(gethash(C, Hash, EquipIndex ++ ":sprite_number"))}.
 
 delete_char(C, Char) ->
     Hash = "char:" ++ integer_to_list(Char#char.id),

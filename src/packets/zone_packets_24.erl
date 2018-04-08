@@ -403,58 +403,43 @@ pack(hotkeys, _Hotkeys) ->
      list_to_binary(lists:duplicate(189, 0))];
 pack(party_invite_state, State) ->
     <<16#2c9:16/little, State:8>>;
-pack(equipment, _Equipment) ->
-    Item = <<0:16/little,     %% index
-             1201:16/little,  %% Item ID
-             5:8,             %% type
-             1:8,             %% identified
-             2:16/little,     %% location
-             2:16/little,     %% WearState
-             0:8/little,      %% IsDamaged
-             0:8/little,      %% RefiningLevel
-                 0:16/little, %% cards
-                 0:16/little,
-                 0:16/little,
-                 0:16/little,
-             0:32/little,     %% HireExpireDate
-             0:16/little,     %% bindOnEquipType
-             0:16/little>>,   %% wItemSpriteNumber
+pack(equipment, EquipmentLs) ->
+    MapF = fun(#equip{index = Index,
+                      id = ID,
+                      type = Type,
+                      identified = Identified,
+                      location = Location,
+                      wearstate = WearState,
+                      is_damaged = IsDamaged,
+                      refining_level = RefiningLevel,
+                      card1 = Card1,
+                      card2 = Card2,
+                      card3 = Card3,
+                      card4 = Card4,
+                      hire_expire_date = HireExpireDate,
+                      bind_on_equip_type = BindOnEquipType,
+                      sprite_number = SpriteNumber}) ->
+                   <<Index:16/little,
+                     ID:16/little,
+                     Type:8,
+                     Identified:8,
+                     Location:16/little,
+                     WearState:16/little,
+                     IsDamaged:8/little,
+                     RefiningLevel:8/little,
+                     Card1:16/little,
+                     Card2:16/little,
+                     Card3:16/little,
+                     Card4:16/little,
+                     HireExpireDate:32/little,
+                     BindOnEquipType:16/little,
+                     SpriteNumber:16/little>>
+           end,
     L  = (16 + 16 + 8 + 8 + 16 + 16 + 8 + 8
           + 16 + 16 + 16 + 16 + 32 + 16 + 16) div 8,
-    Item2 = <<3:16/little,     %% index
-              2376:16/little,  %% Item ID
-              4:8,             %% type
-              1:8,             %% identified
-              16:16/little,    %% location
-              16:16/little,    %% WearState
-              0:8/little,      %% IsDamaged
-              0:8/little,      %% RefiningLevel
-                  0:16/little, %% cards
-                  0:16/little,
-                  0:16/little,
-                  0:16/little,
-              0:32/little,     %% HireExpireDate
-              0:16/little,     %% bindOnEquipType
-              0:16/little>>,   %% wItemSpriteNumber
-    Item3 = <<5:16/little,     %% index
-              5025:16/little,  %% Item ID
-              4:8,             %% type
-              1:8,             %% identified
-              256:16/little,   %% location
-              256:16/little,   %% WearState
-              0:8/little,      %% IsDamaged
-              0:8/little,      %% RefiningLevel
-                  0:16/little, %% cards
-                  0:16/little,
-                  0:16/little,
-                  0:16/little,
-              0:32/little,     %% HireExpireDate
-              0:16/little,     %% bindOnEquipType
-              110:16/little>>,   %% wItemSpriteNumber
-    Equiplen = 3,
     Res = [<<16#2d0:16/little,
-             (L * Equiplen + 4):16/little>>,
-           [Item, Item2, Item3]],
+             (L * length(EquipmentLs) + 4):16/little>>,
+           lists:map(MapF, EquipmentLs)],
     Res;
 pack(inventory, Inventory) ->
     [<<16#2e8:16/little,

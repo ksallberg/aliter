@@ -729,7 +729,8 @@ walk_interval(N) ->
                end,
     timer:apply_interval(Interval, gen_server, cast, [self(), step]).
 
-show_actors(#zone_state{map_server = MapServer,
+show_actors(#zone_state{db = DB,
+                        map_server = MapServer,
                         char = #char{hp=Hp, max_hp=MaxHp,
                                      sp=Sp, max_sp=MaxSp} = C,
                         account = A
@@ -740,7 +741,8 @@ show_actors(#zone_state{map_server = MapServer,
     send(State, {param_change, {?SP_CUR_HP, Hp}}),
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
     send(State, {param_change, {?SP_CUR_SP, Sp}}),
-    send(State, {equipment, whatever}), %% FIXME: Needs db support
+    Equips = db:get_equips(DB, C#char.id),
+    send(State, {equipment, Equips}),
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),
     gen_server:cast(MapServer,

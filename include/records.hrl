@@ -176,6 +176,23 @@
          equip_script = "",
          unequip_script = ""}).
 
+-record(equip,
+        {index,
+         id,
+         type,
+         identified,
+         location,
+         wearstate,
+         is_damaged,
+         refining_level,
+         card1,
+         card2,
+         card3,
+         card4,
+         hire_expire_date,
+         bind_on_equip_type,
+         sprite_number}).
+
 -record(monster,
         {id,
          name,
