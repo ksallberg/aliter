@@ -92,6 +92,8 @@ execute(Worker, "job", [ID], State) ->
     end;
 execute(Worker, "heal", _Args, State) ->
     heal(Worker, State);
+execute(Worker, "maxstats", _Args, State) ->
+    max_stats(Worker, State);
 execute(_Worker, Unknown, _Args, State) ->
     zone_worker:say("Unknown command `" ++ Unknown ++ "'.", State),
     ok.
@@ -149,6 +151,9 @@ change_job(Worker, _State, JobID) ->
 
 heal(Worker, _State) ->
     gen_server:cast(Worker, heal).
+
+max_stats(Worker, _State) ->
+    gen_server:cast(Worker, max_stats).
 
 spawn_monster(Worker, _State, ID, X, Y) ->
     gen_server:cast(Worker, {monster, ID, X, Y}).

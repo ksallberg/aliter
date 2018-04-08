@@ -487,6 +487,18 @@ handle_cast(heal,
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
     send(State, {param_change, {?SP_CUR_SP, MaxSp}}),
     {noreply, State#zone_state{char=NewChar}};
+handle_cast(max_stats, #zone_state{db=DB, char=Char} = State) ->
+    NewChar = Char#char{str = 98,
+                        agi = 99,
+                        vit = 99,
+                        int = 99,
+                        dex = 99,
+                        luk = 99,
+                        base_level = 20,
+                        max_hp = 9999,
+                        max_sp = 1000},
+    db:save_char(DB, NewChar),
+    {noreply, State#zone_state{char=NewChar}};
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
                         char=#char{account_id=AID},

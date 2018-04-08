@@ -68,11 +68,12 @@ var ROConfig = {
 \load                - Travel to last saved spot
 \item 1228           - You got Combat Knife (1).
 \zeny 100            - You get 100 zeny
-\hat 110             - Give spriteid to display headgear on top
-\hat 422             - Fire bursting out of ears
+\hat 110             - Give spriteid to display headgear on top (angel helm)
+\hat 224             - (feather beret)
 \monster 1373 50 50  - Spawn LOD to tile X:50, Y:50
 \npc 20 50 50        - Spawn NPC to tile X:50, Y:50
 \job 20              - Become assassin
+\maxstats            - raise all stats and save to db
 ```
 
 ### Supporter RO Commands
