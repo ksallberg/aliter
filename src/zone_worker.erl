@@ -218,7 +218,6 @@ handle_cast({use_skill, SkillLvl, 136=SkillID, TargetID},
            SrcDelay, TargetDelay, Dmg, SkillLvl, Div, Type},
     Msg2 = {TargetID, ?VANISH_DIED},
     send(State, {notify_skill, Msg}),
-
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, notify_skill, Msg}),
     case NewHp of
@@ -260,6 +259,28 @@ handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
 handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
     {noreply, State#zone_state{attack_timer=undefined}};
+handle_cast({wear_equip, Index, _Position},
+            #zone_state{db=DB, char=#char{id=CharId}} = State) ->
+    Items = db:get_player_items(DB, CharId),
+    {world_item, _, ItemID, _} = lists:keyfind(Index, 2, Items),
+    NewEquip = #equip{index = 0,
+                      id = ItemID,
+                      type = 5, %% Position
+                      identified = 1,
+                      location = 2,
+                      wearstate = 2,
+                      is_damaged = 0,
+                      refining_level = 0,
+                      card1 = 0,
+                      card2 = 0,
+                      card3 = 0,
+                      card4 = 0,
+                      hire_expire_date = 0,
+                      bind_on_equip_type = 0,
+                      sprite_number = 0},
+    send(State, {equipment, [NewEquip]}),
+    db:save_equips_ext(DB, CharId, NewEquip),
+    {noreply, State};
 %% TODO use GuildID
 handle_cast({guild_emblem, _GuildID}, State) ->
     send(State, {guild_relationships, []}),
