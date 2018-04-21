@@ -61,7 +61,16 @@ execute(Worker, "item", [ID], State) ->
     case string:to_integer(ID) of
         {error, _} -> zone_worker:say("Invalid item ID.", State);
         {ItemID, _} ->
-            give_item(Worker, State, ItemID, 1)
+            give_item(Worker, State, ItemID, 1, 2)
+    end;
+execute(Worker, "item", [ID, EquipLocation], State) ->
+    case string:to_integer(ID) of
+        {error, _} -> zone_worker:say("Invalid item ID.", State);
+        {ItemID, _} ->
+            case string:to_integer(EquipLocation) of
+                {error, _} -> zone_worker:say("Invalid equip location.", State);
+                {EQL, _} -> give_item(Worker, State, ItemID, 1, EQL)
+            end
     end;
 execute(Worker, "hat", [ID], State) ->
     case string:to_integer(ID) of
@@ -140,8 +149,8 @@ warp_to(Worker, Map, X, Y,
             ok
     end.
 
-give_item(Worker, _State, ID, Amount) ->
-    gen_server:cast(Worker, {give_item, ID, Amount}).
+give_item(Worker, _State, ID, Amount, EquipLocation) ->
+    gen_server:cast(Worker, {give_item, ID, Amount, EquipLocation}).
 
 change_hat(Worker, _State, ID) ->
     gen_server:cast(Worker, {hat_sprite, ID}).

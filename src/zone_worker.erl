@@ -259,16 +259,16 @@ handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
 handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
     {noreply, State#zone_state{attack_timer=undefined}};
-handle_cast({wear_equip, Index, _Position},
+handle_cast({wear_equip, Index, Position},
             #zone_state{db=DB, char=#char{id=CharId}} = State) ->
     Items = db:get_player_items(DB, CharId),
     {world_item, _, ItemID, _} = lists:keyfind(Index, 2, Items),
-    NewEquip = #equip{index = 0,
+    NewEquip = #equip{index = Position,
                       id = ItemID,
-                      type = 5, %% Position
+                      type = Position, %% Position
                       identified = 1,
-                      location = 2,
-                      wearstate = 2,
+                      location = Position,
+                      wearstate = Position,
                       is_damaged = 0,
                       refining_level = 0,
                       card1 = 0,
@@ -565,9 +565,9 @@ handle_cast({npc, SpriteID, X, Y},
            NPC},
     gen_server:cast(MapServer, Msg),
     {noreply, State};
-handle_cast({give_item, ID, Amount},
+handle_cast({give_item, ID, Amount, EquipLocation},
             State = #zone_state{char = #char{id = CharacterID}}) ->
-    give_item(State, CharacterID, ID, Amount),
+    give_item(State, CharacterID, ID, Amount, EquipLocation),
     {noreply, State};
 handle_cast(stop, State = #zone_state{char_worker = Char}) ->
     gen_server:cast(Char, exit),
@@ -693,7 +693,8 @@ handle_cast({pick_up, ObjectID},
         Item ->
             db:remove_world_item(DB, Map, ObjectID),
             give_item(State, CharacterID,
-                      Item#world_item.item, Item#world_item.amount)
+                      Item#world_item.item, Item#world_item.amount,
+                      Item#world_item.slot)
     end,
     {noreply, State};
 handle_cast({change_direction, Head, Body},
@@ -790,7 +791,8 @@ show_actors(#zone_state{db = DB,
 say(Message, State) ->
     send(State, {message, Message}).
 
-give_item(#zone_state{db = DB} = State, CharacterID, ID, Amount) ->
+give_item(#zone_state{db = DB} = State, CharacterID,
+          ID, Amount, EquipLocation) ->
     Slot = db:give_player_item(DB, CharacterID, ID, Amount),
     send(State, {give_item, {Slot,   %% Index
                              Amount, %% Amount
@@ -802,7 +804,7 @@ give_item(#zone_state{db = DB} = State, CharacterID, ID, Amount) ->
                              0,      %%     2
                              0,      %%     3
                              0,      %%     4
-                             2,      %% EquipLocation
+                             EquipLocation,
                              4,      %% Type
                              0,      %% Result
                              0,      %% ExpireTime

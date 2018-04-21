@@ -230,7 +230,6 @@ save_equips(C, Hash,
     sethash(C, Hash, EquipIndex ++ ":is_damaged", integer_to_list(IsDamaged)),
     sethash(C, Hash, EquipIndex ++ ":refining_level",
             integer_to_list(RefiningLevel)),
-    io:format("SET HASH!\n", []),
     sethash(C, Hash, EquipIndex ++ ":card1", integer_to_list(Card1)),
     sethash(C, Hash, EquipIndex ++ ":card2", integer_to_list(Card2)),
     sethash(C, Hash, EquipIndex ++ ":card3", integer_to_list(Card3)),
@@ -245,7 +244,6 @@ save_equips(C, Hash,
 get_equips(C, CharID) ->
     Hash = "char:" ++ integer_to_list(CharID),
     Members = smembers(C, [Hash, ":equips"]),
-    io:format("members: ~p\n", [Members]),
     [get_equip(C, Hash, Member) || Member <- Members].
 
 get_equip(C, Hash, Index) ->

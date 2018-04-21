@@ -67,6 +67,15 @@ var ROConfig = {
 \warp prontera 50 20 - Travel somewhere
 \load                - Travel to last saved spot
 \item 1228           - You got Combat Knife (1).
+\item 2268 1         - Pipe on lower head
+\item 1162 2         - broad sword[2] on R-hand
+\item 2503 4         - muffler on robe
+\item xxxx 8         - left accessory
+\item 2314 16        - chain mail on body
+\item xxxx 32        - L-hand
+\item 2405 64        - boots
+\item xxxx 128       - right accessory
+\item 5170 256       - feather beret to mount on head
 \zeny 100            - You get 100 zeny
 \hat 110             - Give spriteid to display headgear on top (angel helm)
 \hat 224             - (feather beret)
