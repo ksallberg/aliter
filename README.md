@@ -72,7 +72,7 @@ var ROConfig = {
 \item 2503 4         - muffler on robe
 \item xxxx 8         - left accessory
 \item 2314 16        - chain mail on body
-\item xxxx 32        - L-hand
+\item 2107 32        - shield on L-hand
 \item 2405 64        - boots
 \item xxxx 128       - right accessory
 \item 5170 256       - feather beret to mount on head
