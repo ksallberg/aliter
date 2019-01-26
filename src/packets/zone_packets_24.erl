@@ -319,9 +319,39 @@ pack(guild_info, Guild) ->
        0:32/little, % TODO: Tendency Down/Up
        0:32/little>>, % TODO: Emblem ID
      pad_to(Guild#guild.name, 24),
-     pad_to("Master goes here!", 24),
+     pad_to(Guild#guild.master_name, 24),
      pad_to("Hmmm", 16),
     <<0:32/little>>]; %% zeny
+
+%% Guild member manager information (ZC_MEMBERMGR_INFO).
+%% 0154 <packet len>.W { <account>.L
+%%                       <char id>.L <hair style>.W <hair color>.W
+%%                       <gender>.W <class>.W <level>.W <contrib exp>.L
+%%                       <state>.L <position>.L <memo>.50B <name>.24B }*
+%% state:
+%%     0 = offline
+%%     1 = online
+%% memo:
+%%     probably member's self-introduction
+%%       (unused, no client UI/packets for editing it)
+
+pack(guild_members, Mems) ->
+    [<<16#154:16/little,
+       (104 * length(Mems) + 4):16/little>>,
+       [[<<(Mem#char.account_id):32/little,
+          (Mem#char.id):32/little,
+          (Mem#char.hair_style):16/little,
+          (Mem#char.hair_colour):16/little,
+          0:16/little, %% gender
+          (Mem#char.job):16/little,
+          (Mem#char.base_level):16/little,
+          100:32/little, %% exp contrib
+          1:32/little, %% state: online or offline
+          0:32/little>>, %% position
+          pad_to("text", 50),
+          pad_to(Mem#char.name, 24)]
+        || Mem <- Mems]];
+
 pack(change_look, Character) ->
     <<16#1d7:16/little,
       (Character#char.account_id):32/little,

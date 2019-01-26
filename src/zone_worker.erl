@@ -56,7 +56,6 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                         [#inventory{items=ItemsX}] ->
                             ItemsX
                     end,
-            io:format("items: ~p\n", [Items]),
             send(State, {inventory, Items}),
             WorldItems = db:get_world_items(Char#char.map),
             lists:foreach(
@@ -134,8 +133,12 @@ handle_cast(map_loaded, State) ->
     {noreply, State};
 handle_cast({create_guild, CharId, GName},
             State = #zone_state{char = Char}) ->
-    Guild = #guild{name      = GName,
-                   master_id = CharId},
+    #char{name=CharName} = Char,
+    Guild = #guild{name        = GName,
+                   master_id   = CharId,
+                   members     = [CharId],
+                   master_name = CharName
+                  },
     GuildSaved = db:save_guild(Guild),
     GuildID = GuildSaved#guild.id,
     NewChar = Char#char{guild_id=GuildID},
@@ -627,16 +630,9 @@ handle_cast({request_guild_info, 1},
             State = #zone_state{
                        char = #char{guild_id = GuildID}
                       }) when GuildID /= 0 ->
-    GetMembers =
-        gen_server:call(char_server,
-                        {get_chars, db:get_guild_members(GuildID)}),
-    case GetMembers of
-        {atomic, Members} ->
-            send(State, {guild_members, Members});
-
-        _Error ->
-            ok
-    end,
+    %% Getmembers will be [] or list with character records
+    GetMembers = db:get_guild_members(GuildID),
+    send(State, {guild_members, GetMembers}),
     {noreply, State};
 handle_cast({request_guild_info, 2}, State) ->
     {noreply, State};
@@ -776,9 +772,6 @@ show_actors(#zone_state{map_server = MapServer,
     send(State, {param_change, {?SP_CUR_HP, Hp}}),
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
     send(State, {param_change, {?SP_CUR_SP, Sp}}),
-
-    io:format("ALL EQS: ~p \n", [Equips]),
-
     send(State, {equipment, Equips}),
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),

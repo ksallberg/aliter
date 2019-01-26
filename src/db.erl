@@ -267,10 +267,10 @@ save_guild(#guild{} = Guild) ->
         case Guild#guild.id of
             undefined ->
                 A = fun() ->
-                            mnesia:table_info(char, size)
+                            mnesia:table_info(guild, size)
                     end,
                 {atomic, Len} = mnesia:transaction(A),
-                Len;
+                Len+1;
             X -> X
         end,
     NewGuild = Guild#guild{id = ID},
@@ -317,57 +317,50 @@ get_guild_id(Name) ->
             Something
     end.
 
-%% FIXME, not implemented
-get_guild_master(_GuildId) ->
-    okej.
-    %% ID =
-    %%     case GuildId of
-    %%         undefined -> incr(C, "guilds:id");
-    %%         X -> X
-    %%     end,
-    %% Hash = "guild:" ++ integer_to_list(ID),
-    %% case hget(C, Hash, "master_id") of
-    %%     undefined -> nil;
-    %%     {ok, Master} -> numeric(Master)
-    %% end.
+get_guild_master(GuildId) ->
+    #guild{master_id=Master} = get_guild(GuildId),
+    Master.
 
-%% FIXME, not implemented
 get_guild_members(GuildID) ->
-    GuildID.
-    %% Chars = lrange(C, ["guild:", integer_to_list(GuildID), ":members"], 0, -1),
-    %% [get_char(C, numeric(ID)) || {_, ID} <- Chars].
+    #guild{members = Chars} = get_guild(GuildID),
+    [get_char(ID) || ID <- Chars].
 
-add_char_to_guild(GuildID, CharacterID) ->
-    {GuildID, CharacterID}.
+%% FIXME, not implemented
+add_char_to_guild(_GuildID, _CharacterID) ->
+    okej.
+    %% {GuildID, CharacterID}.
     %% rpush(C, ["guild:", GuildID, ":members"], CharacterID).
 
 %% FIXME, not implemented
-delete_char_from_guild(GuildID, CharacterID) ->
-    {GuildID, CharacterID}.
+delete_char_from_guild(_GuildID, _CharacterID) ->
+    okej.
+    %% {GuildID, CharacterID}.
     %% lrem(C, ["guild:", GuildID, ":members"], 0, CharacterID),
     %% ok.
 
 %% FIXME, not implemented
-get_guild_relationships(GuildID) ->
-    GuildID.
+get_guild_relationships(_GuildID) ->
+    okej.
+    %% FIXME, not implemented
     %% hgetall(C, ["guild:", integer_to_list(GuildID), ":relationships"]).
 
 %% FIXME, not implemented
-save_guild_relationship(GuildID, TargetID, Type) ->
-    {GuildID, TargetID, Type}.
+save_guild_relationship(_GuildID, _TargetID, _Type) ->
+    okej.
     %% Key = ["guild:", integer_to_list(GuildID), ":relationships"],
     %% sethash(C, Key, integer_to_list(TargetID), integer_to_list(Type)).
 
 %% FIXME, not implemented
-delete_guild_relationship(GuildID, TargetID) ->
-    {GuildID, TargetID}.
+delete_guild_relationship(_GuildID, _TargetID) ->
+    okej.
+    %% {GuildID, TargetID}.
     %% hdel(C, ["guild:", integer_to_list(GuildID), ":relationships"],
     %%      integer_to_list(TargetID)),
     %% ok.
 
 %% FIXME, not implemented
-get_guild_relationship(GuildID, TargetID) ->
-    {GuildID, TargetID}.
+get_guild_relationship(_GuildID, _TargetID) ->
+    okej.
     %% numeric(
     %%   gethash(C,
     %%           [ "guild:",

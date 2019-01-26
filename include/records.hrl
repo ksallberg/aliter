@@ -236,7 +236,9 @@
          castles = [],
          expulsions = [],
          positions = [],
+         members = [],
          relationships = [],
+         master_name="",
          master_id = 0}).
 
 %% Data

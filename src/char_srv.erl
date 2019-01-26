@@ -39,7 +39,6 @@ handle_call({verify_session, AccountID, CharacterID, SessionIDa},
         _ ->
             {reply, invalid, State}
     end;
-
 handle_call({get_session, AccountID}, _From,
             State = #state{sessions = Sessions}) ->
     {reply, proplists:lookup(AccountID, Sessions), State};
