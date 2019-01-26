@@ -23,7 +23,6 @@
 -record(login_state,
         {server,
          tcp,
-         db,
          die,
          account,
          id_a,
@@ -34,7 +33,6 @@
 -record(char_state,
         {server,
          tcp,
-         db,
          die,
          char,
          account,
@@ -51,7 +49,6 @@
          map_server,
          states = [],
          tcp,
-         db,
          char,
          account,
          id_a,
@@ -75,16 +72,6 @@
          counter = 1000,
          npcs = [],
          mobs = []}).
-
--record(
-   nb_state,
-   { port,
-     packet_handler,
-     worker_module,
-     worker_args,
-     server
-   }
-  ).
 
 %%% Login tables
 -record(account,
@@ -129,10 +116,10 @@
          view_head_top = 0,
          view_head_middle = 0,
          view_head_bottom = 0,
-         map = "new_1-1",
+         map = <<"new_1-1">>,
          x = 53,
          y = 111,
-         save_map = "new_1-1",
+         save_map = <<"new_1-1">>,
          save_x = 53,
          save_y = 111,
          online = 0,
@@ -148,7 +135,9 @@
          guild_id = 0,
          pet_id = 0,
          homunculus_id = 0,
-         mercenary_id = 0}).
+         mercenary_id = 0,
+         equips=[]
+        }).
 
 %%% Zone server
 %% Tables
@@ -175,6 +164,10 @@
          script = "",
          equip_script = "",
          unequip_script = ""}).
+
+-record(inventory,
+        {charid,
+         items=[]}).
 
 -record(equip,
         {index,

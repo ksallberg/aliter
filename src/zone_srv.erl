@@ -26,11 +26,9 @@ start_link(Port, MapPairs) ->
                                  list_name = ListName}, []).
 
 init(#state{list_name = ListName, port = Port} = State) ->
-    {ok, DB} = eredis:start_link(),
-    {ok, _Keepalive} = timer:apply_interval(timer:seconds(30), db, ping, [DB]),
     {ok, _} = ranch:start_listener(ListName, ranch_tcp,
                                    [{port, Port}], ragnarok_proto,
-                                   [zone_packets_24, DB, self()]),
+                                   [zone_packets_24, self()]),
     {ok, State}.
 
 handle_call({provides, MapName},

@@ -20,22 +20,11 @@ start_link() ->
     gen_server:start_link({local, login_server}, ?MODULE, Port, []).
 
 init(Port) ->
-    case eredis:start_link() of
-        {ok, DB} ->
-            %% Keep connection to redis
-            {ok, _Keepalive} = timer:apply_interval(timer:seconds(30),
-                                                    db,
-                                                    ping,
-                                                    [DB]),
-            %% Start TCP listener, and worker
-            {ok, _} = ranch:start_listener(login_listener, ranch_tcp,
-                                           [{port, Port}], ragnarok_proto,
-                                           [login_packets, DB]),
-            {ok, []};
-        _ ->
-            lager:log(error, self(), "No redis DB found! ~n", []),
-            throw({exit, no_redis})
-    end.
+    %% Start TCP listener, and worker
+    {ok, _} = ranch:start_listener(login_listener, ranch_tcp,
+                                   [{port, Port}], ragnarok_proto,
+                                   [login_packets]),
+    {ok, []}.
 
 handle_call({verify_session, AccountID, LoginIDa, LoginIDb}, _From, Sessions) ->
     case proplists:lookup(AccountID, Sessions) of

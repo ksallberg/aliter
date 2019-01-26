@@ -15,20 +15,20 @@ start_link(Ref, Socket, Transport, Opts) ->
     Pid = spawn_link(?MODULE, init, [Ref, Socket, Transport, Opts]),
     {ok, Pid}.
 
-init(Ref, Socket, Transport, [PacketHandler, DB]) ->
+init(Ref, Socket, Transport, [PacketHandler]) ->
     {ok, Worker} = case PacketHandler of
                        login_packets ->
                            supervisor:start_child(login_worker_sup,
-                                                  [Socket, DB, PacketHandler]);
+                                                  [Socket, PacketHandler]);
                        char_packets_24 ->
                            supervisor:start_child(char_worker_sup,
-                                                  [Socket, DB, PacketHandler])
+                                                  [Socket, PacketHandler])
                    end,
     ok = ranch:accept_ack(Ref),
     parse_loop(Socket, Transport, PacketHandler, Worker);
-init(Ref, Socket, Transport, [PacketHandler, DB, Server]) ->
+init(Ref, Socket, Transport, [PacketHandler, Server]) ->
     {ok, Worker} = supervisor:start_child(zone_worker_sup,
-                                          [Socket, DB, PacketHandler, Server]),
+                                          [Socket, PacketHandler, Server]),
     ok = ranch:accept_ack(Ref),
     parse_loop(Socket, Transport, PacketHandler, Worker).
 

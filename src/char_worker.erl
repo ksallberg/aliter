@@ -7,7 +7,7 @@
 
 -include_lib("stdlib/include/qlc.hrl").
 
--export([ start_link/3 ]).
+-export([ start_link/2 ]).
 
 -export([ init/1
         , code_change/3
@@ -17,17 +17,17 @@
         , handle_info/2
         , terminate/2 ]).
 
-start_link(TCP, DB, PacketHandler) ->
-    gen_server:start_link(?MODULE, [TCP, DB, PacketHandler], []).
+start_link(TCP, PacketHandler) ->
+    gen_server:start_link(?MODULE, [TCP, PacketHandler], []).
 
-init([TCP, DB, PacketHandler]) ->
+init([TCP, PacketHandler]) ->
     process_flag(trap_exit, true),
-    {ok, #char_state{tcp = TCP, db = DB, packet_handler = PacketHandler}}.
+    {ok, #char_state{tcp = TCP, packet_handler = PacketHandler}}.
 
 handle_cast({set_server, Server}, State) ->
     {noreply, State#char_state{server = Server}};
 handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
-            State = #char_state{tcp = TCP, db = DB,
+            State = #char_state{tcp = TCP,
                                 packet_handler = PacketHandler}) ->
     ragnarok_proto:send_bin(TCP, <<AccountID:32/little>>),
     Verify =
@@ -45,7 +45,7 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                                                         L#login_state.id_a,
                                                         L#login_state.id_b
                                                        }}),
-            Chars = db:get_account_chars(DB, AccountID),
+            Chars = db:get_account_chars(AccountID),
             M = {characters, {Chars, ?MAX_SLOTS, ?AVAILABLE_SLOTS,
                               ?PREMIUM_SLOTS}},
             ragnarok_proto:send_packet(M, TCP, PacketHandler),
@@ -61,10 +61,10 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
             {noreply, State}
     end;
 handle_cast({choose, Num},
-            #char_state{db = DB, account = #account{id = AccountID},
+            #char_state{account = #account{id = AccountID},
                         packet_handler = PacketHandler,
                         tcp = Socket} = State) ->
-    GetChar = db:get_account_char(DB, AccountID, Num),
+    GetChar = db:get_account_char(AccountID, Num),
     case GetChar of
         nil ->
             lager:log(warning, self(), "Selected invalid character. ~p",
@@ -83,24 +83,24 @@ handle_cast({choose, Num},
     end;
 handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
              Luk, Num, HairColour, HairStyle},
-            State = #char_state{db = DB, account = Account,
+            State = #char_state{account = Account,
                                 packet_handler = PacketHandler,
                                 tcp = Socket}) ->
-    Exists = db:get_char_id(DB, Name),
+    Exists = db:get_char_id(Name),
     case Exists of
         nil ->
-            Char = db:save_char(DB, #char{num = Num,
-                                          name = Name,
-                                          zeny = 500, % TODO: Config flag
-                                          str = Str,
-                                          agi = Agi,
-                                          vit = Vit,
-                                          int = Int,
-                                          dex = Dex,
-                                          luk = Luk,
-                                          hair_colour = HairColour,
-                                          hair_style = HairStyle,
-                                          account_id = Account#account.id}),
+            Char = db:save_char(#char{num = Num,
+                                      name = Name,
+                                      zeny = 500, % TODO: Config flag
+                                      str = Str,
+                                      agi = Agi,
+                                      vit = Vit,
+                                      int = Int,
+                                      dex = Dex,
+                                      luk = Luk,
+                                      hair_colour = HairColour,
+                                      hair_style = HairStyle,
+                                      account_id = Account#account.id}),
             lager:log(info, self(), "Created character. ~p~p",
                       [{account, Account}, {char, Char}]),
             ragnarok_proto:send_packet({character_created, Char}, Socket,
@@ -112,7 +112,7 @@ handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
     {noreply, State};
 handle_cast({delete, CharacterID, EMail},
             State = #char_state{
-                       db = DB, tcp = Socket,
+                       tcp = Socket,
                        packet_handler = PacketHandler,
                        account = #account{id = AccountID, email = AccountEMail}
                       }) ->
@@ -123,7 +123,7 @@ handle_cast({delete, CharacterID, EMail},
         end,
     case Address of
         AccountEMail ->
-            case db:get_char(DB, CharacterID) of
+            case db:get_char(CharacterID) of
                 nil ->
                     lager:log(warning,
                               self(),
@@ -135,7 +135,7 @@ handle_cast({delete, CharacterID, EMail},
                     ragnarok_proto:send_packet({deletion_failed, 0}, Socket,
                                                PacketHandler);
                 Char ->
-                    db:delete_char(DB, Char),
+                    db:delete_char(Char),
                     lager:log(info, self(), "Character deleted ~p",
                               [{char, Char}]),
                     ragnarok_proto:send_packet({character_deleted, ok}, Socket,
@@ -147,15 +147,15 @@ handle_cast({delete, CharacterID, EMail},
     end,
     {noreply, State};
 handle_cast({check_name, AccountID, CharacterID, NewName},
-            State = #char_state{db = DB, account = #account{id = AccountID},
+            State = #char_state{account = #account{id = AccountID},
                                 tcp = Socket, packet_handler = PacketHandler
                                }) ->
-    Check = db:get_char_id(DB, NewName),
+    Check = db:get_char_id(NewName),
     case Check of
         nil ->
             ragnarok_proto:send_packet({name_check_result, 1}, Socket,
                                        PacketHandler),
-            Char = db:get_char(DB, CharacterID),
+            Char = db:get_char(CharacterID),
             NewState = State#char_state{rename = {Char, NewName}},
             {noreply, NewState};
         _Exists ->
@@ -176,17 +176,15 @@ handle_cast(exit, State = #char_state{account=#account{id=AccountID}}) ->
     gen_server:cast(char_server, {remove_session, AccountID}),
     {stop, normal, State};
 handle_cast({rename, CharacterID},
-            #char_state{db = DB,
-                        tcp = Socket,
+            #char_state{tcp = Socket,
                         packet_handler = PacketHandler,
-                        rename = {#char{name = OldName,
-                                        id = CharacterID,
+                        rename = {#char{id = CharacterID,
                                         renamed = 0
-                                       }, NewName}} = State) ->
-    Check = db:get_char_id(DB, NewName),
+                                       }=Char, NewName}} = State) ->
+    Check = db:get_char_id(NewName),
     case Check of
         nil ->
-            db:rename_char(DB, CharacterID, OldName, NewName),
+            db:rename_char(Char, NewName),
             ragnarok_proto:send_packet({rename_result, 0}, Socket,
                                        PacketHandler);
         _Exists ->

@@ -7,7 +7,7 @@
 
 -include_lib("stdlib/include/qlc.hrl").
 
--export([ start_link/4 ]).
+-export([ start_link/3 ]).
 
 -export([ init/1 ]).
 
@@ -27,16 +27,15 @@
 send(#zone_state{tcp = TCP, packet_handler = PacketHandler}, Packet) ->
     ragnarok_proto:send_packet(Packet, TCP, PacketHandler).
 
-start_link(TCP, DB, PacketHandler, Server) ->
-    gen_server:start_link(?MODULE, [TCP, DB, PacketHandler, Server], []).
+start_link(TCP, PacketHandler, Server) ->
+    gen_server:start_link(?MODULE, [TCP, PacketHandler, Server], []).
 
-init([TCP, DB, PacketHandler, Server]) ->
+init([TCP, PacketHandler, Server]) ->
     process_flag(trap_exit, true),
-    {ok, #zone_state{db = DB, tcp = TCP,
+    {ok, #zone_state{tcp = TCP,
                      packet_handler = PacketHandler, server = Server}}.
 
 handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
-    DB = State#zone_state.db,
     Session =
         gen_server:call(char_server,
                         {verify_session, AccountID, CharacterID, SessionIDa}),
@@ -51,9 +50,15 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             send(State, {account_id, AccountID}),
             send(State, {accept, {zone_master:tick(),
                                   {Char#char.x, Char#char.y, 0}}}),
-            Items = db:get_player_items(DB, Char#char.id),
+            Items = case db:get_player_items(Char#char.id) of
+                        [] ->
+                            [];
+                        [#inventory{items=ItemsX}] ->
+                            ItemsX
+                    end,
+            io:format("items: ~p\n", [Items]),
             send(State, {inventory, Items}),
-            WorldItems = db:get_world_items(DB, Char#char.map),
+            WorldItems = db:get_world_items(Char#char.map),
             lists:foreach(
               fun(Item) ->
                       send(State, {item_on_ground, {Item#world_item.slot,
@@ -72,7 +77,7 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                     ok;
                 GuildID ->
                     send(State, {guild_status, master}),
-                    Guild = db:get_guild(DB, GuildID),
+                    Guild = db:get_guild(GuildID),
                     send(State, {update_gd_id, Guild})
             end,
             Skills = [ {50,  0, 9, 1, 0, "TF_STEAL", 1}
@@ -128,15 +133,14 @@ handle_cast(map_loaded, State) ->
     show_actors(State),
     {noreply, State};
 handle_cast({create_guild, CharId, GName},
-            State = #zone_state{db   = DB,
-                                char = Char}) ->
+            State = #zone_state{char = Char}) ->
     Guild = #guild{name      = GName,
                    master_id = CharId},
-    GuildSaved = db:save_guild(DB, Guild),
+    GuildSaved = db:save_guild(Guild),
     GuildID = GuildSaved#guild.id,
     NewChar = Char#char{guild_id=GuildID},
     %% Update char
-    db:save_char(DB, NewChar),
+    db:save_char(NewChar),
     %% Notify client
     send(State, {guild_status, master}),
     send(State, {update_gd_id, GuildSaved}),
@@ -260,8 +264,8 @@ handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
     {noreply, State#zone_state{attack_timer=undefined}};
 handle_cast({wear_equip, Index, Position},
-            #zone_state{db=DB, char=#char{id=CharId}} = State) ->
-    Items = db:get_player_items(DB, CharId),
+            #zone_state{char=#char{id=CharId}=Char} = State) ->
+    [#inventory{items=Items}] = db:get_player_items(CharId),
     {world_item, _, ItemID, _} = lists:keyfind(Index, 2, Items),
     NewEquip = #equip{index = Position,
                       id = ItemID,
@@ -279,8 +283,8 @@ handle_cast({wear_equip, Index, Position},
                       bind_on_equip_type = 0,
                       sprite_number = 0},
     send(State, {equipment, [NewEquip]}),
-    db:save_equips_ext(DB, CharId, NewEquip),
-    {noreply, State};
+    NewChar = db:save_equips_ext(Char, NewEquip),
+    {noreply, State#zone_state{char=NewChar}};
 %% TODO use GuildID
 handle_cast({guild_emblem, _GuildID}, State) ->
     send(State, {guild_relationships, []}),
@@ -383,7 +387,6 @@ handle_cast({char_select, _Type}, State) ->
     {noreply, State};
 handle_cast({request_name, ActorID},
             State = #zone_state{account = #account{id = AccountID},
-                                db = DB,
                                 char = #char{name = CharacterName,
                                              guild_id = GuildID},
                                 map_server = MapServer}) ->
@@ -394,7 +397,7 @@ handle_cast({request_name, ActorID},
                     0 ->
                         GuildName = "";
                     _ ->
-                        #guild{name=GuildName} = db:get_guild(DB, GuildID)
+                        #guild{name=GuildName} = db:get_guild(GuildID)
                 end,
                 {actor_name_full,
                  {ActorID, CharacterName, <<"">>, GuildName, <<"">>}};
@@ -410,7 +413,7 @@ handle_cast({request_name, ActorID},
                                 OtherGuildName = "";
                             _ ->
                                 #guild{name=OtherGuildName}
-                                    = db:get_guild(DB, OtherGuildID)
+                                    = db:get_guild(OtherGuildID)
                         end,
                         {actor_name_full, {ActorID,
                                            CharName,
@@ -474,8 +477,7 @@ handle_cast({broadcast, Message}, State) ->
 handle_cast({switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
 handle_cast({hat_sprite, SpriteID},
-      #zone_state{db=DB,
-                  char=#char{x=X, y=Y, id=_CharacterID,
+      #zone_state{char=#char{x=X, y=Y, id=_CharacterID,
                              account_id=AID} = Char,
                   map_server=MapServer} = State) ->
     send(State, {sprite, {AID, 4, SpriteID}}),
@@ -485,14 +487,14 @@ handle_cast({hat_sprite, SpriteID},
            {AID, 4, SpriteID}},
     gen_server:cast(MapServer, Msg),
     NewChar = Char#char{view_head_top=SpriteID},
-    db:save_char(DB, NewChar),
+    db:save_char(NewChar),
     {noreply, State#zone_state{char=NewChar}};
 handle_cast({change_job, JobID},
-      #zone_state{db=DB, char=#char{x=X, y=Y, account_id=AID}=Char,
+      #zone_state{char=#char{x=X, y=Y, account_id=AID}=Char,
                   map_server=MapServer}=State) ->
     NewChar = Char#char{job=JobID},
     NewState = State#zone_state{char=NewChar},
-    db:save_char(DB, NewChar),
+    db:save_char(NewChar),
     send(State, {sprite, {AID, 0, JobID}}),
     Msg = {send_to_other_players_in_sight, {X, Y},
            AID,
@@ -508,7 +510,7 @@ handle_cast(heal,
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
     send(State, {param_change, {?SP_CUR_SP, MaxSp}}),
     {noreply, State#zone_state{char=NewChar}};
-handle_cast(max_stats, #zone_state{db=DB, char=Char} = State) ->
+handle_cast(max_stats, #zone_state{char=Char} = State) ->
     NewChar = Char#char{str = 98,
                         agi = 99,
                         vit = 99,
@@ -518,7 +520,7 @@ handle_cast(max_stats, #zone_state{db=DB, char=Char} = State) ->
                         base_level = 20,
                         max_hp = 9999,
                         max_sp = 1000},
-    db:save_char(DB, NewChar),
+    db:save_char(NewChar),
     {noreply, State#zone_state{char=NewChar}};
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
@@ -593,12 +595,11 @@ handle_cast({update_state, Fun}, State) ->
 handle_cast(crash, _) ->
     exit('crash induced');
 handle_cast(request_guild_status,
-            State = #zone_state{db = DB,
-                                char = #char{id = CharacterID,
+            State = #zone_state{char = #char{id = CharacterID,
                                              guild_id = GuildID}}) ->
     if
         GuildID /= 0 ->
-            GetGuildMaster = db:get_guild_master(DB, GuildID),
+            GetGuildMaster = db:get_guild_master(GuildID),
             case GetGuildMaster of
                 CharacterID ->
                     send(State, {guild_status, master});
@@ -611,10 +612,9 @@ handle_cast(request_guild_status,
     {noreply, State};
 handle_cast({request_guild_info, 0},
             State = #zone_state{
-                       db = DB,
                        char = #char{guild_id = GuildID}
                       }) when GuildID /= 0 ->
-    GetGuild = db:get_guild(DB, GuildID),
+    GetGuild = db:get_guild(GuildID),
     case GetGuild of
         %% TODO?
         nil -> ok;
@@ -625,12 +625,11 @@ handle_cast({request_guild_info, 0},
     {noreply, State};
 handle_cast({request_guild_info, 1},
             State = #zone_state{
-                       db = DB,
                        char = #char{guild_id = GuildID}
                       }) when GuildID /= 0 ->
     GetMembers =
         gen_server:call(char_server,
-                        {get_chars, db:get_guild_members(DB, GuildID)}),
+                        {get_chars, db:get_guild_members(GuildID)}),
     case GetMembers of
         {atomic, Members} ->
             send(State, {guild_members, Members});
@@ -645,7 +644,6 @@ handle_cast({less_effect, _IsLess}, State) ->
     {noreply, State};
 handle_cast({drop, Slot, Amount},
             State = #zone_state{
-                       db = DB,
                        map_server = MapServer,
                        char = #char{
                                  id = CharacterID,
@@ -653,20 +651,19 @@ handle_cast({drop, Slot, Amount},
                                  x = X,
                                  y = Y}}) ->
     send(State, {drop_item, {Slot, Amount}}),
-    case db:get_player_item(DB, CharacterID, Slot) of
+    case db:get_player_item(CharacterID, Slot) of
         nil ->
             say("Invalid item.", State);
         Item ->
             if
                 Amount == Item#world_item.amount ->
-                    db:remove_player_item(DB, CharacterID, Slot);
-
+                    db:remove_player_item(CharacterID, Slot);
                 true ->
                     %% TODO: update amount
                     ok
             end,
             %% TODO
-            ObjectID = db:give_world_item(DB, Map, Item#world_item.item,
+            ObjectID = db:give_world_item(Map, Item#world_item.item,
                                           Amount),
             Msg = {ObjectID, Item#world_item.item, 1, X+1, Y+1, 1, 2, Amount},
             gen_server:cast(MapServer,
@@ -675,8 +672,7 @@ handle_cast({drop, Slot, Amount},
     end,
     {noreply, State};
 handle_cast({pick_up, ObjectID},
-            State = #zone_state{db = DB,
-                                map_server = MapServer,
+            State = #zone_state{map_server = MapServer,
                                 account = #account{id = AccountID},
                                 char = #char{id = CharacterID,
                                              map = Map,
@@ -687,11 +683,11 @@ handle_cast({pick_up, ObjectID},
     Msg = {AccountID, ObjectID, zone_master:tick(), 0, 0, 0, 0, 1, 0},
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
-    case db:get_world_item(DB, ObjectID) of
+    case db:get_world_item(ObjectID) of
         nil ->
             say("Item already picked up", State);
         Item ->
-            db:remove_world_item(DB, Map, ObjectID),
+            db:remove_world_item(Map, ObjectID),
             give_item(State, CharacterID,
                       Item#world_item.item, Item#world_item.amount,
                       Item#world_item.slot)
@@ -767,10 +763,11 @@ walk_interval(N) ->
                end,
     timer:apply_interval(Interval, gen_server, cast, [self(), step]).
 
-show_actors(#zone_state{db = DB,
-                        map_server = MapServer,
+show_actors(#zone_state{map_server = MapServer,
                         char = #char{hp=Hp, max_hp=MaxHp,
-                                     sp=Sp, max_sp=MaxSp} = C,
+                                     sp=Sp, max_sp=MaxSp,
+                                     equips=Equips
+                                    } = C,
                         account = A
                        } = State) ->
     send(State, {status, C}), %% Send stats to client
@@ -779,7 +776,9 @@ show_actors(#zone_state{db = DB,
     send(State, {param_change, {?SP_CUR_HP, Hp}}),
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
     send(State, {param_change, {?SP_CUR_SP, Sp}}),
-    Equips = db:get_equips(DB, C#char.id),
+
+    io:format("ALL EQS: ~p \n", [Equips]),
+
     send(State, {equipment, Equips}),
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),
@@ -791,9 +790,9 @@ show_actors(#zone_state{db = DB,
 say(Message, State) ->
     send(State, {message, Message}).
 
-give_item(#zone_state{db = DB} = State, CharacterID,
+give_item(#zone_state{} = State, CharacterID,
           ID, Amount, EquipLocation) ->
-    Slot = db:give_player_item(DB, CharacterID, ID, Amount),
+    Slot = db:give_player_item(CharacterID, ID, Amount),
     send(State, {give_item, {Slot,   %% Index
                              Amount, %% Amount
                              ID,     %% ID

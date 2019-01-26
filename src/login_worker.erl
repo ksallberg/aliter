@@ -5,7 +5,7 @@
 -include("records.hrl").
 -include("ro.hrl").
 
--export([ start_link/3 ]).
+-export([ start_link/2 ]).
 
 -export([ init/1
         , code_change/3
@@ -18,15 +18,15 @@
 -define(FEMALE, 0).
 -define(MALE, 1).
 
-start_link(TCP, DB, PacketHandler) ->
-    gen_server:start_link(?MODULE, [TCP, DB, PacketHandler], []).
+start_link(TCP, PacketHandler) ->
+    gen_server:start_link(?MODULE, [TCP, PacketHandler], []).
 
-init([TCP, DB, PacketHandler]) ->
+init([TCP, PacketHandler]) ->
     process_flag(trap_exit, true),
-    {ok, #login_state{tcp = TCP, db = DB, packet_handler = PacketHandler}}.
+    {ok, #login_state{tcp = TCP, packet_handler = PacketHandler}}.
 
 handle_cast({login, PacketVer, RawLogin, Password, Region},
-            State = #login_state{tcp = TCP, db = DB}) ->
+            State = #login_state{tcp = TCP}) ->
     lager:log(info, self(),
               "Received login request ~p ~p ~p",
               [{packetver, PacketVer},
@@ -34,14 +34,14 @@ handle_cast({login, PacketVer, RawLogin, Password, Region},
                {region, Region}]),
     %% Create new account if username ends with _M or _F.
     GenderS = string:sub_string(RawLogin, length(RawLogin)-1, length(RawLogin)),
-    Login = register_account(DB, RawLogin, Password, GenderS),
+    Login = register_account(RawLogin, Password, GenderS),
     Versioned = State#login_state{packet_ver = PacketVer},
     PacketHandler = State#login_state.packet_handler,
     case Login of
         A = #account{} ->
             successful_login(A, Versioned);
         _ ->
-            GetID = db:get_account_id(DB, Login),
+            GetID = db:get_account_id(Login),
             case GetID of
                 % Bad login
                 nil ->
@@ -49,7 +49,7 @@ handle_cast({login, PacketVer, RawLogin, Password, Region},
                                                TCP, PacketHandler),
                     {noreply, State};
                 ID ->
-                    Account = db:get_account(DB, ID),
+                    Account = db:get_account(ID),
                     Hashed = erlang:md5(Password),
                     if
                         % Bad password
@@ -117,21 +117,20 @@ successful_login(A, State) ->
                                         id_b = LoginIDb}).
 
 %% Create account when username ends with _M or _F
-register_account(C, RawLogin, Password, "_M") ->
-    create_new_account(C, RawLogin, Password, ?MALE);
-register_account(C, RawLogin, Password, "_F") ->
-    create_new_account(C, RawLogin, Password, ?FEMALE);
-register_account(_, Login, _Password, _) ->
+register_account(RawLogin, Password, "_M") ->
+    create_new_account(RawLogin, Password, ?MALE);
+register_account(RawLogin, Password, "_F") ->
+    create_new_account(RawLogin, Password, ?FEMALE);
+register_account(Login, _Password, _) ->
     Login.
 
-create_new_account(C, RawLogin, Password, Gender) ->
+create_new_account(RawLogin, Password, Gender) ->
     Login = string:sub_string(RawLogin, 1, length(RawLogin)-2),
-    Check = db:get_account_id(C, Login),
+    Check = db:get_account_id(Login),
     case Check of
         nil ->
             lager:log(info, self(), "Created account ~p", [{login, Login}]),
-            db:save_account(C,
-                            #account{
+            db:save_account(#account{
                                login = Login,
                                password = erlang:md5(Password),
                                gender = Gender});

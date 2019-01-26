@@ -6,7 +6,8 @@ This is an Erlang/OTP based ragnarok online server.
 
 ## Dependencies
 
-TL;DR: Erlang/OTP, and the redis kv-store.
+TL;DR: Erlang/OTP (database used to be redis but is
+       now mnesia which is embedded in OTP).
 
 ### Erlang/OTP
 This branch of Aliter has been tested only with Erlang/OTP 20.2.2.
@@ -21,12 +22,6 @@ Also help the Makefile by exporting ERL_TOP to you erlang installation.
 The main branch of Aliter uses a custom loggin module. I replaced this
 with lager, the config of lager is placed in priv/app.config, and loaded
 to erl command line in the Makefile.
-
-### Database
-I used a redis 4.0.2 (REmote DIctionary Server.) as a docker container,
-exposing the port towards my server like this:
-
-`docker run -d -p 6379:6379 --name ragna-redis redis redis-server --appendonly yes`
 
 ## How to use
 `make build; make start`

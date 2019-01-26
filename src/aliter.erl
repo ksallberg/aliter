@@ -15,6 +15,7 @@ start(_Type, StartArgs) ->
     ok = application:start(public_key),
     ok = application:start(ssl),
     ok = application:start(ranch),
+    db:init(),
     aliter_sup:start_link(StartArgs).
 
 shutdown() ->

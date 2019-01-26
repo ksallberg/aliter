@@ -14,19 +14,16 @@
         , terminate/2
         , code_change/3 ]).
 
--record(state, {db, sessions}).
+-record(state, {sessions}).
 
 start_link() ->
     Port = ?CHAR_PORT,
     gen_server:start_link({local, char_server}, ?MODULE, Port, []).
 
 init(Port) ->
-    {ok, DB} = eredis:start_link(),
-    {ok, _Keepalive} =
-        timer:apply_interval(timer:seconds(30), db, ping, [DB]),
     {ok, _} = ranch:start_listener(char_listener, ranch_tcp, [{port, Port}],
-                                   ragnarok_proto, [char_packets_24, DB]),
-    {ok, #state{db = DB, sessions = []}}.
+                                   ragnarok_proto, [char_packets_24]),
+    {ok, #state{sessions = []}}.
 
 handle_call({verify_session, AccountID, CharacterID, SessionIDa},
             _From,
@@ -56,8 +53,8 @@ handle_cast({add_session, Session}, State = #state{sessions = Sessions}) ->
 handle_cast({remove_session, AccountID}, State = #state{sessions = Sessions}) ->
     {noreply, State#state{sessions = lists:keydelete(AccountID, 1, Sessions)}};
 
-handle_cast({save_char, C}, State = #state{db = DB, sessions = Sessions}) ->
-    db:save_char(DB, C),
+handle_cast({save_char, C}, State = #state{sessions = Sessions}) ->
+    db:save_char(C),
     case proplists:lookup(C#char.account_id, Sessions) of
         {_AccountID, Worker, _SessionIDa, _SessionIDb} ->
             ChF = fun(St) ->St#char_state{char = C} end,
