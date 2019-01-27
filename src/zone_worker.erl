@@ -60,11 +60,12 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             WorldItems = db:get_world_items(Char#char.map),
             lists:foreach(
               fun(Item) ->
-                      send(State, {item_on_ground, {Item#world_item.slot,
+                      %% io:format("Item: ~p\n", [Item]),
+                      send(State, {item_on_ground, {1,
                                                     Item#world_item.item,
                                                     1,
-                                                    Char#char.x + 1,
-                                                    Char#char.y + 1,
+                                                    Item#world_item.x,
+                                                    Item#world_item.y,
                                                     1,
                                                     2,
                                                     Item#world_item.amount
@@ -646,21 +647,23 @@ handle_cast({drop, Slot, Amount},
                                  map = Map,
                                  x = X,
                                  y = Y}}) ->
+    io:format("drop item: ~p\n", [CharacterID]),
     send(State, {drop_item, {Slot, Amount}}),
     case db:get_player_item(CharacterID, Slot) of
         nil ->
             say("Invalid item.", State);
         Item ->
-            if
-                Amount == Item#world_item.amount ->
-                    db:remove_player_item(CharacterID, Slot);
-                true ->
-                    %% TODO: update amount
-                    ok
-            end,
+            db:remove_player_item(CharacterID, Slot),
+            %% if
+            %%     Amount == Item#world_item.amount ->
+            %%         db:remove_player_item(CharacterID, Slot);
+            %%     true ->
+            %%         %% TODO: update amount
+            %%         ok
+            %% end
             %% TODO
             ObjectID = db:give_world_item(Map, Item#world_item.item,
-                                          Amount),
+                                          Amount, X+1, Y+1),
             Msg = {ObjectID, Item#world_item.item, 1, X+1, Y+1, 1, 2, Amount},
             gen_server:cast(MapServer,
                             {send_to_players_in_sight, {X, Y},

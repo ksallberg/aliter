@@ -165,9 +165,15 @@
          equip_script = "",
          unequip_script = ""}).
 
+-record(world_item, {slot, item, amount, x, y}).
+
 -record(inventory,
         {charid,
-         items=[]}).
+         items=[] :: [#world_item{}]}).
+
+-record(map_items,
+        {map_name,
+         items=[] :: [#world_item{}]}).
 
 -record(equip,
         {index,
@@ -277,8 +283,6 @@
         {a_id,
          b_id,
          type}).
-
--record(world_item, {slot, item, amount}).
 
 %%% API Data
 -record(apiresponse,

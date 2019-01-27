@@ -1000,6 +1000,7 @@ packet_size(16#07E4) -> 0;
 packet_size(16#07E6) -> 28;
 packet_size(16#07E7) -> 5;
 packet_size(16#0817) -> 6;
+packet_size(16#0885) -> 6;
 packet_size(16#088a) -> 6;
 packet_size(16#08aa) -> 7;
 packet_size(16#08B9) -> 12;

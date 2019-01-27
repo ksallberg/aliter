@@ -30,7 +30,7 @@
         , delete_guild_relationship/2
         , get_guild_relationship/2 ]).
 
--export([ give_world_item/3
+-export([ give_world_item/5
         , get_world_items/1
         , get_world_item/1
         , remove_world_item/2 ]).
@@ -56,6 +56,11 @@ init() ->
     mnesia:create_table(inventory,
                         [{attributes, record_info(fields, inventory)},
                          {disc_copies, NodeList}]),
+
+    mnesia:create_table(map_items,
+                        [{attributes, record_info(fields, map_items)},
+                         {disc_copies, NodeList}]),
+
     mnesia:create_table(guild,
                         [{attributes, record_info(fields, guild)},
                          {disc_copies, NodeList}]),
@@ -70,9 +75,6 @@ init() ->
                          {disc_copies, NodeList}]),
     mnesia:create_table(guild_relationship,
                         [{attributes, record_info(fields, guild_relationship)},
-                         {disc_copies, NodeList}]),
-    mnesia:create_table(world_item,
-                        [{attributes, record_info(fields, world_item)},
                          {disc_copies, NodeList}]).
 
 save_account(#account{} = Account) ->
@@ -368,21 +370,47 @@ get_guild_relationship(_GuildID, _TargetID) ->
     %%             ":relationships"],
     %%           integer_to_list(TargetID))).
 
-%% FIXME, not implemented
-give_world_item(_Map, _ItemID, _Amount) ->
-    okej.
+give_world_item(Map, ItemID, Amount, X, Y) ->
+    io:format("Map: ~p\n", [Map]),
+    WI = get_world_items(Map),
+    case WI of
+        [] ->
+            InitWI = #map_items{map_name=Map,
+                                items=[#world_item{x=X,
+                                                   y=Y,
+                                                   item=ItemID,
+                                                   slot=0,
+                                                   amount=Amount}]},
+            Fun = fun() ->
+                          mnesia:write(InitWI)
+                  end,
+            mnesia:transaction(Fun),
+            1;
+        _ ->
+            okej
+    end.
     %% ObjectID = incr(C, "objects:next"),
     %% sadd(C, ["objects:", Map], ObjectID),
     %% sethash(C, ["objects:", integer_to_list(ObjectID)], "item", ItemID),
     %% sethash(C, ["objects:", integer_to_list(ObjectID)], "amount", Amount),
     %% ObjectID.
 
-%% FIXME, not implemented
-get_world_items(_Map) ->
-    [].
-    %% Map.
-    %% Items = smembers(C, ["objects:", Map]),
-    %% [get_world_item(C, numeric(Slot)) || Slot <- Items].
+get_world_items(Map) ->
+    F = fun() ->
+                MatchHead = #map_items{map_name = '$1',
+                                       items = '$2'},
+                Guards = [{'==', '$1', Map}],
+                Result = '$2',
+                mnesia:select(map_items, [{MatchHead,
+                                           Guards,
+                                           [Result]
+                                          }])
+        end,
+    {atomic, X} = mnesia:transaction(F),
+    case X of
+        [] -> [];
+        [Ls] -> Ls
+    end.
 
 %% FIXME, not implemented
 get_world_item(_ObjectID) ->
@@ -468,11 +496,12 @@ get_player_item(CharacterID, Slot) ->
             end
     end.
 
-%% FIXME, not implemented
-remove_player_item(_CharacterID, _Slot) ->
-    okej.
-    %% {CharacterID, Slot}.
-    %% Inventory = ["inventory:", integer_to_list(CharacterID)],
-    %% srem(C, Inventory, integer_to_list(Slot)),
-    %% delete(C, [Inventory, ":", integer_to_list(Slot)]),
-    %% ok.
+remove_player_item(CharacterID, Slot) ->
+    [#inventory{items=Items}=InitInv] = get_player_items(CharacterID),
+    NewItems = lists:keydelete(Slot, #world_item.slot, Items),
+    NewInv = InitInv#inventory{items=NewItems},
+    %% io:format("remove item: ~p ~p \n", [Items, NewItems]),
+    Fun = fun() ->
+                  mnesia:write(NewInv)
+          end,
+    mnesia:transaction(Fun).
