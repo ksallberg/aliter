@@ -22,8 +22,7 @@
         , get_guild_id/1
         , get_guild_master/1
         , get_guild_members/1
-        , add_char_to_guild/2
-        , delete_char_from_guild/2 ]).
+        , add_char_to_guild/2 ]).
 
 -export([ give_world_item/5
         , get_world_items/1
@@ -325,15 +324,11 @@ get_guild_members(GuildID) ->
 add_char_to_guild(GuildID, CharacterID) ->
     Guild = get_guild(GuildID),
     OldMembers = Guild#guild.members,
-    NewGuild = Guild#guild{members=[CharacterID, OldMembers]},
+    NewGuild = Guild#guild{members=[CharacterID | OldMembers]},
     Fun = fun() ->
                   mnesia:write(NewGuild)
           end,
     mnesia:transaction(Fun).
-
-%% FIXME, not implemented
-delete_char_from_guild(_GuildID, _CharacterID) ->
-    okej.
 
 give_world_item(Map, ItemID, Amount, X, Y) ->
     WI = get_world_items(Map),
@@ -467,7 +462,6 @@ remove_player_item(CharacterID, Slot) ->
     [#inventory{items=Items}=InitInv] = get_player_items(CharacterID),
     NewItems = lists:keydelete(Slot, #world_item.slot, Items),
     NewInv = InitInv#inventory{items=NewItems},
-    %% io:format("remove item: ~p ~p \n", [Items, NewItems]),
     Fun = fun() ->
                   mnesia:write(NewInv)
           end,

@@ -530,8 +530,16 @@ handle_cast(max_stats, #zone_state{char=Char} = State) ->
     {noreply, State#zone_state{char=NewChar}};
 handle_cast({guild_add, Who},
             #zone_state{char=#char{guild_id=GID}} = State) ->
-    io:format("Hej: ~p\n", [{guild_add, GID, Who}]),
-    {noreply, State};
+    case db:get_char_id(Who) of
+        nil ->
+            {noreply, State};
+        CharID ->
+            db:add_char_to_guild(GID, CharID),
+            OldChar = db:get_char(CharID),
+            UpdatedChar = OldChar#char{guild_id=GID},
+            gen_server:cast(char_server, {save_char, UpdatedChar}),
+            {noreply, State}
+    end;
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
                         char=#char{account_id=AID},
@@ -653,7 +661,6 @@ handle_cast({drop, Slot, Amount},
                                  map = Map,
                                  x = X,
                                  y = Y}}) ->
-    io:format("drop item: ~p\n", [CharacterID]),
     send(State, {drop_item, {Slot, Amount}}),
     case db:get_player_item(CharacterID, Slot) of
         nil ->
@@ -723,7 +730,9 @@ terminate(_Reason, #zone_state{map_server = MapServer,
     Msg = {send_to_other_players, Character#char.id, vanish,
            {AccountID, ?VANISH_LOGGED_OUT}},
     gen_server:cast(MapServer, Msg),
-    gen_server:cast(char_server, {save_char, Character}),
+    %% FIXME: does the zone worker really have the last state
+    %%        of the character?
+    %% gen_server:cast(char_server, {save_char, Character}),
     gen_server:cast(MapServer, {remove_player, AccountID});
 terminate(_Reason, _State) ->
     ok.

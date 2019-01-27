@@ -170,7 +170,8 @@ handle_cast(stop, State) ->
                  die = erlang:send_after(5 * 60 * 1000, self(), exit)},
     {noreply, NewState};
 handle_cast({update_state, UpdateFun}, State) ->
-    {noreply, UpdateFun(State)};
+    NewS = UpdateFun(State),
+    {noreply, NewS};
 handle_cast(exit, State = #char_state{account=#account{id=AccountID}}) ->
     lager:log(info, self(), "Character worker exiting."),
     gen_server:cast(char_server, {remove_session, AccountID}),
