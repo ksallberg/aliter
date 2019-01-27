@@ -371,12 +371,13 @@ get_guild_relationship(_GuildID, _TargetID) ->
     %%           integer_to_list(TargetID))).
 
 give_world_item(Map, ItemID, Amount, X, Y) ->
-    io:format("Map: ~p\n", [Map]),
+    %% io:format("Map: ~p\n", [Map]),
     WI = get_world_items(Map),
     case WI of
         [] ->
             InitWI = #map_items{map_name=Map,
-                                items=[#world_item{x=X,
+                                items=[#world_item{obj_id=1,
+                                                   x=X,
                                                    y=Y,
                                                    item=ItemID,
                                                    slot=0,
@@ -386,14 +387,23 @@ give_world_item(Map, ItemID, Amount, X, Y) ->
                   end,
             mnesia:transaction(Fun),
             1;
-        _ ->
-            okej
+        OldItems ->
+            ObjID = length(OldItems)+1,
+            NewItem = #world_item{obj_id=ObjID,
+                                  x=X,
+                                  y=Y,
+                                  item=ItemID,
+                                  slot=0,
+                                  amount=Amount},
+            NewItems = [NewItem|OldItems],
+            NewWI = #map_items{map_name=Map,
+                               items=NewItems},
+            Fun = fun() ->
+                          mnesia:write(NewWI)
+                  end,
+            mnesia:transaction(Fun),
+            ObjID
     end.
-    %% ObjectID = incr(C, "objects:next"),
-    %% sadd(C, ["objects:", Map], ObjectID),
-    %% sethash(C, ["objects:", integer_to_list(ObjectID)], "item", ItemID),
-    %% sethash(C, ["objects:", integer_to_list(ObjectID)], "amount", Amount),
-    %% ObjectID.
 
 get_world_items(Map) ->
     F = fun() ->

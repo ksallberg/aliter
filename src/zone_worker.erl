@@ -61,7 +61,7 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             lists:foreach(
               fun(Item) ->
                       %% io:format("Item: ~p\n", [Item]),
-                      send(State, {item_on_ground, {1,
+                      send(State, {item_on_ground, {Item#world_item.obj_id,
                                                     Item#world_item.item,
                                                     1,
                                                     Item#world_item.x,

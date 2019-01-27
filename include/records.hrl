@@ -165,7 +165,13 @@
          equip_script = "",
          unequip_script = ""}).
 
--record(world_item, {slot, item, amount, x, y}).
+-record(world_item,
+        {obj_id,
+         slot,
+         item,
+         amount,
+         x,
+         y}).
 
 -record(inventory,
         {charid,
