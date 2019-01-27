@@ -272,7 +272,7 @@ handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
 handle_cast({wear_equip, Index, Position},
             #zone_state{char=#char{id=CharId}=Char} = State) ->
     [#inventory{items=Items}] = db:get_player_items(CharId),
-    {world_item, _, ItemID, _} = lists:keyfind(Index, 2, Items),
+    #world_item{item=ItemID} = lists:keyfind(Index, #world_item.slot, Items),
     NewEquip = #equip{index = Position,
                       id = ItemID,
                       type = Position, %% Position
@@ -684,7 +684,7 @@ handle_cast({pick_up, ObjectID},
     Msg = {AccountID, ObjectID, zone_master:tick(), 0, 0, 0, 0, 1, 0},
     gen_server:cast(MapServer,
                     {send_to_players_in_sight, {X, Y}, actor_effect, Msg}),
-    case db:get_world_item(ObjectID) of
+    case db:get_world_item(Map, ObjectID) of
         nil ->
             say("Item already picked up", State);
         Item ->

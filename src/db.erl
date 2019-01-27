@@ -32,7 +32,7 @@
 
 -export([ give_world_item/5
         , get_world_items/1
-        , get_world_item/1
+        , get_world_item/2
         , remove_world_item/2 ]).
 
 -export([ give_player_item/3
@@ -371,7 +371,6 @@ get_guild_relationship(_GuildID, _TargetID) ->
     %%           integer_to_list(TargetID))).
 
 give_world_item(Map, ItemID, Amount, X, Y) ->
-    %% io:format("Map: ~p\n", [Map]),
     WI = get_world_items(Map),
     case WI of
         [] ->
@@ -422,30 +421,23 @@ get_world_items(Map) ->
         [Ls] -> Ls
     end.
 
-%% FIXME, not implemented
-get_world_item(_ObjectID) ->
-    okej.
-    %% Object = ["objects:", integer_to_list(ObjectID)],
-    %% case hget(C, Object, "item") of
-    %%     {ok, Item} ->
-    %%         case hget(C, Object, "amount") of
-    %%             {ok, Amount} ->
-    %%                 #world_item{
-    %%                    slot = ObjectID,
-    %%                    item = numeric(Item),
-    %%                    amount = numeric(Amount)};
+get_world_item(Map, ObjectID) ->
+    Items = get_world_items(Map),
+    case lists:keysearch(ObjectID, #world_item.obj_id, Items) of
+        false ->
+            nil;
+        {value, WorldItem} ->
+            WorldItem
+    end.
 
-    %%             undefined -> nil
-    %%         end;
-
-    %%     undefined -> nil
-    %% end.
-
-%% FIXME, not implemented
-remove_world_item(_Map, _ObjectID) ->
-    okej.
-    %% srem(C, ["objects:", Map], integer_to_list(ObjectID)),
-    %% delete(C, ["objects:", integer_to_list(ObjectID)]).
+remove_world_item(Map, ObjectID) ->
+    Items = get_world_items(Map),
+    NewItems = lists:keydelete(ObjectID, #world_item.obj_id, Items),
+    NewMapItems = #map_items{map_name=Map, items=NewItems},
+    Fun = fun() ->
+                  mnesia:write(NewMapItems)
+          end,
+    mnesia:transaction(Fun).
 
 give_player_item(CharacterID, ItemID, Amount) ->
     X = get_player_items(CharacterID),

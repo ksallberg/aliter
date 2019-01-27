@@ -82,14 +82,17 @@ unpack(<<16#02c4:16/little,
          SkillID:16/little,
          Target:32/little>>) ->
     {use_skill, SkillLvl, SkillID, Target};
-%% unpack(<<16#0885:16/little,
-%%          Index:16/little,
-%%          Position:16/little>>) ->
-%%     {wear_equip, Index, Position};
+unpack(<<16#0a9:16/little,
+         Index:16/little,
+         Position:16/little>>) ->
+    {wear_equip, Index, Position};
 unpack(<<16#885:16/little,
          Index:16/little,
          Amount:16/little>>) ->
     {drop, Index, Amount};
+unpack(<<16#815:16/little,
+         ObjectID:32/little>>) ->
+    {pick_up, ObjectID};
 unpack(Unknown) ->
     lager:log(warning, self(), "zone packets Got unknown data ~p",
               [Unknown]),
