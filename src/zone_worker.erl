@@ -58,20 +58,6 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                     end,
             send(State, {inventory, Items}),
             WorldItems = db:get_world_items(Char#char.map),
-            lists:foreach(
-              fun(Item) ->
-                      %% io:format("Item: ~p\n", [Item]),
-                      send(State, {item_on_ground, {Item#world_item.obj_id,
-                                                    Item#world_item.item,
-                                                    1,
-                                                    Item#world_item.x,
-                                                    Item#world_item.y,
-                                                    1,
-                                                    2,
-                                                    Item#world_item.amount
-                                                   }})
-              end,
-              WorldItems),
             case Char#char.guild_id of
                 0 ->
                     ok;
@@ -94,6 +80,22 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                                         id_b = C#char_state.id_b,
                                         packet_ver = C#char_state.packet_ver,
                                         char_worker = Worker},
+            %% client needs some time before receiving objects on ground
+            timer:sleep(1000),
+            lists:foreach(
+              fun(Item) ->
+                      send(State, {item_on_ground, {Item#world_item.obj_id,
+                                                    Item#world_item.item,
+                                                    1,
+                                                    Item#world_item.x,
+                                                    Item#world_item.y,
+                                                    1,
+                                                    2,
+                                                    Item#world_item.amount
+                                                   }})
+              end,
+              WorldItems),
+
             {noreply, NewState};
         invalid ->
             lager:log(warning, "Invalid zone login attempt caught ~p ~p",
