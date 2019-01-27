@@ -322,18 +322,18 @@ get_guild_members(GuildID) ->
     #guild{members = Chars} = get_guild(GuildID),
     [get_char(ID) || ID <- Chars].
 
-%% FIXME, not implemented
-add_char_to_guild(_GuildID, _CharacterID) ->
-    okej.
-    %% {GuildID, CharacterID}.
-    %% rpush(C, ["guild:", GuildID, ":members"], CharacterID).
+add_char_to_guild(GuildID, CharacterID) ->
+    Guild = get_guild(GuildID),
+    OldMembers = Guild#guild.members,
+    NewGuild = Guild#guild{members=[CharacterID, OldMembers]},
+    Fun = fun() ->
+                  mnesia:write(NewGuild)
+          end,
+    mnesia:transaction(Fun).
 
 %% FIXME, not implemented
 delete_char_from_guild(_GuildID, _CharacterID) ->
     okej.
-    %% {GuildID, CharacterID}.
-    %% lrem(C, ["guild:", GuildID, ":members"], 0, CharacterID),
-    %% ok.
 
 give_world_item(Map, ItemID, Amount, X, Y) ->
     WI = get_world_items(Map),

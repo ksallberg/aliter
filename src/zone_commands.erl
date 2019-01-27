@@ -103,6 +103,8 @@ execute(Worker, "heal", _Args, State) ->
     heal(Worker, State);
 execute(Worker, "maxstats", _Args, State) ->
     max_stats(Worker, State);
+execute(Worker, "guild_add", [Who], State) ->
+    guild_add(Worker, State, Who);
 execute(_Worker, Unknown, _Args, State) ->
     zone_worker:say("Unknown command `" ++ Unknown ++ "'.", State),
     ok.
@@ -163,6 +165,9 @@ heal(Worker, _State) ->
 
 max_stats(Worker, _State) ->
     gen_server:cast(Worker, max_stats).
+
+guild_add(Worker, _State, Who) ->
+    gen_server:cast(Worker, {guild_add, Who}).
 
 spawn_monster(Worker, _State, ID, X, Y) ->
     gen_server:cast(Worker, {monster, ID, X, Y}).

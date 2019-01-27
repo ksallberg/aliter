@@ -528,6 +528,10 @@ handle_cast(max_stats, #zone_state{char=Char} = State) ->
                         max_sp = 1000},
     db:save_char(NewChar),
     {noreply, State#zone_state{char=NewChar}};
+handle_cast({guild_add, Who},
+            #zone_state{char=#char{guild_id=GID}} = State) ->
+    io:format("Hej: ~p\n", [{guild_add, GID, Who}]),
+    {noreply, State};
 handle_cast({monster, SpriteID, X, Y},
             #zone_state{map=Map, map_server=MapServer,
                         char=#char{account_id=AID},

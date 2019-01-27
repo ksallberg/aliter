@@ -78,6 +78,7 @@ var ROConfig = {
 \npc 20 50 50        - Spawn NPC to tile X:50, Y:50
 \job 20              - Become assassin
 \maxstats            - raise all stats and save to db
+\guild_add charid    - add character to the guild I am in
 ```
 
 ### Supporter RO Commands
