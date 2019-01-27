@@ -23,12 +23,7 @@
         , get_guild_master/1
         , get_guild_members/1
         , add_char_to_guild/2
-        , delete_char_from_guild/2
-        , get_guild_relationships/1 ]).
-
--export([ save_guild_relationship/3
-        , delete_guild_relationship/2
-        , get_guild_relationship/2 ]).
+        , delete_char_from_guild/2 ]).
 
 -export([ give_world_item/5
         , get_world_items/1
@@ -339,36 +334,6 @@ delete_char_from_guild(_GuildID, _CharacterID) ->
     %% {GuildID, CharacterID}.
     %% lrem(C, ["guild:", GuildID, ":members"], 0, CharacterID),
     %% ok.
-
-%% FIXME, not implemented
-get_guild_relationships(_GuildID) ->
-    okej.
-    %% FIXME, not implemented
-    %% hgetall(C, ["guild:", integer_to_list(GuildID), ":relationships"]).
-
-%% FIXME, not implemented
-save_guild_relationship(_GuildID, _TargetID, _Type) ->
-    okej.
-    %% Key = ["guild:", integer_to_list(GuildID), ":relationships"],
-    %% sethash(C, Key, integer_to_list(TargetID), integer_to_list(Type)).
-
-%% FIXME, not implemented
-delete_guild_relationship(_GuildID, _TargetID) ->
-    okej.
-    %% {GuildID, TargetID}.
-    %% hdel(C, ["guild:", integer_to_list(GuildID), ":relationships"],
-    %%      integer_to_list(TargetID)),
-    %% ok.
-
-%% FIXME, not implemented
-get_guild_relationship(_GuildID, _TargetID) ->
-    okej.
-    %% numeric(
-    %%   gethash(C,
-    %%           [ "guild:",
-    %%             integer_to_list(GuildID),
-    %%             ":relationships"],
-    %%           integer_to_list(TargetID))).
 
 give_world_item(Map, ItemID, Amount, X, Y) ->
     WI = get_world_items(Map),
