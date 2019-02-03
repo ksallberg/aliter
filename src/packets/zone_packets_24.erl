@@ -32,6 +32,9 @@ unpack(<<16#7d:16/little>>) ->
     map_loaded;
 unpack(<<16#85:16/little, _:16, Head:16/little, _:24, Body:8>>) ->
     {change_direction, Head, Body};
+unpack(<<16#016e:16/little, GID:32/little,
+         Header:60/binary, Body:120/binary>>) ->
+    {guild_msg_upd, GID, Header, Body};
 unpack(<<16#0817:16/little, Tick:32/little>>) ->
     {tick, Tick};
 unpack(<<16#0090:16/little, NPCID:32/little, _:8>>) ->
@@ -94,7 +97,7 @@ unpack(<<16#815:16/little,
          ObjectID:32/little>>) ->
     {pick_up, ObjectID};
 unpack(Unknown) ->
-    lager:log(warning, self(), "zone packets Got unknown data ~p",
+    lager:log(warning, self(), "hmm zone packets Got unknown data ~p",
               [Unknown]),
     unknown.
 
@@ -636,6 +639,10 @@ pack(use_skill, {SKID, Level, TargetID, SourceID, Result}) ->
       TargetID:32/little,
       SourceID:32/little,
       Result:8/little>>;
+pack(guild_msg, {Header, Body}) ->
+    [<<16#016f:16/little>>,
+       pad_to(Header, 60),
+       pad_to(Body, 120)];
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
               [Header, Data]),

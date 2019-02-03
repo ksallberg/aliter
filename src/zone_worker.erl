@@ -717,6 +717,11 @@ handle_cast({change_direction, Head, Body},
            {AccountID, Head, Body}},
     gen_server:cast(MapServer, Msg),
     {noreply, State};
+handle_cast({guild_msg_upd, _GID, Header, Body},
+            State = #zone_state{}) ->
+    lager:log(info, self(), "guild msg hd: ~p bd: ~p", [Header, Body]),
+    send(State, {guild_msg, {Header, Body}}),
+    {noreply, State};
 handle_cast(exit, State) ->
     lager:log(error, self(), "Zone Worker got EXIT signal", []),
     {stop, normal, State};
