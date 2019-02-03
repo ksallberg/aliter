@@ -63,6 +63,23 @@ handle_cast({save_char, C}, State = #state{sessions = Sessions}) ->
     end,
     {noreply, State};
 
+%% When exiting, we do not want to overwrite the guild_id
+%% If it has been set without our knowing
+%% FIXME: Should joining a guild really have updated our char_srv state?
+handle_cast({save_char_exit, #char{id=CharID}=C},
+            State = #state{sessions = Sessions}) ->
+    #char{guild_id=GID} = db:get_char(CharID),
+    NewChar = C#char{guild_id=GID},
+    db:save_char(NewChar),
+    case proplists:lookup(C#char.account_id, Sessions) of
+        {_AccountID, Worker, _SessionIDa, _SessionIDb} ->
+            ChF = fun(St) ->St#char_state{char = C} end,
+            gen_server:cast(Worker, {update_state, ChF});
+        _ ->
+            ok
+    end,
+    {noreply, State};
+
 handle_cast(_Cast, State) ->
     {noreply, State}.
 

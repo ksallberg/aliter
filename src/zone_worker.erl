@@ -730,9 +730,7 @@ terminate(_Reason, #zone_state{map_server = MapServer,
     Msg = {send_to_other_players, Character#char.id, vanish,
            {AccountID, ?VANISH_LOGGED_OUT}},
     gen_server:cast(MapServer, Msg),
-    %% FIXME: does the zone worker really have the last state
-    %%        of the character?
-    %% gen_server:cast(char_server, {save_char, Character}),
+    gen_server:cast(char_server, {save_char_exit, Character}),
     gen_server:cast(MapServer, {remove_player, AccountID});
 terminate(_Reason, _State) ->
     ok.
