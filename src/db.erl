@@ -40,8 +40,7 @@
 init() ->
     NodeList = [node()],
     Root = filename:absname_join(filename:dirname(?FILE), ".."),
-    io:format("Root: ~p\n", [Root]),
-    application:set_env(mnesia, dir, filename:join(Root, "ragnadb")),
+    application:set_env(mnesia, dir, filename:join(Root, "Mnesia.ragnadb")),
     mnesia:create_schema(NodeList),
     mnesia:start(),
     mnesia:create_table(account,
