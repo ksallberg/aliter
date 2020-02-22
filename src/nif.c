@@ -384,7 +384,7 @@ ERL_NIF_TERM pathfind(ErlNifEnv *env,
   tp[i].flag = 0;
   heap[0] = 0;
   push_heap_path(heap, tp, calc_index(x0,y0));
-  xs = map.width - 1; // あらかじめ１減算しておく
+  xs = map.width - 1;
   ys = map.height - 1;
 
   while (1) {
@@ -405,11 +405,6 @@ ERL_NIF_TERM pathfind(ErlNifEnv *env,
 
     if (x == x1 && y == y1)
       break;
-
-    // dc[0] : y++ の時のコスト増分
-    // dc[1] : x-- の時のコスト増分
-    // dc[2] : y-- の時のコスト増分
-    // dc[3] : x++ の時のコスト増分
 
     if (y < ys && !at(map, x, y + 1)) {
       f |= 1;
@@ -463,17 +458,9 @@ ERL_NIF_TERM pathfind(ErlNifEnv *env,
   for (i = rp, j = len - 1; j >= 0; i = tp[i].before, j--) {
     int dx = tp[i].x - tp[tp[i].before].x;
     int dy = tp[i].y - tp[tp[i].before].y;
-    /* int dir; */
 
     step[0] = enif_make_int(env, tp[i].x);
     step[1] = enif_make_int(env, tp[i].y);
-
-    /* if (dx == 0) */
-    /*     dir = (dy > 0 ? 0 : 4); */
-    /* else if (dx > 0) */
-    /*     dir = (dy == 0 ? 6 : (dy < 0 ? 5 : 7)); */
-    /* else */
-    /*     dir = (dy == 0 ? 2 : (dy > 0 ? 1 : 3)); */
 
     step[2] = enif_make_int(env, walk_choices[-dy + 1][dx + 1]);
 
