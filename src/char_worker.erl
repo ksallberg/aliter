@@ -38,22 +38,24 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                {ids, {LoginIDa, LoginIDb}},
                {verified, Verify}]),
     case Verify of
-        {ok, Worker} ->
-            {ok, L} = gen_server:call(Worker, switch_char),
-            gen_server:cast(char_server, {add_session, {AccountID,
-                                                        self(),
-                                                        L#login_state.id_a,
-                                                        L#login_state.id_b
-                                                       }}),
+        {ok, LoginWorker} ->
+            {ok, LoginState} = gen_server:call(LoginWorker, switch_char),
+            gen_server:cast(char_server,
+                            {add_session, {AccountID,
+                                           self(),
+                                           LoginState#login_state.id_a,
+                                           LoginState#login_state.id_b
+                                          }}),
             Chars = db:get_account_chars(AccountID),
             M = {characters, {Chars, ?MAX_SLOTS, ?AVAILABLE_SLOTS,
                               ?PREMIUM_SLOTS}},
             ragnarok_proto:send_packet(M, TCP, PacketHandler),
-            NewState = State#char_state{account = L#login_state.account,
-                                        id_a = L#login_state.id_a,
-                                        id_b = L#login_state.id_b,
-                                        packet_ver = L#login_state.packet_ver,
-                                        login_worker = Worker},
+            NewState =
+                State#char_state{account = LoginState#login_state.account,
+                                 id_a = LoginState#login_state.id_a,
+                                 id_b = LoginState#login_state.id_b,
+                                 packet_ver = LoginState#login_state.packet_ver,
+                                 login_worker = LoginWorker},
             {noreply, NewState};
         invalid ->
             ragnarok_proto:send_packet({refuse, 0},
