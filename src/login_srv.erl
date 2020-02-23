@@ -33,8 +33,6 @@ handle_call({verify_session, AccountID, LoginIDa, LoginIDb}, _From, Sessions) ->
         _ ->
             {reply, invalid, Sessions}
     end;
-handle_call({get_session, AccountID}, _From, Sessions) ->
-    {reply, proplists:lookup(AccountID, Sessions), Sessions};
 handle_call(Request, _From, Sessions) ->
     {reply, {illegal_request, Request}, Sessions}.
 
