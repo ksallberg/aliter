@@ -590,7 +590,7 @@ handle_cast({give_item, ID, Amount, EquipLocation},
     give_item(State, CharacterID, ID, Amount, EquipLocation),
     {noreply, State};
 handle_cast(stop, State = #zone_state{char_worker = Char}) ->
-    gen_server:cast(Char, stop),
+    gen_server:cast(Char, stop_now),
     {stop, normal, State};
 handle_cast({tick, _Tick}, State) ->
     send(State, {tick, zone_master:tick()}),
