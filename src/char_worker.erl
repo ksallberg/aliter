@@ -169,7 +169,7 @@ handle_cast({keepalive, _AccountID}, State) ->
 
 handle_cast(stop, State) ->
     {noreply,
-     State#char_state{die = erlang:send_after(5000, self(), exit)}};
+     State#char_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
 handle_cast({update_state, UpdateFun}, State) ->
     NewS = UpdateFun(State),
     {noreply, NewS};
