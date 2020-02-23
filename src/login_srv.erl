@@ -28,8 +28,8 @@ init(Port) ->
 
 handle_call({verify_session, AccountID, LoginIDa, LoginIDb}, _From, Sessions) ->
     case proplists:lookup(AccountID, Sessions) of
-        {AccountID, Worker, LoginIDa, LoginIDb} ->
-            {reply, {ok, Worker}, Sessions};
+        {AccountID, KeptState, LoginIDa, LoginIDb} ->
+            {reply, {ok, KeptState}, Sessions};
         _ ->
             {reply, invalid, Sessions}
     end;

@@ -238,7 +238,7 @@ handle_cast({use_skill, SkillLvl, 136=SkillID, TargetID},
         0 when PlayerOrMob == mob ->
             {_, Mob} = ActorRes,
             gen_server:cast(MapServer, {remove_mob, Mob}),
-            gen_server:cast(Worker, stop),
+            gen_server:cast(Worker, exit),
             send(State, {vanish, Msg2}),
             gen_server:cast(MapServer,
                             {send_to_players_in_sight, {X, Y}, vanish, Msg2});
@@ -590,7 +590,7 @@ handle_cast({give_item, ID, Amount, EquipLocation},
     give_item(State, CharacterID, ID, Amount, EquipLocation),
     {noreply, State};
 handle_cast(stop, State = #zone_state{char_worker = Char}) ->
-    gen_server:cast(Char, exit),
+    gen_server:cast(Char, stop),
     {stop, normal, State};
 handle_cast({tick, _Tick}, State) ->
     send(State, {tick, zone_master:tick()}),
@@ -847,7 +847,7 @@ attack(State, AID, Target, {mob, Mob}, #char{x=X, y=Y, str=Str, agi=Agi},
             {ok, TimerRef};
         true ->
             gen_server:cast(MapServer, {remove_mob, Mob}),
-            gen_server:cast(Mob#npc.monster_srv, stop),
+            gen_server:cast(Mob#npc.monster_srv, exit),
             send(State, {vanish, Msg2}),
             gen_server:cast(MapServer,
                             {send_to_players_in_sight, {X, Y}, vanish, Msg2}),

@@ -38,8 +38,7 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                {ids, {LoginIDa, LoginIDb}},
                {verified, Verify}]),
     case Verify of
-        {ok, LoginWorker} ->
-            {ok, LoginState} = gen_server:call(LoginWorker, switch_char),
+        {ok, LoginState} ->
             gen_server:cast(char_server,
                             {add_session, {AccountID,
                                            self(),
@@ -54,8 +53,8 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                 State#char_state{account = LoginState#login_state.account,
                                  id_a = LoginState#login_state.id_a,
                                  id_b = LoginState#login_state.id_b,
-                                 packet_ver = LoginState#login_state.packet_ver,
-                                 login_worker = LoginWorker},
+                                 packet_ver = LoginState#login_state.packet_ver
+                                },
             {noreply, NewState};
         invalid ->
             ragnarok_proto:send_packet({refuse, 0},
@@ -167,17 +166,13 @@ handle_cast({check_name, AccountID, CharacterID, NewName},
     end;
 handle_cast({keepalive, _AccountID}, State) ->
     {noreply, State};
+
 handle_cast(stop, State) ->
-    %% NewState = State#char_state{
-    %%              die = erlang:send_after(5 * 60 * 1000, self(), exit)},
-    {noreply, State};
+    {noreply,
+     State#char_state{die = erlang:send_after(5000, self(), exit)}};
 handle_cast({update_state, UpdateFun}, State) ->
     NewS = UpdateFun(State),
     {noreply, NewS};
-handle_cast(exit, State = #char_state{account=#account{id=AccountID}}) ->
-    lager:log(info, self(), "Character worker exiting."),
-    gen_server:cast(char_server, {remove_session, AccountID}),
-    {stop, normal, State};
 handle_cast({rename, CharacterID},
             #char_state{tcp = Socket,
                         packet_handler = PacketHandler,
@@ -211,11 +206,11 @@ handle_call(switch_zone, _From, StateData = #char_state{die = Die}) ->
     end,
     {reply, {ok, StateData}, StateData}.
 
-handle_info(stop, State) ->
-    %% NewState = State#char_state{
-    %%              die = erlang:send_after(5 * 60 * 1000, self(), exit)},
-    {noreply, State};
-handle_info(exit, State) ->
+handle_info(exit, #char_state{tcp=Socket,
+                              packet_handler=PacketHandler,
+                              account = #account{id=AccountID}} = State) ->
+    gen_server:cast(char_server, {remove_session, AccountID}),
+    ragnarok_proto:close_socket(Socket, PacketHandler),
     {stop, normal, State}.
 
 code_change(_, State, _) ->

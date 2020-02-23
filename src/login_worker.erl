@@ -67,24 +67,19 @@ handle_cast({set_server, Server}, State) ->
     {noreply, State#login_state{server = Server}};
 handle_cast(stop, State) ->
     {noreply,
-     State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
-handle_cast(exit, State) ->
+     State#login_state{die = erlang:send_after(5000, self(), exit)}};
+handle_cast(Other, State) ->
+    lager:log(warning, self(), "Login worker got unknown request: ~p", [Other]),
+    {noreply, State}.
+
+
+handle_info(exit, #login_state{tcp=Socket,
+                               packet_handler=PacketHandler} = State) ->
+    ragnarok_proto:close_socket(Socket, PacketHandler),
     {stop, normal, State}.
 
-handle_call(switch_char, _From, State = #login_state{die = Die}) ->
-    case Die of
-        undefined ->
-            ok;
-        _ ->
-            erlang:cancel_timer(Die)
-    end,
-    {reply, {ok, State}, State}.
-
-handle_info(stop, State) ->
-    {noreply,
-     State#login_state{die = erlang:send_after(5 * 60 * 1000, self(), exit)}};
-handle_info(exit, State) ->
-    {stop, normal, State}.
+handle_call(_, _From, State) ->
+    {reply, nothing_to_say, State}.
 
 code_change(_, State, _) ->
     {ok, State}.
@@ -102,19 +97,19 @@ successful_login(A, State) ->
     rand:seed(exs1024, {A1, A2, A3}),
     {LoginIDa, LoginIDb} =
         {rand:uniform(16#FFFFFFFF), rand:uniform(16#FFFFFFFF)},
+    NewState = State#login_state{account = A,
+                                 id_a = LoginIDa,
+                                 id_b = LoginIDb},
     gen_server:cast(
       login_server,
-      {add_session, {A#account.id, self(), LoginIDa, LoginIDb}}),
+      {add_session, {A#account.id, NewState, LoginIDa, LoginIDb}}),
     Servers = [{?CHAR_IP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
                 0, _Maint = 0, _New = 0}],
     M = {accept, {LoginIDa, LoginIDb, A#account.id, A#account.gender, Servers}},
     Socket = State#login_state.tcp,
     PacketHandler = State#login_state.packet_handler,
     ragnarok_proto:send_packet(M, Socket, PacketHandler),
-    %% ragnarok_proto:close_socket(Socket, PacketHandler),
-    handle_info(stop, State#login_state{account = A,
-                                        id_a = LoginIDa,
-                                        id_b = LoginIDb}).
+    {noreply, NewState}.
 
 %% Create account when username ends with _M or _F
 register_account(RawLogin, Password, "_M") ->

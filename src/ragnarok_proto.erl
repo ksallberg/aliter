@@ -88,7 +88,7 @@ parse_loop(Socket, Transport, PacketHandler, Worker) ->
                                             case Reason of
                                                 closed ->
                                                     gen_server:cast(Worker,
-                                                                    exit);
+                                                                    stop);
                                                 _ ->
                                                     Next()
                                             end

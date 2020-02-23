@@ -51,7 +51,7 @@ handle_call({inc_hp, Dmg}, _From,
     NewHp = min(MaxHp, Hp - Dmg),
     {reply, {ok, NewHp}, State#monster_state{hp = NewHp}}.
 
-handle_cast(stop, #monster_state{timer = TimerRef} = State) ->
+handle_cast(exit, #monster_state{timer = TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
     {stop, normal, State}.
 
