@@ -168,9 +168,9 @@ handle_cast({check_name, AccountID, CharacterID, NewName},
 handle_cast({keepalive, _AccountID}, State) ->
     {noreply, State};
 handle_cast(stop, State) ->
-    NewState = State#char_state{
-                 die = erlang:send_after(5 * 60 * 1000, self(), exit)},
-    {noreply, NewState};
+    %% NewState = State#char_state{
+    %%              die = erlang:send_after(5 * 60 * 1000, self(), exit)},
+    {noreply, State};
 handle_cast({update_state, UpdateFun}, State) ->
     NewS = UpdateFun(State),
     {noreply, NewS};
@@ -212,9 +212,9 @@ handle_call(switch_zone, _From, StateData = #char_state{die = Die}) ->
     {reply, {ok, StateData}, StateData}.
 
 handle_info(stop, State) ->
-    NewState = State#char_state{
-                 die = erlang:send_after(5 * 60 * 1000, self(), exit)},
-    {noreply, NewState};
+    %% NewState = State#char_state{
+    %%              die = erlang:send_after(5 * 60 * 1000, self(), exit)},
+    {noreply, State};
 handle_info(exit, State) ->
     {stop, normal, State}.
 
