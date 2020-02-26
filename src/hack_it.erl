@@ -5,7 +5,9 @@
 -export([ show_char/0
         , mod_char/0
         , mod_upd/1
-        , populate_mob_data/0 ]).
+        , populate_mob_data/0
+        , populate_item_data/0
+        ]).
 
 show_char() ->
     CharacterID = 1,
@@ -58,3 +60,19 @@ save_mob([#mob_data{} = Mob|Mobs]) ->
           end,
     mnesia:transaction(Fun),
     save_mob(Mobs).
+
+populate_item_data() ->
+    {ok, Data} = file:consult("data/item_db.cfg"),
+    %% A little (safe) hack. Transform each line to fit the #item_data{}
+    AsRecords = [list_to_tuple([item_data| tuple_to_list(ItemData)])
+        || ItemData <- Data],
+    save_item(AsRecords).
+
+save_item([]) ->
+    ok;
+save_item([#item_data{} = Item|Items]) ->
+    Fun = fun() ->
+                  mnesia:write(Item)
+          end,
+    mnesia:transaction(Fun),
+    save_item(Items).

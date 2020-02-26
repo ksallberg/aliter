@@ -37,7 +37,8 @@
 -export([ % get_equips/2,
           save_equips_ext/2 ]).
 
--export([ get_mob_data/1
+-export([ get_mob_data/1,
+          get_item_data/1
         ]).
 
 init() ->
@@ -77,6 +78,9 @@ init() ->
                          {disc_copies, NodeList}]),
     mnesia:create_table(mob_data,
                         [{attributes, record_info(fields, mob_data)},
+                         {disc_copies, NodeList}]),
+    mnesia:create_table(item_data,
+                        [{attributes, record_info(fields, item_data)},
                          {disc_copies, NodeList}]).
 
 save_account(#account{} = Account) ->
@@ -492,4 +496,23 @@ get_mob_data(MobID) ->
             nil;
         [MobData] ->
             MobData
+    end.
+
+get_item_data(ItemID) ->
+    F = fun() ->
+                MatchHead = #item_data{id = '$1',
+                                       _ = '_'},
+                Guards = [{'==', '$1', ItemID}],
+                Result = '$_',
+                mnesia:select(item_data, [{MatchHead,
+                                          Guards,
+                                          [Result]
+                                         }])
+        end,
+    {atomic, X} = mnesia:transaction(F),
+    case X of
+        [] ->
+            nil;
+        [ItemData] ->
+            ItemData
     end.
