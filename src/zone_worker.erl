@@ -548,8 +548,15 @@ handle_cast({monster, SpriteID, X, Y},
     {ok, MonsterSrv} = supervisor:start_child(monster_sup,
                                               [10000, TCP,
                                                MonsterID, PacketHandler]),
+    MobData = db:get_mob_data(SpriteID),
+    MonsterName = case MobData of
+                      nil ->
+                          "unknown";
+                      #mob_data{iName = NameAsAtom} ->
+                          atom_to_list(NameAsAtom)
+                  end,
     NPC = #npc{id=MonsterID,
-               name=monsters:strname(SpriteID),
+               name=MonsterName,
                sprite=SpriteID,
                monster_srv=MonsterSrv,
                map=Map,

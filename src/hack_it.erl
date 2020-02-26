@@ -4,7 +4,8 @@
 
 -export([ show_char/0
         , mod_char/0
-        , mod_upd/1 ]).
+        , mod_upd/1
+        , populate_mob_data/0 ]).
 
 show_char() ->
     CharacterID = 1,
@@ -41,3 +42,19 @@ mod_upd(#char{map = _OldMap} = Ch) ->
                    },
     io:format("NewChar: ~p\n", [NewCh]),
     NewCh.
+
+populate_mob_data() ->
+    {ok, Data} = file:consult("data/mob_db.cfg"),
+    %% A little (safe) hack. Transform each line to fit the #mob_data{}
+    AsRecords = [list_to_tuple([mob_data| tuple_to_list(MobData)])
+        || MobData <- Data],
+    save_mob(AsRecords).
+
+save_mob([]) ->
+    ok;
+save_mob([#mob_data{} = Mob|Mobs]) ->
+    Fun = fun() ->
+                  mnesia:write(Mob)
+          end,
+    mnesia:transaction(Fun),
+    save_mob(Mobs).

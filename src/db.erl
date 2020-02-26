@@ -37,6 +37,9 @@
 -export([ % get_equips/2,
           save_equips_ext/2 ]).
 
+-export([ get_mob_data/1
+        ]).
+
 init() ->
     NodeList = [node()],
     Root = filename:absname_join(filename:dirname(?FILE), ".."),
@@ -71,6 +74,9 @@ init() ->
                          {disc_copies, NodeList}]),
     mnesia:create_table(guild_relationship,
                         [{attributes, record_info(fields, guild_relationship)},
+                         {disc_copies, NodeList}]),
+    mnesia:create_table(mob_data,
+                        [{attributes, record_info(fields, mob_data)},
                          {disc_copies, NodeList}]).
 
 save_account(#account{} = Account) ->
@@ -468,3 +474,22 @@ remove_player_item(CharacterID, Slot) ->
                   mnesia:write(NewInv)
           end,
     mnesia:transaction(Fun).
+
+get_mob_data(MobID) ->
+    F = fun() ->
+                MatchHead = #mob_data{id = '$1',
+                                      _ = '_'},
+                Guards = [{'==', '$1', MobID}],
+                Result = '$_',
+                mnesia:select(mob_data, [{MatchHead,
+                                          Guards,
+                                          [Result]
+                                         }])
+        end,
+    {atomic, X} = mnesia:transaction(F),
+    case X of
+        [] ->
+            nil;
+        [MobData] ->
+            MobData
+    end.
