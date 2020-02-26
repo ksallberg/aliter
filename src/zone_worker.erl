@@ -545,16 +545,22 @@ handle_cast({monster, SpriteID, X, Y},
                         char=#char{account_id=AID},
                         tcp=TCP, packet_handler=PacketHandler} = State) ->
     MonsterID = gen_server:call(MapServer, next_id),
-    {ok, MonsterSrv} = supervisor:start_child(monster_sup,
-                                              [10000, TCP,
-                                               MonsterID, PacketHandler]),
     MobData = db:get_mob_data(SpriteID),
     MonsterName = case MobData of
                       nil ->
                           "unknown";
-                      #mob_data{iName = NameAsAtom} ->
+                      #mob_data{kName = NameAsAtom} ->
                           atom_to_list(NameAsAtom)
                   end,
+    case MobData of
+        nil ->
+            MonsterHP = 1000;
+        #mob_data{hp = MonsterHP} ->
+            ok
+    end,
+    {ok, MonsterSrv} = supervisor:start_child(monster_sup,
+                                              [MonsterHP, TCP,
+                                               MonsterID, PacketHandler]),
     NPC = #npc{id=MonsterID,
                name=MonsterName,
                sprite=SpriteID,
