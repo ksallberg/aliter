@@ -61,6 +61,12 @@
    {say, "Hello"},
    close]}.
 
+{"Tim", 107, <<"prontera">>,
+  [{155, 195, south}],
+  [{say, "[Tim]"},
+   {say, "What brings you here Im Tim."},
+   close]}.
+
 {"Dairenne", 90, <<"prontera">>,
   [{78, 150, southwest}],
   [{say, "[Dairenne]"},
