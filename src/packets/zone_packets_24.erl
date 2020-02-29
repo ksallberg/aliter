@@ -490,7 +490,7 @@ pack(inventory, Inventory) ->
        (22 * length(Inventory) + 4):16/little>>,
      [<<(I#world_item.slot):16/little,
         (I#world_item.item):16/little,
-        0:8, % TODO: type
+        (I#world_item.type):8, % TODO: type
         1:8, % TODO: identified
         (I#world_item.amount):16/little,
         0:16/little, % TODO: WearState(?)

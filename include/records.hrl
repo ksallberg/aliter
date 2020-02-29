@@ -170,6 +170,7 @@
          slot,
          item,
          amount,
+         type,
          x,
          y}).
 

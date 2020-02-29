@@ -29,7 +29,7 @@
         , get_world_item/2
         , remove_world_item/2 ]).
 
--export([ give_player_item/3
+-export([ give_player_item/4
         , get_player_items/1
         , get_player_item/2
         , remove_player_item/2 ]).
@@ -411,15 +411,15 @@ remove_world_item(Map, ObjectID) ->
           end,
     mnesia:transaction(Fun).
 
-give_player_item(CharacterID, ItemID, Amount) ->
+give_player_item(CharacterID, ItemID, Amount, Type) ->
     X = get_player_items(CharacterID),
     case X of
         [] ->
             Slot = 1,
-            WI = #world_item{
-                       slot = Slot,
-                       item = ItemID,
-                       amount = Amount},
+            WI = #world_item{slot = Slot,
+                             item = ItemID,
+                             amount = Amount,
+                             type = Type},
             InitInventory = #inventory{charid=CharacterID,
                                        items=[WI]},
             Fun = fun() ->
@@ -429,10 +429,10 @@ give_player_item(CharacterID, ItemID, Amount) ->
             Slot;
         [#inventory{items=Items}=Inv] ->
             Slot = length(Items)+1,
-            WI = #world_item{
-                    slot = Slot,
-                    item = ItemID,
-                    amount = Amount},
+            WI = #world_item{slot = Slot,
+                             item = ItemID,
+                             amount = Amount,
+                             type = Type},
             NewItems = Items ++ [WI],
             Inv1 = Inv#inventory{items=NewItems},
             Fun = fun() ->

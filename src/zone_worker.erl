@@ -95,7 +95,6 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                                                    }})
               end,
               WorldItems),
-
             {noreply, NewState};
         invalid ->
             lager:log(warning, "Invalid zone login attempt caught ~p ~p",
@@ -275,7 +274,7 @@ handle_cast({wear_equip, Index, Position},
     #world_item{item=ItemID} = lists:keyfind(Index, #world_item.slot, Items),
     NewEquip = #equip{index = Position,
                       id = ItemID,
-                      type = Position, %% Position
+                      type = Position,
                       identified = 1,
                       location = Position,
                       wearstate = Position,
@@ -288,6 +287,19 @@ handle_cast({wear_equip, Index, Position},
                       hire_expire_date = 0,
                       bind_on_equip_type = 0,
                       sprite_number = 0},
+    case Position of
+        256 ->
+            ItemData = db:get_item_data(ItemID),
+            case ItemData of
+                nil ->
+                    SpriteID = 0;
+                #item_data{view_sprite=SpriteID} ->
+                    ok
+            end,
+            gen_server:cast(self(), {hat_sprite, SpriteID});
+        _ ->
+            ok
+    end,
     send(State, {equipment, [NewEquip]}),
     NewChar = db:save_equips_ext(Char, NewEquip),
     {noreply, State#zone_state{char=NewChar}};
@@ -546,16 +558,11 @@ handle_cast({monster, SpriteID, X, Y},
                         tcp=TCP, packet_handler=PacketHandler} = State) ->
     MonsterID = gen_server:call(MapServer, next_id),
     MobData = db:get_mob_data(SpriteID),
-    MonsterName = case MobData of
-                      nil ->
-                          "unknown";
-                      #mob_data{kName = NameAsAtom} ->
-                          atom_to_list(NameAsAtom)
-                  end,
     case MobData of
         nil ->
-            MonsterHP = 1000;
-        #mob_data{hp = MonsterHP} ->
+            MonsterHP = 1000,
+            MonsterName = "unknown";
+        #mob_data{hp = MonsterHP, kName=MonsterName} ->
             ok
     end,
     {ok, MonsterSrv} = supervisor:start_child(monster_sup,
@@ -598,9 +605,9 @@ handle_cast({npc, SpriteID, X, Y},
            NPC},
     gen_server:cast(MapServer, Msg),
     {noreply, State};
-handle_cast({give_item, ID, Amount, EquipLocation},
+handle_cast({give_item, ID, Amount},
             State = #zone_state{char = #char{id = CharacterID}}) ->
-    give_item(State, CharacterID, ID, Amount, EquipLocation),
+    give_item(State, CharacterID, ID, Amount),
     {noreply, State};
 handle_cast(stop, State = #zone_state{char_worker = Char}) ->
     gen_server:cast(Char, stop_now),
@@ -714,8 +721,7 @@ handle_cast({pick_up, ObjectID},
         Item ->
             db:remove_world_item(Map, ObjectID),
             give_item(State, CharacterID,
-                      Item#world_item.item, Item#world_item.amount,
-                      Item#world_item.slot)
+                      Item#world_item.item, Item#world_item.amount)
     end,
     {noreply, State};
 handle_cast({change_direction, Head, Body},
@@ -817,9 +823,17 @@ show_actors(#zone_state{map_server = MapServer,
 say(Message, State) ->
     send(State, {message, Message}).
 
-give_item(#zone_state{} = State, CharacterID,
-          ID, Amount, EquipLocation) ->
-    Slot = db:give_player_item(CharacterID, ID, Amount),
+give_item(#zone_state{} = State, CharacterID, ID, Amount) ->
+    ItemData = db:get_item_data(ID),
+    case ItemData of
+        nil ->
+            Type = 4,
+            EquipLocation = 1,
+            ok;
+        #item_data{type=Type, equip_locations=EquipLocation} ->
+            ok
+    end,
+    Slot = db:give_player_item(CharacterID, ID, Amount, Type),
     send(State, {give_item, {Slot,   %% Index
                              Amount, %% Amount
                              ID,     %% ID
@@ -831,7 +845,7 @@ give_item(#zone_state{} = State, CharacterID,
                              0,      %%     3
                              0,      %%     4
                              EquipLocation,
-                             4,      %% Type
+                             Type,      %% Type
                              0,      %% Result
                              0,      %% ExpireTime
                              0}}).    %% BindOnEquipType
