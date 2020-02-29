@@ -210,11 +210,17 @@ handle_cast({re_attack, Target, 7},
         {error, dead} ->
             {noreply, State#zone_state{attack_timer=undefined}}
     end;
-handle_cast({use_skill, SkillLvl, 136=SkillID, TargetID},
+
+%% Sonic blow = 136, Arrow vulcan == 394
+handle_cast({use_skill, SkillLvl, SkillID, TargetID},
             State = #zone_state{map_server=MapServer,
                                 account=#account{id=AID},
-                                char=#char{x=X, y=Y}}) ->
-    Dmg = 1000,
+                                char=#char{x=X, y=Y}})
+  when SkillID == 136 orelse SkillID == 394 ->
+    Dmg = case SkillID of
+              136 -> 1000;
+              394 -> 50000
+          end,
     ActorRes = gen_server:call(MapServer, {get_actor, TargetID}),
     {PlayerOrMob, _} = ActorRes,
     Worker = get_actor_worker(ActorRes),
@@ -552,10 +558,22 @@ handle_cast({guild_add, Who},
             gen_server:cast(char_server, {save_char, UpdatedChar}),
             {noreply, State}
     end;
-handle_cast({monster, SpriteID, X, Y},
+handle_cast({monster, SpriteID, X0, Y0},
             #zone_state{map=Map, map_server=MapServer,
-                        char=#char{account_id=AID},
+                        char=#char{account_id=AID, x=CharX, y=CharY},
                         tcp=TCP, packet_handler=PacketHandler} = State) ->
+    X = case X0 of
+            mine ->
+                CharX;
+            _ ->
+                X0
+        end,
+    Y = case Y0 of
+            mine ->
+                CharY;
+            _ ->
+                Y0
+        end,
     MonsterID = gen_server:call(MapServer, next_id),
     MobData = db:get_mob_data(SpriteID),
     case MobData of

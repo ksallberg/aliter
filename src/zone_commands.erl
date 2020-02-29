@@ -69,6 +69,12 @@ execute(Worker, "hat", [ID], State) ->
         {SpriteID, _} ->
             change_hat(Worker, State, SpriteID)
     end;
+execute(Worker, "monster", [ID], State) ->
+    case string:to_integer(ID) of
+        {error, _} -> zone_worker:say("Invalid monster ID.", State);
+        {MonsterID, _} ->
+            spawn_monster(Worker, State, MonsterID, mine, mine)
+    end;
 execute(Worker, "monster", [ID, X, Y], State) ->
     case string:to_integer(ID) of
         {error, _} -> zone_worker:say("Invalid monster ID.", State);

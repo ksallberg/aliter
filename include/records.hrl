@@ -1,3 +1,6 @@
+-define(liof(Str, Args),
+        io:format("~p: ~p: " ++ Str, [?MODULE, ?LINE|Args])).
+
 %%% Global
 -record(ids,
         {key,
