@@ -35,7 +35,9 @@
         , remove_player_item/2 ]).
 
 -export([ % get_equips/2,
-          save_equips_ext/2 ]).
+          save_equips_ext/2
+        , delete_equips/2
+        ]).
 
 -export([ get_mob_data/1,
           get_item_data/1
@@ -158,6 +160,12 @@ save_equips_ext(#char{} = Char, #equip{} = Equip) ->
 save_equips(#char{equips=OldEquips} = Char,
             #equip{index=Ind}=Eq) ->
     NewEquips = lists:keystore(Ind, #equip.index, OldEquips, Eq),
+    NewChar = Char#char{equips=NewEquips},
+    save_char(NewChar).
+
+delete_equips(#char{equips=OldEquips} = Char,
+              EquipLocation) ->
+    NewEquips = lists:keydelete(EquipLocation, #equip.location, OldEquips),
     NewChar = Char#char{equips=NewEquips},
     save_char(NewChar).
 

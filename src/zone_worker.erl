@@ -56,7 +56,7 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                         [#inventory{items=ItemsX}] ->
                             ItemsX
                     end,
-            send(State, {inventory, Items}),
+            send(State, {inventory_equip, Items}),
             WorldItems = db:get_world_items(Char#char.map),
             case Char#char.guild_id of
                 0 ->
@@ -274,13 +274,28 @@ handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
 handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
     {noreply, State#zone_state{attack_timer=undefined}};
+handle_cast({unequip, Index}, #zone_state{char=#char{id=CharID}=Ch}=State) ->
+    %% find out what is at the index, then find out the position from there
+    #world_item{item=ItemID} = db:get_player_item(CharID, Index),
+    ItemData = db:get_item_data(ItemID),
+    case ItemData of
+        nil ->
+            EquipLocation = 1;
+        #item_data{equip_locations=EquipLocation} ->
+            ok
+    end,
+    NewChar = db:delete_equips(Ch, EquipLocation),
+    send(State, {takeoff, {Index, EquipLocation}}),
+    NewChar1 = NewChar#char{view_head_top=0},
+    {noreply, State#zone_state{char=NewChar1}};
 handle_cast({wear_equip, Index, Position},
             #zone_state{char=#char{id=CharId}=Char} = State) ->
     [#inventory{items=Items}] = db:get_player_items(CharId),
-    #world_item{item=ItemID} = lists:keyfind(Index, #world_item.slot, Items),
-    NewEquip = #equip{index = Position,
+    #world_item{item=ItemID, type=Type} =
+        lists:keyfind(Index, #world_item.slot, Items),
+    NewEquip = #equip{index = Index,
                       id = ItemID,
-                      type = Position,
+                      type = Type,
                       identified = 1,
                       location = Position,
                       wearstate = Position,
@@ -293,22 +308,23 @@ handle_cast({wear_equip, Index, Position},
                       hire_expire_date = 0,
                       bind_on_equip_type = 0,
                       sprite_number = 0},
-    case Position of
-        256 ->
-            ItemData = db:get_item_data(ItemID),
-            case ItemData of
-                nil ->
-                    SpriteID = 0;
-                #item_data{view_sprite=SpriteID} ->
-                    ok
-            end,
-            gen_server:cast(self(), {hat_sprite, SpriteID});
-        _ ->
-            ok
-    end,
     send(State, {equipment, [NewEquip]}),
     NewChar = db:save_equips_ext(Char, NewEquip),
-    {noreply, State#zone_state{char=NewChar}};
+    NewChar1 = case Position of
+                   256 ->
+                       ItemData = db:get_item_data(ItemID),
+                       case ItemData of
+                           nil ->
+                               SpriteID = 0;
+                           #item_data{view_sprite=SpriteID} ->
+                               ok
+                       end,
+                       gen_server:cast(self(), {hat_sprite, SpriteID, false}),
+                       NewChar#char{view_head_top=SpriteID};
+                   _ ->
+                       NewChar
+               end,
+    {noreply, State#zone_state{char=NewChar1}};
 %% TODO use GuildID
 handle_cast({guild_emblem, _GuildID}, State) ->
     send(State, {guild_relationships, []}),
@@ -500,7 +516,7 @@ handle_cast({broadcast, Message}, State) ->
     {noreply, State};
 handle_cast({switch_zones, Update}, State) ->
     {stop, normal, Update(State)};
-handle_cast({hat_sprite, SpriteID},
+handle_cast({hat_sprite, SpriteID, Save},
       #zone_state{char=#char{x=X, y=Y, id=_CharacterID,
                              account_id=AID} = Char,
                   map_server=MapServer} = State) ->
@@ -511,8 +527,14 @@ handle_cast({hat_sprite, SpriteID},
            {AID, 4, SpriteID}},
     gen_server:cast(MapServer, Msg),
     NewChar = Char#char{view_head_top=SpriteID},
-    db:save_char(NewChar),
-    {noreply, State#zone_state{char=NewChar}};
+    case Save of
+        true ->
+            NewState = State#zone_state{char=NewChar},
+            db:save_char(NewChar);
+        false ->
+            NewState = State
+    end,
+    {noreply, NewState};
 handle_cast({change_job, JobID},
       #zone_state{char=#char{x=X, y=Y, account_id=AID}=Char,
                   map_server=MapServer}=State) ->

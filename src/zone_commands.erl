@@ -152,7 +152,7 @@ give_item(Worker, _State, ID, Amount) ->
     gen_server:cast(Worker, {give_item, ID, Amount}).
 
 change_hat(Worker, _State, ID) ->
-    gen_server:cast(Worker, {hat_sprite, ID}).
+    gen_server:cast(Worker, {hat_sprite, ID, true}).
 
 change_job(Worker, _State, JobID) ->
     gen_server:cast(Worker, {change_job, JobID}).

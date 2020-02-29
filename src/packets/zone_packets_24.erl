@@ -89,6 +89,9 @@ unpack(<<16#0a9:16/little,
          Index:16/little,
          Position:16/little>>) ->
     {wear_equip, Index, Position};
+unpack(<<16#0ab:16/little,
+         Index:16/little>>) ->
+    {unequip, Index};
 unpack(<<16#885:16/little,
          Index:16/little,
          Amount:16/little>>) ->
@@ -485,12 +488,53 @@ pack(equipment, EquipmentLs) ->
              (L * length(EquipmentLs) + 4):16/little>>,
            lists:map(MapF, EquipmentLs)],
     Res;
+
+
+
+%% inventorylistequipType = 0x2d0,
+
+%% 16+16+8+8+16+16+8+8+32+16+16+
+%% int16 index;
+%% uint16 ITID;
+%% uint8 type;
+%% uint8 IsIdentified;
+%% uint16 location;
+%% uint16 WearState;
+%% uint8 IsDamaged;
+%% uint8 RefiningLevel;
+%% struct EQUIPSLOTINFO slot;
+%% int32 HireExpireDate;
+%% uint16 bindOnEquipType;
+%% uint16 wItemSpriteNumber;
+
+pack(inventory_equip, Inventory) ->
+    [<<16#2d0:16/little,
+       (28 * length(Inventory) + 4):16/little>>,
+     [<<(I#world_item.slot):16/little,
+        (I#world_item.item):16/little,
+        (I#world_item.type):8,
+        1:8, % identified
+        (get_equip_for(I#world_item.item)):16/little, % location
+        0:16/little, % WearState(?)
+        0:8/little, % isdamaged
+        0:8/little, % refining level
+
+        0:16/little, % TODO: card 1
+        0:16/little, % TODO: card 2
+        0:16/little, % TODO: card 3
+        0:16/little, % TODO: card 4
+
+        0:32/little, % hireexpiredate
+        0:16/little, % bindonequiptype
+        0:16/little>> % wItemSpriteNumber
+          || I <- Inventory]];
+
 pack(inventory, Inventory) ->
     [<<16#2e8:16/little,
        (22 * length(Inventory) + 4):16/little>>,
      [<<(I#world_item.slot):16/little,
         (I#world_item.item):16/little,
-        (I#world_item.type):8, % TODO: type
+        (I#world_item.type):8,
         1:8, % TODO: identified
         (I#world_item.amount):16/little,
         0:16/little, % TODO: WearState(?)
@@ -498,8 +542,8 @@ pack(inventory, Inventory) ->
         0:16/little, % TODO: card 2
         0:16/little, % TODO: card 3
         0:16/little, % TODO: card 4
-                                                % TODO: expiration
-        0:32/little>> || I <- Inventory]];
+        0:32/little>> % expiration
+          || I <- Inventory]];
 pack(give_item,
      {Index,
       Amount,
@@ -643,6 +687,12 @@ pack(guild_msg, {Header, Body}) ->
     [<<16#016f:16/little>>,
        pad_to(Header, 60),
        pad_to(Body, 120)];
+%% /// 00ac <index>.W <equip location>.W <result>.B
+pack(takeoff, {Index, Position}) ->
+    [<<16#00ac:16/little,
+       Index:16/little,
+       Position:16/little,
+       1:8>>];
 pack(Header, Data) ->
     lager:log(error, self(), "Cannot pack unknown data. ~p ~p",
               [Header, Data]),
@@ -673,3 +723,12 @@ pad_to(Bin, Size) ->
     Binary = iolist_to_binary(Bin),
     [ binary:part(Binary, 0, min(byte_size(Binary), Size))
     , binary:copy(<<0>>, Size - byte_size(Binary))].
+
+get_equip_for(ItemID) ->
+    ItemData = db:get_item_data(ItemID),
+    case ItemData of
+        nil ->
+            0;
+        #item_data{equip_locations=EquipLocation} ->
+            EquipLocation
+    end.
