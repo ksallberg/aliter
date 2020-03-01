@@ -1,16 +1,18 @@
 -define(PACKETVER,            20111116).
 
+-define(DEBUG_IP, {10, 0, 1, 238}).
+
 %% Login server
--define(LOGIN_IP,             {127, 0, 0, 1}).
+-define(LOGIN_IP,             ?DEBUG_IP).
 -define(LOGIN_PORT,           6900).
 
 %% Char server
 -define(CHAR_SERVER_NAME,     "Aliter").
--define(CHAR_IP,              {127, 0, 0, 1}).
+-define(CHAR_IP,              ?DEBUG_IP).
 -define(CHAR_PORT,            5121).
 
 %% Zone server
--define(ZONE_IP,              {127, 0, 0, 1}).
+-define(ZONE_IP,              ?DEBUG_IP).
 -define(ZONE_PORT,            9999).
 
 -define(SP_CUR_HP,            5).

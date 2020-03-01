@@ -7,7 +7,7 @@
         , packet_size/1 ]).
 
 -define(WALKSPEED, 150).
--define(CHAR_BLOCK_SIZE, 136).
+-define(CHAR_BLOCK_SIZE, 144).
 
 packet_size(X) ->
     packets:packet_size(X).
@@ -78,12 +78,18 @@ unpack(Unknown) ->
     unknown.
 
 pack(characters, {Characters, MaxSlots, AvailableSlots, PremiumSlots}) ->
+    PackLen = (length(Characters) * ?CHAR_BLOCK_SIZE + 27),
+    ?liof("PackLen: ~p\n", [PackLen]),
     [ <<16#6b:16/little,
-        (length(Characters) * ?CHAR_BLOCK_SIZE + 27):16/little,
+        PackLen:16/little,
         MaxSlots:8/little,
         AvailableSlots:8/little,
-        PremiumSlots:8/little>>,
-      binary:copy(<<0>>, 20)
+        PremiumSlots:8/little,
+        0:8/little, %% beginbilling>>,
+        0:32/little, %% code
+        0:32/little, %% time1
+        0:32/little>>, %% time2
+      binary:copy(<<0>>, 7) %% dummy2_endbilling
     ] ++ [character(C) || C <- Characters];
 
 pack(pin_code, AccountID) ->
@@ -131,6 +137,7 @@ pack(Header, Data) ->
     <<>>.
 
 %% NOTE: update CHAR_BLOCK_SIZE after changing this
+%% Note, using pad_to(X, 16) pads to 16 bytes! not bits
 character(C) ->
     [ <<(C#char.id):32/little,
         (C#char.base_exp):32/little,
@@ -171,8 +178,9 @@ character(C) ->
         1:16/little>>,
       pad_to([C#char.map, <<".gat">>], 16),
       <<0:32/little,  % delete date
-        0:32/little>>  % robe
-          %% 0:32/little,  % change slot (0 = disabled)
+        0:32/little,  % robe
+        0:32/little, % slot change
+        0:32/little>> %% rename
           %% 0:32/little>> % unknown (0 = disabled)
     ].
 

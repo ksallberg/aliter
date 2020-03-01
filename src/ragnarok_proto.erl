@@ -12,6 +12,7 @@
 -define(PACKET_HANDLER, login_packets).
 
 start_link(Ref, Socket, Transport, Opts) ->
+    io:format("ragna proto!\n", []),
     Pid = spawn_link(?MODULE, init, [Ref, Socket, Transport, Opts]),
     {ok, Pid}.
 

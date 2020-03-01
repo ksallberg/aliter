@@ -19,9 +19,11 @@
 -define(MALE, 1).
 
 start_link(TCP, PacketHandler) ->
+    ?liof("login worker!\n", []),
     gen_server:start_link(?MODULE, [TCP, PacketHandler], []).
 
 init([TCP, PacketHandler]) ->
+    io:format("hmm. \n", []),
     process_flag(trap_exit, true),
     {ok, #login_state{tcp = TCP, packet_handler = PacketHandler}}.
 
