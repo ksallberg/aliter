@@ -23,6 +23,7 @@ start_link() ->
 init(Port) ->
     {ok, _} = ranch:start_listener(char_listener, ranch_tcp, [{port, Port}],
                                    ragnarok_proto, [char_packets_24]),
+    lager:log(info, self(), "Starting char server ~p", [{port, Port}]),
     {ok, #state{sessions = []}}.
 
 handle_call({verify_session, AccountID, CharacterID, SessionIDa},

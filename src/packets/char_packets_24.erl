@@ -79,7 +79,6 @@ unpack(Unknown) ->
 
 pack(characters, {Characters, MaxSlots, AvailableSlots, PremiumSlots}) ->
     PackLen = (length(Characters) * ?CHAR_BLOCK_SIZE + 27),
-    ?liof("PackLen: ~p\n", [PackLen]),
     [ <<16#6b:16/little,
         PackLen:16/little,
         MaxSlots:8/little,
