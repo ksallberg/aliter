@@ -21,8 +21,10 @@ start_link() ->
     gen_server:start_link({local, char_server}, ?MODULE, Port, []).
 
 init(Port) ->
+    CharPackets = char_packets:mod_for("char_packets",
+                                       integer_to_list(?PACKETVER)),
     {ok, _} = ranch:start_listener(char_listener, ranch_tcp, [{port, Port}],
-                                   ragnarok_proto, [char_packets_24]),
+                                   ragnarok_proto, [CharPackets]),
     lager:log(info, self(), "Starting char server ~p", [{port, Port}]),
     {ok, #state{sessions = []}}.
 

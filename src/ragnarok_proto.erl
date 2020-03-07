@@ -20,7 +20,7 @@ init(Ref, Socket, Transport, [PacketHandler]) ->
                        login_packets ->
                            supervisor:start_child(login_worker_sup,
                                                   [Socket, PacketHandler]);
-                       char_packets_24 ->
+                       _CharPackets ->
                            supervisor:start_child(char_worker_sup,
                                                   [Socket, PacketHandler])
                    end,

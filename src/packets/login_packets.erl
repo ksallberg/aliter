@@ -8,11 +8,7 @@ unpack(<<16#64:16/little,
         Login:24/little-binary-unit:8,
         Password:24/little-binary-unit:8,
         Region:8>>) ->
-  Version =
-    case PacketVer of
-      20090901 -> 24;
-      _        -> PacketVer
-    end,
+  Version = PacketVer,
   {login, Version, binary_to_string(Login), binary_to_string(Password), Region};
 
 unpack(Unknown) ->
@@ -55,7 +51,7 @@ pack(Header, Data) ->
   <<>>.
 
 packet_size(Header) ->
-  packets_24:packet_size(Header).
+  packets:packet_size(Header).
 
 % Util functions
 binary_to_string(Binary) ->

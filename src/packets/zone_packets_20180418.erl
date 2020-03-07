@@ -1,4 +1,4 @@
--module(zone_packets_24).
+-module(zone_packets_20180418).
 
 %% When length per element is given, such as in the case of equipment,
 %% it defines length in terms of bytes. So, (bits / 8).

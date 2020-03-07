@@ -1,4 +1,4 @@
--module(char_packets_24).
+-module(char_packets_20111116).
 
 -include("records.hrl").
 

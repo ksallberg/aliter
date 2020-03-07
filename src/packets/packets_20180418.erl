@@ -1,7 +1,11 @@
--module(packets_24).
+%% all packet sizes are measured in bytes (8 bits)
+%% except 0 which are not defined here but in the packet
+
+-module(packets_20180418).
 
 -export([packet_size/1]).
 
+packet_size(16#083c) -> 19;
 packet_size(16#0064) -> 55;
 packet_size(16#0065) -> 17;
 packet_size(16#0066) -> 3;
@@ -11,7 +15,7 @@ packet_size(16#0069) -> 0;
 packet_size(16#006A) -> 23;
 packet_size(16#006B) -> 0;
 packet_size(16#006C) -> 3;
-packet_size(16#006D) -> 114;
+packet_size(16#006D) -> 138;
 packet_size(16#006E) -> 3;
 packet_size(16#006F) -> 2;
 packet_size(16#0070) -> 3;
@@ -26,7 +30,7 @@ packet_size(16#0078) -> 55;
 packet_size(16#0079) -> 53;
 packet_size(16#007A) -> 58;
 packet_size(16#007B) -> 60;
-packet_size(16#007C) -> 44;
+packet_size(16#007C) -> 42;
 packet_size(16#007D) -> 2;
 packet_size(16#007E) -> 105;
 packet_size(16#007F) -> 6;
@@ -263,6 +267,7 @@ packet_size(16#0167) -> 3;
 packet_size(16#0168) -> 14;
 packet_size(16#0169) -> 3;
 packet_size(16#016A) -> 43;
+packet_size(16#016C) -> 43;
 packet_size(16#016D) -> 14;
 packet_size(16#016E) -> 186;
 packet_size(16#016F) -> 182;
@@ -586,7 +591,7 @@ packet_size(16#02BB) -> 8;
 packet_size(16#02BC) -> 6;
 packet_size(16#02C1) -> 0;
 packet_size(16#02C2) -> 0;
-packet_size(16#02C4) -> 26;
+packet_size(16#02C4) -> 10;
 packet_size(16#02C5) -> 30;
 packet_size(16#02C6) -> 30;
 packet_size(16#02C7) -> 7;
@@ -746,9 +751,9 @@ packet_size(16#0360) -> 0;
 packet_size(16#0361) -> 0;
 packet_size(16#0362) -> 0;
 packet_size(16#0363) -> 0;
-packet_size(16#0364) -> 0;
+packet_size(16#0364) -> 5; %% packet(0x0364,5,clif->pWalkToXY,2);
 packet_size(16#0365) -> 0;
-packet_size(16#0366) -> 0;
+packet_size(16#0366) -> 5; %% CZ_CHANGE_DIRECTION
 packet_size(16#0367) -> 0;
 packet_size(16#0368) -> 0;
 packet_size(16#0369) -> 0;
@@ -994,6 +999,11 @@ packet_size(16#07E3) -> 6;
 packet_size(16#07E4) -> 0;
 packet_size(16#07E6) -> 28;
 packet_size(16#07E7) -> 5;
-packet_size(16#08B9) -> 12;
+packet_size(16#0815) -> 6;
 packet_size(16#0817) -> 6;
-packet_size(_Other) -> undefined.
+packet_size(16#0885) -> 6;
+packet_size(16#088a) -> 6;
+packet_size(16#08aa) -> 7;
+packet_size(16#08B9) -> 12;
+packet_size(16#08c8) -> 34;
+packet_size(_Other)  -> undefined.

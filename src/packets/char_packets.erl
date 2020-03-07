@@ -3,13 +3,14 @@
 -export([ unpack/1
         , pack/2
         , packet_size/1
-        , new/1 ]).
+        , new/1
+        , mod_for/2]).
 
 -include("ro.hrl").
 
 %% FIXME: WHat should new do?
 new(_Whatever) ->
-    char_packets_24.
+    mod_for("char_packets", integer_to_list(?PACKETVER)).
 
 mod_for(Module, Version) ->
   list_to_atom(lists:concat([Module, "_", Version])).

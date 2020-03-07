@@ -3,6 +3,7 @@
 -behaviour(gen_server).
 
 -include("records.hrl").
+-include("ro.hrl").
 
 -export([ start_link/2
         , server_for/1]).
@@ -26,9 +27,11 @@ start_link(Port, MapPairs) ->
                                  list_name = ListName}, []).
 
 init(#state{list_name = ListName, port = Port} = State) ->
+    ZonePackets = zone_packets:mod_for("zone_packets",
+                                       integer_to_list(?PACKETVER)),
     {ok, _} = ranch:start_listener(ListName, ranch_tcp,
                                    [{port, Port}], ragnarok_proto,
-                                   [zone_packets_24, self()]),
+                                   [ZonePackets, self()]),
     {ok, State}.
 
 handle_call({provides, MapName},
