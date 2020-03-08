@@ -4,6 +4,13 @@
 
 This is an Erlang/OTP based ragnarok online server.
 
+## Packetver
+
+* Note on packetver: Currently only 20111116 is supported, and only partially.
+  It works with roBrowser.
+
+* The plan is to partially implement 20180418 for a windows based client.
+
 ## Dependencies
 
 TL;DR: Erlang/OTP (database used to be redis but is
