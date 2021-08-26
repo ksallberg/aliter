@@ -160,3 +160,7 @@ login_srv, char_srv and all zone_srv's are mostly used for book keeping.
 
 ## Supervisor tree:
 ![alt tag](https://i.imgur.com/gVsfYY8.png)
+
+
+# Remember for myself:
+`export ERL_TOP=./home/krisallb/Documents/otp_src_23.2`
