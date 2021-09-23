@@ -1,7 +1,7 @@
 -define(PACKETVER,            20111116).
 %% -define(PACKETVER,            20180418).
 
--define(DEBUG_IP, {10, 0, 1, 238}).
+-define(DEBUG_IP,             {127, 0, 0, 1}).
 
 %% Login server
 -define(LOGIN_IP,             ?DEBUG_IP).

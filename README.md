@@ -66,7 +66,7 @@ var ROConfig = {
 ```
 \caps text           - chat "TEXT"
 \crash               - Yeeah...
-\warp prontera 50 20 - Travel somewhere
+\warp prontera 50 50 - Travel somewhere
 \load                - Travel to last saved spot
 \item 1228           - You got Combat Knife (1).
 \item 2268 1         - Pipe on lower head
@@ -83,7 +83,7 @@ var ROConfig = {
 \hat 224             - (feather beret)
 \monster 1373 50 50  - Spawn LOD to tile X:50, Y:50
 \npc 20 50 50        - Spawn NPC to tile X:50, Y:50
-\job 20              - Become assassin
+\job 10              - Become blacksmith
 \maxstats            - raise all stats and save to db
 \guild_add charname  - add character to the guild I am in
 ```

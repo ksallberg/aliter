@@ -102,7 +102,7 @@ pack(refuse, Reason) ->
     <<16#6c:16/little, Reason:8/little>>;
 
 pack(character_created, Character) ->
-    [<<16#6d:16/little>>, character(Character)];
+    [<<16#006D:16/little>>, character(Character)];
 
 pack(creation_failed, Reason) ->
     <<16#6e:16/little, Reason:8/little>>;
