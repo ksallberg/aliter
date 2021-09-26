@@ -18,7 +18,7 @@ unpack(Unknown) ->
 pack(accept, {LoginIDa, LoginIDb, AccountID, Gender, Servers}) ->
   io:format("time to pack this!!!!!\n", []),
   TwitterFlag = 0,
-  [ <<16#69:16/little,
+  [ <<16#0ac4:16/little,
       (length(Servers) * (32+128) + (47+16+1)):16/little,
       LoginIDa:32/little,
       AccountID:32/little,

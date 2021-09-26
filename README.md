@@ -164,3 +164,7 @@ login_srv, char_srv and all zone_srv's are mostly used for book keeping.
 
 # Remember for myself:
 `export ERL_TOP=./home/krisallb/Documents/otp_src_23.2`
+
+## Wireshark filter for windows machine from mac
+
+`src host 10.0.1.108 || dst host 10.0.1.108`
