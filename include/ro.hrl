@@ -1,5 +1,5 @@
--define(PACKETVER,            20111116).
-%% -define(PACKETVER,            20180418).
+%% -define(PACKETVER,            20111116).
+-define(PACKETVER,            20180418).
 
 -define(DEBUG_IP,             {127, 0, 0, 1}).
 
