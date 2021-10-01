@@ -10,7 +10,6 @@
 -define(DEBUG_IP,             {10, 0, 1, 185}).
 
 %% Login server
--define(LOGIN_IP,             ?DEBUG_IP).
 -define(LOGIN_PORT,           6900).
 
 %% Char server

@@ -78,7 +78,8 @@ handle_cast({choose, Num},
                       [{account, AccountID}, {character, C#char.id}]),
             {zone, ZonePort, _ZoneServer} =
                 gen_server:call(zone_master, {who_serves, C#char.map}),
-            M = {zone_connect, {C, ?ZONE_IP, ZonePort}},
+            ZoneIP = aliter:get_config(zone_ip, ?ZONE_IP),
+            M = {zone_connect, {C, ZoneIP, ZonePort}},
             ragnarok_proto:send_packet(M, Socket, PacketHandler),
             {noreply, State#char_state{char = C}}
     end;
