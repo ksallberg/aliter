@@ -29,11 +29,11 @@ stop(_State) ->
 %% one wants to use, if a special one is required for
 %% testing purposes etc
 get_config(Key, Fallback) ->
-    case os:get_env("ALITER_CONFIG") of
-        ConfigFileName ->
-            get_config_filename(ConfigFileName);
+    case os:getenv("ALITER_CONFIG") of
         false ->
-            get_config_filename("aliter.config")
+            get_config_filename(Key, Fallback, "aliter.config");
+        ConfigFileName ->
+            get_config_filename(Key, Fallback, ConfigFileName)
     end.
 
 get_config_filename(Key, Fallback, ConfigFileName) ->

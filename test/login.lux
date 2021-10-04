@@ -1,0 +1,14 @@
+[doc Make sure it is possible to login]
+
+[shell aliter]
+    !make test_start
+    ???[info] Starting char server
+    ???[info] Starting master supervisor
+    ???[info] Starting master zone server.
+
+[shell login_client]
+    !nc 127.0.0.1 6900 < client_login_correct.bin
+
+[shell aliter]
+    ???[info] Received login request {packetver,20180418} {login,"test"} {region,0}
+

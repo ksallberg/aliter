@@ -168,3 +168,19 @@ login_srv, char_srv and all zone_srv's are mostly used for book keeping.
 ## Wireshark filter for windows machine from mac
 
 `src host 10.0.1.108 || dst host 10.0.1.108`
+
+## Example on how to encode packet and save to file:
+
+```
+CC = [<<16#64:16/little,
+ 20180418:32/little>>,
+
+list_to_binary(string:left("test", 24, 0)),
+list_to_binary(string:left("test", 24, 0)),
+
+<<0:8>>
+].
+
+file:write_file("file.bin", CC).
+
+```
