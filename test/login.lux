@@ -7,8 +7,8 @@
     ???[info] Starting master zone server.
 
 [shell login_client]
-    !nc 127.0.0.1 6900 < client_login_correct.bin
+    !ncat --no-shutdown 127.0.0.1 6900 < test/client_login_correct.bin
 
 [shell aliter]
     ???[info] Received login request {packetver,20180418} {login,"test"} {region,0}
-
+    ???Login server adding session
