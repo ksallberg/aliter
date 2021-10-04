@@ -20,6 +20,13 @@ start: build
             -eval "application:start(aliter)." \
             -config priv/app.config
 
+test_start: build
+	ALITER_CONFIG=aliter.config && \
+            erl start_sasl -pa _build/default/lib/*/ebin \
+                -sname aliternode \
+                -eval "application:start(aliter)." \
+                -config priv/app.config
+
 clean:
 	@@echo "Removing compiled modules..."
 	rm -rf _build

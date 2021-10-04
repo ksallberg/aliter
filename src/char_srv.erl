@@ -21,8 +21,9 @@ start_link() ->
     gen_server:start_link({local, char_server}, ?MODULE, Port, []).
 
 init(Port) ->
+    PacketVer = aliter:get_config(packet_version, ?PACKETVER),
     CharPackets = char_packets:mod_for("char_packets",
-                                       integer_to_list(?PACKETVER)),
+                                       integer_to_list(PacketVer)),
     {ok, _} = ranch:start_listener(char_listener, ranch_tcp, [{port, Port}],
                                    ragnarok_proto, [CharPackets]),
     lager:log(info, self(), "Starting char server ~p", [{port, Port}]),

@@ -18,7 +18,9 @@ start_link(Ref, Socket, Transport, Opts) ->
 init(Ref, Socket, Transport, [PacketHandler]) ->
     {ok, Worker} = case PacketHandler of
                        login_packets ->
-                           FinalPacketHandler = case ?PACKETVER of
+                           PacketVer = aliter:get_config(packet_version,
+                                                         ?PACKETVER),
+                           FinalPacketHandler = case PacketVer of
                                                     20180418 ->
                                                         login_packets_20180418;
                                                     20111116 ->
