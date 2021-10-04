@@ -21,7 +21,7 @@ start: build
             -config priv/app.config
 
 test_start: build
-	export ALITER_CONFIG=aliter.config && \
+	export ALITER_CONFIG=aliter_test.config && \
             erl start_sasl -pa _build/default/lib/*/ebin \
                 -sname aliternode \
                 -eval "application:start(aliter)." \
