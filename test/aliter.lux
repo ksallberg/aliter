@@ -12,7 +12,7 @@
     !./client.es
 
 [shell aliter]
-    ???[info] Received login request {packetver,20180418} {login,"test"} {region,0}
+    ???[info] Received login request {packetver,20111116} {login,"no_user"} {region,0}
 
 [shell client]
     ???Login Refused: true
@@ -23,7 +23,7 @@
     ???[info] Created account {login,
 
 [shell client]
-    ???CharIP 5121
+    ???CharIP: 5121
     ???Attempt connection to char server
 
 [shell aliter]
@@ -34,11 +34,14 @@
     ???CharConnectResponse2: {9,9,9}
     ???MaxSlots: 9 AvailableSlots: 9 PremiumSlots: 9
     ???Client shutting down
+    ?SH-PROMPT:
+    !exit
+    [endshell 0]
 
 # teardown
 [shell aliter]
     !q().
     ???ok
-    ???SH-PROMPT:
+    ?SH-PROMPT:
     !exit
     [endshell 0]
