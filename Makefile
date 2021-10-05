@@ -27,6 +27,10 @@ test_start: build
                 -eval "application:start(aliter)." \
                 -config priv/app.config
 
+.PHONY: test
+test:
+	(cd test; lux aliter.lux)
+
 clean:
 	@@echo "Removing compiled modules..."
 	rm -rf _build

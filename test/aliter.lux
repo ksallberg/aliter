@@ -1,0 +1,26 @@
+[doc Various connection related sanity tests for aliter]
+
+[shell aliter]
+    !make -C ../ test_start
+    ???[info] Starting char server
+    ???[info] Starting master supervisor
+    ???[info] Starting master zone server.
+
+# First we make sure that a non existing user is refused to log in
+
+[shell client]
+    !./client.es
+
+[shell aliter]
+    ???[info] Received login request {packetver,20180418} {login,"test"} {region,0}
+
+[shell client]
+    ???Login Refused: true
+
+# teardown
+[shell aliter]
+    !q().
+    ???ok
+    ???SH-PROMPT:
+    !exit
+    [endshell 0]

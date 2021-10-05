@@ -181,6 +181,5 @@ list_to_binary(string:left("test", 24, 0)),
 <<0:8>>
 ].
 
-file:write_file("file.bin", CC).
-
+file:write_file("file.bin", iolist_to_binary(CC)).
 ```
