@@ -16,6 +16,24 @@
 
 [shell client]
     ???Login Refused: true
+    ???Register a new account
+
+[shell aliter]
+    ???[info] Received login request {packetver,20111116}
+    ???[info] Created account {login,
+
+[shell client]
+    ???CharIP 5121
+    ???Attempt connection to char server
+
+[shell aliter]
+    ???[info] Character connect request.
+
+[shell client]
+    ???Account ID from char server matches!
+    ???CharConnectResponse2: {9,9,9}
+    ???MaxSlots: 9 AvailableSlots: 9 PremiumSlots: 9
+    ???Client shutting down
 
 # teardown
 [shell aliter]
