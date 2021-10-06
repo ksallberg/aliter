@@ -53,8 +53,8 @@ main(_) ->
     {ok, CharConnectResponse2} = gen_tcp:recv(CharSocket, 0),
 
     %% Match to see that we get the same AccountID back from char server
-    AccountID = match_account_id(CharConnectResponse),
-    io:format("Account ID from char server matches!\n", []),
+    AccountID2 = match_account_id(CharConnectResponse),
+    io:format("Account ID from char server matches! ~p \n", [AccountID == AccountID2]),
     {MaxSlots, AvailableSlots, PremiumSlots} =
         match_char_response(CharConnectResponse2),
     io:format("CharConnectResponse2: ~p~n",

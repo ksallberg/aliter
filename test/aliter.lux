@@ -30,7 +30,7 @@
     ???[info] Character connect request.
 
 [shell client]
-    ???Account ID from char server matches!
+    ???Account ID from char server matches! true
     ???CharConnectResponse2: {9,9,9}
     ???MaxSlots: 9 AvailableSlots: 9 PremiumSlots: 9
     ???Creating character!
