@@ -62,10 +62,7 @@ main(_) ->
     io:format("MaxSlots: ~p AvailableSlots: ~p PremiumSlots: ~p\n",
              [MaxSlots, AvailableSlots, PremiumSlots]),
 
-    %% Left to test:
-
     %% Create character
-
     CharName = binary_to_list(
                  base64:encode(
                    crypto:strong_rand_bytes(7))),
@@ -93,17 +90,56 @@ main(_) ->
               [CharName =:= CharNameResponse2]),
 
     io:format("Time to choose character!\n", []),
+
     %% Select character (choose)
     ChoosePacket = <<16#66:16/little,
                      0:8/little>>,
     gen_tcp:send(CharSocket, ChoosePacket),
     {ok, ChooseResponse} = gen_tcp:recv(CharSocket, 0),
-    ChooseResp = match_choose_response(ChooseResponse),
-    io:format("Char Choose Response: ~p~n", [ChooseResp]),
-
-    %% Maybe connect to zone server?
-
+    {ZonePort, CharID} = match_choose_response(ChooseResponse),
+    io:format("Char Choose Response, zone port: ~p~n", [ZonePort]),
     gen_tcp:close(CharSocket),
+
+    %% Connect to zone server
+    io:format("Time to connect to zone server!\n", []),
+    {ok, ZoneSocket} = gen_tcp:connect("127.0.0.1",
+                                       ZonePort,
+                                       [binary, {active, false}]),
+
+    ZoneConnectPacket = <<16#083c:16/little,
+                          AccountID:32/little,
+                          CharID:32/little,
+                          LoginIDa:32/little,
+                          0:32,
+                          0:8>>,
+    gen_tcp:send(ZoneSocket, ZoneConnectPacket),
+
+    %% {account_id,
+    {ok, ZoneAccountIDResponse} = gen_tcp:recv(ZoneSocket, 0),
+    AccountIDResp = match_zone_account_id(ZoneAccountIDResponse),
+    io:format("Zone, account id matching: ~p~n", [AccountIDResp == AccountID]),
+
+    %% {accept,
+    {ok, ZoneAcceptResponse} = gen_tcp:recv(ZoneSocket, 0),
+    ZoneAccept = match_zone_accept(ZoneAcceptResponse),
+    io:format("Zone accept: ~p~n", [ZoneAccept]),
+
+    %% {inventory_equip,
+    {ok, ZoneInventoryEquipResponse} = gen_tcp:recv(ZoneSocket, 0),
+    ZoneInventoryOK = match_zone_inventory(ZoneInventoryEquipResponse),
+    io:format("Zone inventory: ~p~n", [ZoneInventoryOK]),
+
+    %% {skill_list,
+    {ok, ZoneSkillListResponse} = gen_tcp:recv(ZoneSocket, 0),
+    ZoneSkillListOK = match_zone_skill_list(ZoneSkillListResponse),
+    io:format("Zone skill list: ~p~n", [ZoneSkillListOK]),
+
+    %% {message,
+    {ok, ZoneMessageResponse} = gen_tcp:recv(ZoneSocket, 0),
+    ZoneMsgOK = match_zone_message(ZoneMessageResponse),
+    io:format("Zone message: ~p~n", [ZoneMsgOK]),
+
+    gen_tcp:close(ZoneSocket),
     io:format("Client shutting down\n").
 
 match_account_id(<<AccountID:32/little>>) ->
@@ -205,7 +241,39 @@ match_char(_) ->
     false.
 
 match_choose_response(<<16#71:16/little,
-                        _ID:32/little,
+                        ID:32/little,
                         _MapName:16/little-binary-unit:8,
                         ZA, ZB, ZC, ZD, ZonePort:16/little>>) ->
-    {{ZA, ZB, ZC, ZD}, ZonePort}.
+    {ZonePort, ID}.
+
+match_zone_account_id(<<16#283:16/little, AccountID:32/little>>) ->
+    AccountID.
+
+match_zone_accept(<<16#73:16/little,
+                    _Tick:32/little,
+                    Position:3/binary,
+                    5:8,   % X size(?), static
+                    5:8>>) ->
+    true;
+match_zone_accept(_) ->
+    false.
+
+match_zone_inventory(<<16#2d0:16/little,
+                       _Length:16>>) ->
+    true;
+match_zone_inventory(_) ->
+    false.
+
+match_zone_skill_list(<<16#10f:16/little,
+                        _Length:16/little,
+                        Skills/binary>>) ->
+    true;
+match_zone_skill_list(_) ->
+    false.
+
+match_zone_message(<<16#8e:16/little,
+                     _MessageLength:16/little,
+                     Message/binary>>) ->
+    true;
+match_zone_message(_) ->
+    false.

@@ -46,7 +46,18 @@
     ???[info] Player selected character. {account,
 
 [shell client]
-    ???Char Choose Response: {{127,0,0,1},6121}
+    ???Char Choose Response, zone port: {6121}
+    ???Time to connect to zone server!
+
+[shell aliter]
+    ???[info] Verifying session. {account,
+
+[shell client]
+    ???Zone, account id matching: true
+    ???Zone accept: true
+    ???Zone inventory: true
+    ???Zone skill list: true
+    ???Zone message: true
 
     ???Client shutting down
     ?SH-PROMPT:
