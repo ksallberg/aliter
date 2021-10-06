@@ -66,8 +66,35 @@ main(_) ->
 
     %% Create character
 
-    %% Select character
+    CharName = binary_to_list(
+                 base64:encode(
+                   crypto:strong_rand_bytes(7))),
 
+    CreateCharPacket = [<<16#67:16/little>>,
+                        list_to_binary(string:left(CharName, 24, 0)),
+                        <<1:8, %% str
+                          2:8, %% agi
+                          3:8, %% vit
+                          4:8, %% int
+                          5:8, %% dex
+                          6:8, %% luk
+                          1:8, %% num
+                          12:16/little, %% haircolor
+                          3:16/little>>], %% hairstyle
+
+    io:format("Creating character!\n", []),
+    gen_tcp:send(CharSocket, iolist_to_binary(CreateCharPacket)),
+    {ok, CharCreateResponse} = gen_tcp:recv(CharSocket, 0),
+
+
+    CharNameResponse = match_char_created(CharCreateResponse),
+    CharNameResponse2 = string:strip(binary_to_list(CharNameResponse), both, 0),
+
+    io:format("Char names matching: ~p~n",
+              [CharName =:= CharNameResponse2]),
+
+
+    %% Select character
     %% Maybe connect to zone server?
 
     gen_tcp:close(CharSocket),
@@ -122,3 +149,51 @@ match_char_response(<<16#6b:16/little,
     {MaxSlots, AvailableSlots, PremiumSlots};
 match_char_response(_) ->
     io:format("error oh no\n", []).
+
+match_char_created(<<16#006D:16/little,Rest/binary>>) ->
+    match_char(Rest).
+
+match_char(<<_Id:32/little,
+             _BaseExp:32/little,
+             _Zeny:32/little,
+             _JobExp:32/little,
+             _JobLevel:32/little,
+             _BodyState:32/little,
+             _Health:32/little,
+             _Effects:32/little,
+             _Karma:32/little,
+             _Manner:32/little,
+             _StatusPoints:16/little,
+             _Hp:32/little,
+             _MaxHp:32/little,
+             _Sp:16/little,
+             _MaxSp:16/little,
+             _WalkSpeed:16/little,
+             _Job:16/little,
+             _HairStyle:16/little,
+             _ViewWeapon:16/little,
+             _BaseLevel:16/little,
+             _SkillPoints:16/little,
+             _ViewHeadBottom:16/little,
+             _ViewShield:16/little,
+             _ViewHeadTop:16/little,
+             _ViewHeadMiddle:16/little,
+             _HairColour:16/little,
+             _ClothesColour:16/little,
+             CharName:24/little-binary-unit:8,
+             _Str:8,
+             _Agi:8,
+             _Vit:8,
+             _Int:8,
+             _Dex:8,
+             _Luk:8,
+             _Num:16/little,
+             1:16/little,
+             _MapName:16/little-binary-unit:8,
+             _DeleteDate:32/little,  % delete date
+             _Robe:32/little,  % robe
+             _SlotChange:32/little, % slot change
+             _Unknown:32/little>>) ->
+    CharName;
+match_char(_) ->
+    false.

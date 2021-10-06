@@ -33,6 +33,14 @@
     ???Account ID from char server matches!
     ???CharConnectResponse2: {9,9,9}
     ???MaxSlots: 9 AvailableSlots: 9 PremiumSlots: 9
+    ???Creating character!
+
+[shell aliter]
+    ???[info] Created character. {account,
+
+[shell client]
+    ???Char names matching: true
+
     ???Client shutting down
     ?SH-PROMPT:
     !exit
