@@ -113,12 +113,7 @@ pack(character_deleted, ok) ->
 pack(deletion_failed, Reason) ->
     <<16#70:16/little, Reason:8/little>>;
 
-pack(
-  zone_connect,
-  { #char{id = ID, map = Map},
-    {ZA, ZB, ZC, ZD},
-    ZonePort
-  }) ->
+pack(zone_connect, {#char{id = ID, map = Map}, {ZA, ZB, ZC, ZD}, ZonePort}) ->
     [ <<16#71:16/little, ID:32/little>>,
       pad_to([Map, <<".gat">>], 16),
       <<ZA, ZB, ZC, ZD, ZonePort:16/little>>

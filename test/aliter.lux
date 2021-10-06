@@ -40,6 +40,13 @@
 
 [shell client]
     ???Char names matching: true
+    ???Time to choose character!
+
+[shell aliter]
+    ???[info] Player selected character. {account,
+
+[shell client]
+    ???Char Choose Response: {{127,0,0,1},6121}
 
     ???Client shutting down
     ?SH-PROMPT:

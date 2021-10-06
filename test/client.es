@@ -86,15 +86,21 @@ main(_) ->
     gen_tcp:send(CharSocket, iolist_to_binary(CreateCharPacket)),
     {ok, CharCreateResponse} = gen_tcp:recv(CharSocket, 0),
 
-
     CharNameResponse = match_char_created(CharCreateResponse),
     CharNameResponse2 = string:strip(binary_to_list(CharNameResponse), both, 0),
 
     io:format("Char names matching: ~p~n",
               [CharName =:= CharNameResponse2]),
 
+    io:format("Time to choose character!\n", []),
+    %% Select character (choose)
+    ChoosePacket = <<16#66:16/little,
+                     0:8/little>>,
+    gen_tcp:send(CharSocket, ChoosePacket),
+    {ok, ChooseResponse} = gen_tcp:recv(CharSocket, 0),
+    ChooseResp = match_choose_response(ChooseResponse),
+    io:format("Char Choose Response: ~p~n", [ChooseResp]),
 
-    %% Select character
     %% Maybe connect to zone server?
 
     gen_tcp:close(CharSocket),
@@ -197,3 +203,9 @@ match_char(<<_Id:32/little,
     CharName;
 match_char(_) ->
     false.
+
+match_choose_response(<<16#71:16/little,
+                        _ID:32/little,
+                        _MapName:16/little-binary-unit:8,
+                        ZA, ZB, ZC, ZD, ZonePort:16/little>>) ->
+    {{ZA, ZB, ZC, ZD}, ZonePort}.
