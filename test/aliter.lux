@@ -53,11 +53,11 @@
     ???[info] Verifying session. {account,
 
 [shell client]
-    ???Zone, account id matching: true
+    # ???Zone, account id matching: true
     ???Zone accept: true
-    ???Zone inventory: true
-    ???Zone skill list: true
-    ???Zone message: true Welcome to Aliter.
+    # ???Zone inventory: true
+    # ???Zone skill list: true
+    # ???Zone message: true Welcome to Aliter.
 
     ???Client shutting down
     ?SH-PROMPT:

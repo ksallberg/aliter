@@ -117,7 +117,8 @@ main(_) ->
     %% {account_id,
     {ok, ZoneAccountIDResponse} = gen_tcp:recv(ZoneSocket, 0),
     AccountIDResp = match_zone_account_id(ZoneAccountIDResponse),
-    io:format("Zone, account id matching: ~p~n", [AccountIDResp == AccountID]),
+    io:format("Zone, account id matching: ~p ~p ~p ~n",
+              [AccountIDResp == AccountID, AccountIDResp, AccountID]),
 
     %% {accept,
     {ok, ZoneAcceptResponse} = gen_tcp:recv(ZoneSocket, 0),
