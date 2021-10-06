@@ -136,8 +136,8 @@ main(_) ->
 
     %% {message,
     {ok, ZoneMessageResponse} = gen_tcp:recv(ZoneSocket, 0),
-    ZoneMsgOK = match_zone_message(ZoneMessageResponse),
-    io:format("Zone message: ~p~n", [ZoneMsgOK]),
+    {ZoneMsgOK, Msg} = match_zone_message(ZoneMessageResponse),
+    io:format("Zone message: ~p ~s ~n", [ZoneMsgOK, binary_to_list(Msg)]),
 
     gen_tcp:close(ZoneSocket),
     io:format("Client shutting down\n").
@@ -274,6 +274,6 @@ match_zone_skill_list(_) ->
 match_zone_message(<<16#8e:16/little,
                      _MessageLength:16/little,
                      Message/binary>>) ->
-    true;
+    {true, Message};
 match_zone_message(_) ->
     false.

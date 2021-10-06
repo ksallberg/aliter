@@ -57,7 +57,7 @@
     ???Zone accept: true
     ???Zone inventory: true
     ???Zone skill list: true
-    ???Zone message: true
+    ???Zone message: true Welcome to Aliter.
 
     ???Client shutting down
     ?SH-PROMPT:
