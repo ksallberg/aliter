@@ -247,7 +247,9 @@ match_choose_response(<<16#71:16/little,
     {ZonePort, ID}.
 
 match_zone_account_id(<<16#283:16/little, AccountID:32/little>>) ->
-    AccountID.
+    AccountID;
+match_zone_account_id(_) ->
+    unknown.
 
 match_zone_accept(<<16#73:16/little,
                     _Tick:32/little,

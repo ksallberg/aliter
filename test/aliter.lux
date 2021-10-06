@@ -46,7 +46,7 @@
     ???[info] Player selected character. {account,
 
 [shell client]
-    ???Char Choose Response, zone port: {6121}
+    ???Char Choose Response, zone port: 6121
     ???Time to connect to zone server!
 
 [shell aliter]
