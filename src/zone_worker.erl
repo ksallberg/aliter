@@ -66,10 +66,11 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                     Guild = db:get_guild(GuildID),
                     send(State, {update_gd_id, Guild})
             end,
-            Skills = [ {50,  0, 9, 1, 0, "TF_STEAL", 1}
-                     , {28,  1, 9, 1, 0, "TF_HEAL", 1}
-                     , {394, 1, 9, 1, 0, "TF_ARROW_VULCAN", 1}
-                     , {136, 1, 9, 1, 0, "TF_SONIC_BLOW", 1}],
+            %% Skills = [ {50,  0, 9, 1, 0, "TF_STEAL", 1}
+            %%          , {28,  1, 9, 1, 0, "TF_HEAL", 1}
+            %%          , {394, 1, 9, 1, 0, "TF_ARROW_VULCAN", 1}
+            %%          , {136, 1, 9, 1, 0, "TF_SONIC_BLOW", 1}],
+            Skills = [],
             send(State, {skill_list, Skills}),
             say("Welcome to Aliter.", State),
             NewState = State#zone_state{map = Map,

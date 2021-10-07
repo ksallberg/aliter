@@ -49,12 +49,12 @@ main(_) ->
                             Gender:8>>,
     io:format("Attempt connection to char server\n", []),
     gen_tcp:send(CharSocket, CharConnectRequest),
-    {ok, CharConnectResponse} = gen_tcp:recv(CharSocket, 0),
-    {ok, CharConnectResponse2} = gen_tcp:recv(CharSocket, 0),
+    CharConnectResponse = collect_char_response(CharSocket, <<"">>),
 
     %% Match to see that we get the same AccountID back from char server
-    AccountID2 = match_account_id(CharConnectResponse),
-    io:format("Account ID from char server matches! ~p \n", [AccountID == AccountID2]),
+    {AccountID2, CharConnectResponse2} = match_account_id(CharConnectResponse),
+    io:format("Account ID from char server matches! ~p \n",
+              [AccountID == AccountID2]),
     {MaxSlots, AvailableSlots, PremiumSlots} =
         match_char_response(CharConnectResponse2),
     io:format("CharConnectResponse2: ~p~n",
@@ -114,37 +114,34 @@ main(_) ->
                           0:8>>,
     gen_tcp:send(ZoneSocket, ZoneConnectPacket),
 
-    %% {account_id,
-    {ok, ZoneAccountIDResponse} = gen_tcp:recv(ZoneSocket, 0),
-    AccountIDResp = match_zone_account_id(ZoneAccountIDResponse),
+    Collect = collect_zone_response(ZoneSocket, <<"">>),
+
+    %% %% {account_id,
+    {AccountIDResp, ZoneRest1} = match_zone_account_id(Collect),
     io:format("Zone, account id matching: ~p ~p ~p ~n",
               [AccountIDResp == AccountID, AccountIDResp, AccountID]),
 
-    %% {accept,
-    {ok, ZoneAcceptResponse} = gen_tcp:recv(ZoneSocket, 0),
-    ZoneAccept = match_zone_accept(ZoneAcceptResponse),
+    %% %% {accept,
+    {ZoneAccept, ZoneRest2} = match_zone_accept(ZoneRest1),
     io:format("Zone accept: ~p~n", [ZoneAccept]),
 
     %% {inventory_equip,
-    {ok, ZoneInventoryEquipResponse} = gen_tcp:recv(ZoneSocket, 0),
-    ZoneInventoryOK = match_zone_inventory(ZoneInventoryEquipResponse),
+    {ZoneInventoryOK, ZoneRest3} = match_zone_inventory(ZoneRest2),
     io:format("Zone inventory: ~p~n", [ZoneInventoryOK]),
 
     %% {skill_list,
-    {ok, ZoneSkillListResponse} = gen_tcp:recv(ZoneSocket, 0),
-    ZoneSkillListOK = match_zone_skill_list(ZoneSkillListResponse),
+    {ZoneSkillListOK, ZoneRest4} = match_zone_skill_list(ZoneRest3),
     io:format("Zone skill list: ~p~n", [ZoneSkillListOK]),
 
     %% {message,
-    {ok, ZoneMessageResponse} = gen_tcp:recv(ZoneSocket, 0),
-    {ZoneMsgOK, Msg} = match_zone_message(ZoneMessageResponse),
+    {ZoneMsgOK, Msg} = match_zone_message(ZoneRest4),
     io:format("Zone message: ~p ~s ~n", [ZoneMsgOK, binary_to_list(Msg)]),
 
     gen_tcp:close(ZoneSocket),
     io:format("Client shutting down\n").
 
-match_account_id(<<AccountID:32/little>>) ->
-    AccountID;
+match_account_id(<<AccountID:32/little, Rest/binary>>) ->
+    {AccountID, Rest};
 match_account_id(_) ->
     false.
 
@@ -247,8 +244,8 @@ match_choose_response(<<16#71:16/little,
                         ZA, ZB, ZC, ZD, ZonePort:16/little>>) ->
     {ZonePort, ID}.
 
-match_zone_account_id(<<16#283:16/little, AccountID:32/little>>) ->
-    AccountID;
+match_zone_account_id(<<16#283:16/little, AccountID:32/little, Rest/binary>>) ->
+    {AccountID, Rest};
 match_zone_account_id(_) ->
     unknown.
 
@@ -256,21 +253,23 @@ match_zone_accept(<<16#73:16/little,
                     _Tick:32/little,
                     Position:3/binary,
                     5:8,   % X size(?), static
-                    5:8>>) ->
-    true;
+                    5:8,
+                    Rest/binary>>) ->
+    {true, Rest};
 match_zone_accept(_) ->
     false.
 
 match_zone_inventory(<<16#2d0:16/little,
-                       _Length:16>>) ->
-    true;
+                       _Length:16,
+                       Rest/binary>>) ->
+    {true, Rest};
 match_zone_inventory(_) ->
     false.
 
 match_zone_skill_list(<<16#10f:16/little,
                         _Length:16/little,
-                        Skills/binary>>) ->
-    true;
+                        Rest/binary>>) ->
+    {true, Rest};
 match_zone_skill_list(_) ->
     false.
 
@@ -280,3 +279,21 @@ match_zone_message(<<16#8e:16/little,
     {true, Message};
 match_zone_message(_) ->
     false.
+
+collect_char_response(Socket, Acc) ->
+    {ok, Response} = gen_tcp:recv(Socket, 0),
+    case binary:match(Response, <<0,0,0,0,0,0,0>>) of
+        nomatch ->
+            collect_char_response(Socket, <<Acc/binary, Response/binary>>);
+        _ ->
+            <<Acc/binary, Response/binary>>
+    end.
+
+collect_zone_response(Socket, Acc) ->
+    {ok, Response} = gen_tcp:recv(Socket, 0),
+    case re:run(Response, "Welcome to Aliter.") of
+        nomatch ->
+            collect_zone_response(Socket, <<Acc/binary, Response/binary>>);
+        _ ->
+            <<Acc/binary, Response/binary>>
+    end.
