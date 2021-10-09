@@ -75,7 +75,7 @@ main(_) ->
                           4:8, %% int
                           5:8, %% dex
                           6:8, %% luk
-                          1:8, %% num
+                          0:8, %% num
                           12:16/little, %% haircolor
                           3:16/little>>], %% hairstyle
 

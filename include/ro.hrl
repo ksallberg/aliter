@@ -27,10 +27,6 @@
 -define(SP_MAX_SP,            8).
 -define(SP_ZENY,              20).
 
--define(MAX_SLOTS,            9).
--define(AVAILABLE_SLOTS,      9).
--define(PREMIUM_SLOTS,        9).
-
 -define(BDT_NORMAL,           0).
 -define(BDT_ENDURE,           4).
 -define(BDT_SPLASH,           5).

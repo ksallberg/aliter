@@ -46,9 +46,37 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                                            LoginState#login_state.id_b
                                           }}),
             Chars = db:get_account_chars(AccountID),
-            M = {characters, {Chars, ?MAX_SLOTS, ?AVAILABLE_SLOTS,
-                              ?PREMIUM_SLOTS}},
+            PacketVer = aliter:get_config(packet_version, ?PACKETVER),
+            {MaxSlots, AvailableSlots, PremiumSlots} =
+                case PacketVer of
+                    20180418 ->
+                        {12, 12, 12};
+                    _ ->
+                        {9, 9, 9}
+                end,
+
+            case PacketVer of
+                20180418 ->
+                    SlotInfoM = {slot_info,
+                                 {MaxSlots, AvailableSlots, PremiumSlots}},
+                    ragnarok_proto:send_packet(SlotInfoM, TCP, PacketHandler);
+                _ ->
+                    skip
+            end,
+
+            M = {characters,
+                 {Chars, MaxSlots, AvailableSlots, PremiumSlots}},
+
             ragnarok_proto:send_packet(M, TCP, PacketHandler),
+
+            case PacketVer of
+                20180418 ->
+                    Pin = {pin_code, AccountID},
+                    ragnarok_proto:send_packet(Pin, TCP, PacketHandler);
+                _ ->
+                    skip
+            end,
+
             NewState =
                 State#char_state{account = LoginState#login_state.account,
                                  id_a = LoginState#login_state.id_a,
@@ -121,7 +149,7 @@ handle_cast({delete, CharacterID, EMail},
     Address =
         case EMail of
             "" -> nil;
-            _ -> EMail
+            _  -> EMail
         end,
     case Address of
         AccountEMail ->

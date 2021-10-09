@@ -7,7 +7,7 @@
         , packet_size/1 ]).
 
 -define(WALKSPEED, 150).
--define(CHAR_BLOCK_SIZE, 144).
+-define(CHAR_BLOCK_SIZE, 155). %% according to Hercules (157-2)
 
 packet_size(X) ->
     packets:packet_size(X).
@@ -77,18 +77,27 @@ unpack(Unknown) ->
     lager:log(warning, self(), "Got unknown data ~p", [{data, Unknown}]),
     unknown.
 
+pack(slot_info, {_MaxSlots, _AvailableSlots, _PremiumSlots}) ->
+    PackLen = 29,
+    StupidData = binary:copy(<<0>>, 20),
+    _UsedSlots = 0,
+    Max = 12,
+    [<<16#82d:16/little,
+      PackLen:16/little,
+      Max:8,
+      0:8,
+      0:8,
+      Max:8,
+      Max:8>>, StupidData];
+
 pack(characters, {Characters, MaxSlots, AvailableSlots, PremiumSlots}) ->
-    PackLen = (length(Characters) * ?CHAR_BLOCK_SIZE + 27),
+    PackLen = (length(Characters) * ?CHAR_BLOCK_SIZE) + 27,
     [ <<16#6b:16/little,
         PackLen:16/little,
         MaxSlots:8/little,
         AvailableSlots:8/little,
-        PremiumSlots:8/little,
-        0:8/little, %% beginbilling>>,
-        0:32/little, %% code
-        0:32/little, %% time1
-        0:32/little>>, %% time2
-      binary:copy(<<0>>, 7) %% dummy2_endbilling
+        PremiumSlots:8/little>>,
+      binary:copy(<<0>>, 20) %% dummy2_endbilling
     ] ++ [character(C) || C <- Characters];
 
 pack(pin_code, AccountID) ->
@@ -137,11 +146,12 @@ pack(Header, Data) ->
 
 %% NOTE: update CHAR_BLOCK_SIZE after changing this
 %% Note, using pad_to(X, 16) pads to 16 bytes! not bits
+%% info from this found in Hercules/src/char/char.c
 character(C) ->
     [ <<(C#char.id):32/little,
-        (C#char.base_exp):32/little,
+        (C#char.base_exp):64/little,
         (C#char.zeny):32/little,
-        (C#char.job_exp):32/little,
+        (C#char.job_exp):64/little,
         (C#char.job_level):32/little,
         0:32/little, % TODO (Body state)
         0:32/little, % TODO (Health state)
@@ -156,6 +166,7 @@ character(C) ->
         ?WALKSPEED:16/little, % TODO (Walk speed)
         (C#char.job):16/little,
         (C#char.hair_style):16/little,
+        0:16/little, %% new in 2014, body or riding/dragon
         (C#char.view_weapon):16/little,
         (C#char.base_level):16/little,
         (C#char.skill_points):16/little,
@@ -174,13 +185,13 @@ character(C) ->
         (C#char.luk):8,
         (C#char.num):16/little,
         %% TODO: I think this is 0 for renamed
-        1:16/little>>,
+        0:16/little>>,
       pad_to([C#char.map, <<".gat">>], 16),
       <<0:32/little,  % delete date
         0:32/little,  % robe
         0:32/little, % slot change
-        0:32/little>> %% rename
-          %% 0:32/little>> % unknown (0 = disabled)
+        0:32/little, %% rename
+        0:8/little>> % sex
     ].
 
 pad_to(Bin, Size) ->
