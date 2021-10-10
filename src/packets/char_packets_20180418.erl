@@ -24,28 +24,25 @@ unpack(<<16#66:16/little,
          Num:8/little>>) ->
     {choose, Num};
 
-unpack(<<16#67:16/little,
+unpack(<<16#a39:16/little,
          Name:24/little-binary-unit:8,
-         Str:8,
-         Agi:8,
-         Vit:8,
-         Int:8,
-         Dex:8,
-         Luk:8,
-         Num:8,
+         Slot:8,
          HairColor:16/little,
-         HairStyle:16/little>>) ->
+         HairStyle:16/little,
+         StartingJobClass:16/little,
+         _Unknown:16/little>>) ->
     { create,
       string:strip(binary_to_list(Name), both, 0),
-      Str,
-      Agi,
-      Vit,
-      Int,
-      Dex,
-      Luk,
-      Num,
+      1, %% str
+      1, %% agi
+      1, %% vit
+      1, %% int
+      1, %% dex
+      1, %% luk
+      Slot, %% num
       HairColor,
-      HairStyle
+      HairStyle,
+      StartingJobClass
     };
 
 unpack(<<16#68:16/little,

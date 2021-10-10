@@ -112,7 +112,7 @@ handle_cast({choose, Num},
             {noreply, State#char_state{char = C}}
     end;
 handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
-             Luk, Num, HairColour, HairStyle},
+             Luk, Num, HairColour, HairStyle, StartingJobClass},
             State = #char_state{account = Account,
                                 packet_handler = PacketHandler,
                                 tcp = Socket}) ->
@@ -121,6 +121,7 @@ handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
         nil ->
             Char = db:save_char(#char{num = Num,
                                       name = Name,
+                                      job = StartingJobClass,
                                       zeny = 500, % TODO: Config flag
                                       str = Str,
                                       agi = Agi,
