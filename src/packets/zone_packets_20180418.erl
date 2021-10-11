@@ -39,6 +39,9 @@ unpack(<<16#08aa:16/little,
 %% CZ_NOTIFY_ACTORINIT
 unpack(<<16#7d:16/little>>) ->
     map_loaded;
+
+unpack(<<16#361:16/little, Head:16/little, Body:8>>) ->
+    {change_direction, Head, Body};
 unpack(<<16#85:16/little, _:16, Head:16/little, _:24, Body:8>>) ->
     {change_direction, Head, Body};
 unpack(<<16#016e:16/little, GID:32/little,
@@ -49,7 +52,7 @@ unpack(<<16#0360:16/little, Tick:32/little>>) ->
 unpack(<<16#0090:16/little, NPCID:32/little, _:8>>) ->
     {npc_activate, NPCID};
 %% CZ_REQNAME
-unpack(<<16#88a:16/little, ReqName:32/little>>) ->
+unpack(<<16#368:16/little, ReqName:32/little>>) ->
     {request_name, ReqName};
 unpack(<<16#99:16/little, Length:16/little, Message/binary>>)
   when byte_size(Message) == (Length - 4) ->
@@ -199,6 +202,7 @@ pack(broadcast, Message) ->
      <<0>>];
 pack(change_direction, {ActorID, HeadDir, BodyDir}) ->
     <<16#9c:16/little, ActorID:32/little, HeadDir:16/little, BodyDir:8>>;
+
 pack(param_change, {Type, Value}) ->
     <<16#b0:16/little, Type:16/little, Value:32/little>>;
 pack(param_change_long, {Type, Value}) ->
@@ -587,7 +591,7 @@ pack(inventory, Inventory) ->
 
         1:8,  %% IsIdentified
         1:8,  %% PlaceETCTab
-        6:8>> %% SpareBits
+        0:8>> %% SpareBits
           || I <- Inventory]];
 pack(give_item,
      {Index,
@@ -660,30 +664,44 @@ pack(sprite,
       CharID:32/little,
       Type:8/little,
       Value:32/little>>;
-pack(monster, {SpriteID, X, Y, GID}) ->
+pack(monster, {SpriteID, X, Y, AID, _AID}) ->
     <<X2, Y2, D>> = encode_position(X, Y, 0),
-    <<16#07c:16/little, %% PacketType
-      5:8/little, %% objecttype
-      GID:32/little, %% GID
-      0:16/little, %% speed
-      0:16/little, %% bodyState
-      0:16/little, %% healthState
-      0:16/little, %% effectState
-      0:16/little, %% head
-      0:16/little, %% weapon
-      0:16/little, %% accessory
-      SpriteID:16/little, %% job
-      0:16/little, %% shield
-      0:16/little, %% accessory2
-      0:16/little, %% accessory3
-      0:16/little, %% headpalette
-      0:16/little, %% bodypalette
-      0:16/little, %% headDir
-      0:8/little, %% isPKModeON
-      0:8/little, %% sex
-      X2:8, Y2:8, D:8,
-      0:8/little, %% xSize
-      0:8/little>>; %% ySize
+    iolist_to_binary([<<16#9fe:16/little, %% PacketType
+                        2:16/little, %% PacketLength
+                        5:8/little, %% objecttype
+                        AID:32/little, %% AID
+                        SpriteID:32/little, %% GID
+                        0:16/little, %% speed
+                        0:16/little, %% bodyState
+                        0:16/little, %% healthState
+                        0:32/little, %% effectState
+                        0:16/little, %% job
+                        0:16/little, %% head
+                        0:32/little, %% weapon
+                        0:16/little, %% accessory
+                        %% 0:16/little, %% shield
+                        0:16/little, %% accessory2
+                        0:16/little, %% accessory3
+                        0:16/little, %% headpalette
+                        0:16/little, %% bodypalette
+                        0:16/little, %% headDir
+                        0:16/little, %% robe
+                        0:32/little, %% GUID <-
+                        0:16/little, %% GEmblemVer
+                        0:16/little, %% honor
+                        0:32/little, %% virtue
+                        0:8/little, %% isPKModeON
+                        0:8/little, %% sex
+                        X2:8, Y2:8, D:8,
+                        0:8/little, %% xSize
+                        0:8/little, %% ySize
+                        0:16/little, %% clevel
+                        0:16/little, %% font
+                        100:32/little, %% maxHP
+                        90:32/little, %% HP
+                        1:32/little, %% isBoss
+                        0:16/little>>, %% body
+                      pad_to("bobby", 24)]);
 pack(attack, {Caller, Callee, Time, SrcSpeed, DstSpeed, %% ZC_NOTIFY_ACT2
               Damage, IsSPDamage, Div, Damage2, Type}) ->
     <<16#08c8:16/little,

@@ -81,7 +81,8 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                         [#inventory{items=ItemsX}] ->
                             ItemsX
                     end,
-            send(State, {inventory_equip, Items}),
+            ?liof("ITem: ~p~n", [Items]),
+            send(State, {inventory, Items}),
             WorldItems = db:get_world_items(Char#char.map),
             case Char#char.guild_id of
                 0 ->
@@ -644,7 +645,7 @@ handle_cast({monster, SpriteID, X0, Y0},
                main=0},
     Srv = zone_map:server_for(Map),
     gen_server:cast(Srv, {register_mob, NPC}),
-    send(State, {monster, {SpriteID, X, Y, MonsterID}}),
+    send(State, {monster, {SpriteID, X, Y, MonsterID, MonsterID}}),
     Msg = {send_to_other_players_in_sight, {X, Y},
            AID,
            monster,

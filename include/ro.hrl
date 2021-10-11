@@ -59,3 +59,17 @@
 -define(VANISH_LOGGED_OUT,    2).
 -define(VANISH_TELEPORT,      3).
 -define(VANISH_TRICKDEAD,     4).
+
+-define(IT_HEALING, 0).
+-define(IT_UNKNOWN, 1).
+-define(IT_USABLE, 2).
+-define(IT_ETC,     3).
+-define(IT_WEAPON,  4).
+-define(IT_ARMOR,   5).
+-define(IT_CARD,    6).
+-define(IT_PETEGG,  7).
+-define(IT_PETARMOR,8).
+-define(IT_UNKNOWN2,9).
+-define(IT_AMMO,    10).
+-define(IT_DELAYCONSUME, 11).
+-define(IT_CASH, 18).
