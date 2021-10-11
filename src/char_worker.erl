@@ -114,63 +114,15 @@ handle_cast({choose, Num},
 %% A bit of copy paste programming: following clause lacks
 %% starting class, next clause has it.
 handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
-             Luk, Num, HairColour, HairStyle},
-            State = #char_state{account = Account,
-                                packet_handler = PacketHandler,
-                                tcp = Socket}) ->
-    Exists = db:get_char_id(Name),
-    case Exists of
-        nil ->
-            Char = db:save_char(#char{num = Num,
-                                      name = Name,
-                                      zeny = 500, % TODO: Config flag
-                                      str = Str,
-                                      agi = Agi,
-                                      vit = Vit,
-                                      int = Int,
-                                      dex = Dex,
-                                      luk = Luk,
-                                      hair_colour = HairColour,
-                                      hair_style = HairStyle,
-                                      account_id = Account#account.id}),
-            lager:log(info, self(), "Created character. ~p~p",
-                      [{account, Account}, {char, Char}]),
-            ragnarok_proto:send_packet({character_created, Char}, Socket,
-                                       PacketHandler);
-        _ ->
-            ragnarok_proto:send_packet({creation_failed, 0}, Socket,
-                                       PacketHandler)
-    end,
+             Luk, Num, HairColour, HairStyle}, State) ->
+    handle_create({create, Name, Str, Agi, Vit, Int, Dex,
+                   Luk, Num, HairColour, HairStyle, undefined}, State),
     {noreply, State};
 handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
              Luk, Num, HairColour, HairStyle, StartingJobClass},
-            State = #char_state{account = Account,
-                                packet_handler = PacketHandler,
-                                tcp = Socket}) ->
-    Exists = db:get_char_id(Name),
-    case Exists of
-        nil ->
-            Char = db:save_char(#char{num = Num,
-                                      name = Name,
-                                      job = StartingJobClass,
-                                      zeny = 500, % TODO: Config flag
-                                      str = Str,
-                                      agi = Agi,
-                                      vit = Vit,
-                                      int = Int,
-                                      dex = Dex,
-                                      luk = Luk,
-                                      hair_colour = HairColour,
-                                      hair_style = HairStyle,
-                                      account_id = Account#account.id}),
-            lager:log(info, self(), "Created character. ~p~p",
-                      [{account, Account}, {char, Char}]),
-            ragnarok_proto:send_packet({character_created, Char}, Socket,
-                                       PacketHandler);
-        _ ->
-            ragnarok_proto:send_packet({creation_failed, 0}, Socket,
-                                       PacketHandler)
-    end,
+           State) ->
+    handle_create({create, Name, Str, Agi, Vit, Int, Dex,
+                   Luk, Num, HairColour, HairStyle, StartingJobClass}, State),
     {noreply, State};
 handle_cast({delete, CharacterID, EMail},
             State = #char_state{
@@ -284,3 +236,39 @@ format_status(_Opt, _) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+handle_create({create, Name, Str, Agi, Vit, Int, Dex,
+               Luk, Num, HairColour, HairStyle, StartingJobClass},
+              #char_state{account = Account,
+                          packet_handler = PacketHandler,
+                          tcp = Socket}) ->
+    Exists = db:get_char_id(Name),
+    case Exists of
+        nil ->
+            CharToSave0 = #char{num = Num,
+                                name = Name,
+                                zeny = 500, % TODO: Config flag
+                                str = Str,
+                                agi = Agi,
+                                vit = Vit,
+                                int = Int,
+                                dex = Dex,
+                                luk = Luk,
+                                hair_colour = HairColour,
+                                hair_style = HairStyle,
+                                account_id = Account#account.id},
+            CharToSave = case StartingJobClass of
+                             undefined ->
+                                 CharToSave0;
+                             _ ->
+                                 CharToSave0#char{job=StartingJobClass}
+                         end,
+            Char = db:save_char(CharToSave),
+            lager:log(info, self(), "Created character. ~p~p",
+                      [{account, Account}, {char, Char}]),
+            ragnarok_proto:send_packet({character_created, Char}, Socket,
+                                       PacketHandler);
+        _ ->
+            ragnarok_proto:send_packet({creation_failed, 0}, Socket,
+                                       PacketHandler)
+    end.
