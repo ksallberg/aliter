@@ -44,7 +44,7 @@ unpack(<<16#85:16/little, _:16, Head:16/little, _:24, Body:8>>) ->
 unpack(<<16#016e:16/little, GID:32/little,
          Header:60/binary, Body:120/binary>>) ->
     {guild_msg_upd, GID, Header, Body};
-unpack(<<16#0817:16/little, Tick:32/little>>) ->
+unpack(<<16#0360:16/little, Tick:32/little>>) ->
     {tick, Tick};
 unpack(<<16#0090:16/little, NPCID:32/little, _:8>>) ->
     {npc_activate, NPCID};
@@ -54,7 +54,7 @@ unpack(<<16#88a:16/little, ReqName:32/little>>) ->
 unpack(<<16#99:16/little, Length:16/little, Message/binary>>)
   when byte_size(Message) == (Length - 4) ->
     {broadcast, string:strip(binary_to_list(Message), right, 0)};
-unpack(<<100,3, Position:3/little-binary-unit:8>>) ->
+unpack(<<16#35F:16/little, Position:3/little-binary-unit:8>>) ->
     {walk, decode_position(Position)};
 unpack(<<16#b2:16/little, Type:8>>) ->
     {char_select, Type};
@@ -108,6 +108,8 @@ unpack(<<16#885:16/little,
 unpack(<<16#815:16/little,
          ObjectID:32/little>>) ->
     {pick_up, ObjectID};
+unpack(<<16#8c9:16/little>>) ->
+    pCashShopSchedule;
 unpack(Unknown) ->
     lager:log(warning, self(), "hmm zone packets Got unknown data ~p",
               [Unknown]),

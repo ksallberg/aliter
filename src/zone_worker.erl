@@ -51,23 +51,29 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             send(State, {accept, {zone_master:tick(),
                                   {Char#char.x, Char#char.y, 0}}}),
 
-            send(State, {status_change_basic, {?SP_BASELEVEL, 10}}),
-            send(State, {status_change_basic, {?SP_BASEEXP, 50}}),
-            send(State, {status_change_basic, {?SP_NEXTBASEEXP, 110}}),
-            send(State, {status_change_basic, {?SP_JOBEXP, 10}}),
-            send(State, {status_change_basic, {?SP_NEXTJOBEXP, 11}}),
-            send(State, {status_change_basic, {?SP_SKILLPOINT, 20}}),
+            PacketVer = aliter:get_config(packet_version, ?PACKETVER),
+            case PacketVer of
+                20180418 ->
+                    send(State, {status_change_basic, {?SP_BASELEVEL, 10}}),
+                    send(State, {status_change_basic, {?SP_BASEEXP, 50}}),
+                    send(State, {status_change_basic, {?SP_NEXTBASEEXP, 110}}),
+                    send(State, {status_change_basic, {?SP_JOBEXP, 10}}),
+                    send(State, {status_change_basic, {?SP_NEXTJOBEXP, 11}}),
+                    send(State, {status_change_basic, {?SP_SKILLPOINT, 20}}),
 
-            send(State, {status, Char}),
+                    send(State, {status, Char}),
 
-            send(State, {status_change_basic, {?SP_STR, 10}}),
-            send(State, {status_change_basic, {?SP_AGI, 10}}),
-            send(State, {status_change_basic, {?SP_VIT, 10}}),
-            send(State, {status_change_basic, {?SP_INT, 10}}),
-            send(State, {status_change_basic, {?SP_DEX, 10}}),
-            send(State, {status_change_basic, {?SP_LUK, 10}}),
-            send(State, {status_change_basic, {?SP_ATTACKRANGE, 10}}),
-            send(State, {status_change_basic, {?SP_ASPD, 10}}),
+                    send(State, {status_change_basic, {?SP_STR, 10}}),
+                    send(State, {status_change_basic, {?SP_AGI, 10}}),
+                    send(State, {status_change_basic, {?SP_VIT, 10}}),
+                    send(State, {status_change_basic, {?SP_INT, 10}}),
+                    send(State, {status_change_basic, {?SP_DEX, 10}}),
+                    send(State, {status_change_basic, {?SP_LUK, 10}}),
+                    send(State, {status_change_basic, {?SP_ATTACKRANGE, 10}}),
+                    send(State, {status_change_basic, {?SP_ASPD, 10}});
+                _ ->
+                    skip
+            end,
 
             Items = case db:get_player_items(Char#char.id) of
                         [] ->
