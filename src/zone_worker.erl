@@ -97,7 +97,7 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             %%          , {136, 1, 9, 1, 0, "TF_SONIC_BLOW", 1}],
             Skills = [],
             send(State, {skill_list, Skills}),
-            say("Welcome to Aliter!!", State),
+            say("Welcome to Aliter.", State),
             NewState = State#zone_state{map = Map,
                                         map_server = MapServer,
                                         account = C#char_state.account,
