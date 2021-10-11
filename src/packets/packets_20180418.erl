@@ -747,7 +747,7 @@ packet_size(16#035C) -> 2;
 packet_size(16#035D) -> 0;
 packet_size(16#035E) -> 2;
 packet_size(16#035F) -> 0;
-packet_size(16#0360) -> 0;
+packet_size(16#0360) -> 6;
 packet_size(16#0361) -> 0;
 packet_size(16#0362) -> 0;
 packet_size(16#0363) -> 0;
@@ -1008,6 +1008,9 @@ packet_size(16#08aa) -> 7;
 packet_size(16#08B9) -> 12;
 packet_size(16#08c8) -> 34;
 packet_size(16#099d) -> 0;
+packet_size(16#0A0D) -> 0;
 packet_size(16#0A39) -> 35;
 packet_size(16#0AC4) -> 0; %% HEADER_AC_ACCEPT_LOGIN2, variable length
+packet_size(16#0AC5) -> 156;
+packet_size(16#0ACB) -> 12;
 packet_size(_Other)  -> undefined.

@@ -15,13 +15,22 @@
 packet_size(X) ->
     packets:packet_size(X).
 
-unpack(<<16#083c:16/little,
+%% unpack(<<16#083c:16/little,
+%%          AccountID:32/little,
+%%          CharacterID:32/little,
+%%          LoginIDa:32/little,
+%%          _ClientTick:32,
+%%          Gender:8>>) ->
+%%     {connect, AccountID, CharacterID, LoginIDa, Gender};
+
+unpack(<<16#0436:16/little,
          AccountID:32/little,
          CharacterID:32/little,
          LoginIDa:32/little,
-         _ClientTick:32,
+         _ClientTime:32/little,
          Gender:8>>) ->
     {connect, AccountID, CharacterID, LoginIDa, Gender};
+
 %% sitting, standing:
 unpack(<<16#08aa:16/little,
          Target:32/little,
@@ -105,11 +114,13 @@ unpack(Unknown) ->
     unknown.
 
 pack(accept, {Tick, {X, Y, D}}) ->
-    <<16#73:16/little,
+    <<16#2eb:16/little,
       Tick:32/little,
       (encode_position(X, Y, D)):3/binary,
-      5,   % X size(?), static
-      5>>; % Y size(?), static
+      5:8, %% X size, static
+      5:8, %% Y size, static
+      0:16/little %% font
+    >>;
 pack(show_npc, N) -> % TODO: This isn't actually specific to NPCs
     {X, Y} = N#npc.coordinates,
     D = case N#npc.direction of
@@ -211,35 +222,33 @@ pack(dialog_menu, {ActorID, Choices}) ->
     ];
 pack(status, C) ->
     <<16#bd:16/little,
-      (C#char.status_points):16/little,
-      (C#char.str):8/little,
-      0:8/little,
-      (C#char.agi):8/little,
-      0:8/little,
+      (C#char.status_points):16/little, %% sd->status.status_point
+      (C#char.str):8/little, %% sd->status.str
+      0:8/little, %% need_status_point SP_STR
+      (C#char.agi):8/little, %% sd->status.agi
+      0:8/little, %% need_status_point SP_AGI
       (C#char.vit):8/little,
-      0:8/little,
+      0:8/little, %% need_status_point SP_VIT
       (C#char.int):8/little,
-      0:8/little,
+      0:8/little, %% need_status_point SP_INT
       (C#char.dex):8/little,
-      0:8/little,
+      0:8/little, %% need_status_point SP_DEX
       (C#char.luk):8/little,
-      0:8/little,
-      7:16/little,
-      0:16/little,
-      6:16/little,
-      5:16/little,
-      0:16/little,
-      5:16/little,
-      0:16/little,
-      5:16/little,
-      6:16/little,
-      6:16/little,
-      1:16/little,
-      2:16/little,
-      0:8, % Nothing
-      0:8, % Nothing
-      0:8, % Nothing, v-
-      0:8>>; % TODO
+      0:8/little, %% need_status_point SP_LUK
+      7:16/little, %% pc_leftside_atk
+      0:16/little, %% pc_rightside_atk
+      6:16/little, %% pc_rightside_matk
+      5:16/little, %% pc_leftside_matk
+      0:16/little, %% pc_leftside_def
+      5:16/little, %% pc_rightside_def
+      0:16/little, %% mdef1
+      0:16/little, %% mdef2
+      5:16/little, %% sd->battle_status.hit
+      6:16/little, %% sd->battle_status.flee
+      6:16/little, %% sd->battle_status.flee2/10
+      1:16/little, %% sd->battle_status.cri/10
+      2:16/little, %% sd->battle_status.amotion (aspd)
+      0:16/little>>; %% aspd2
 pack(emotion, {ActorID, EmoticonID}) ->
     <<16#c0:16/little, ActorID:32/little, EmoticonID:8>>;
 pack(player_count, Count) ->
@@ -258,6 +267,36 @@ pack(skill_list, Skills) ->
         ] || {ID, Type, Level, SP, Range, Name, Up} <- Skills]];
 pack(attack_range, Range) ->
     <<16#13a:16/little, Range:16/little>>;
+pack(status_change_basic, {Stat, Value}) ->
+    case Stat of
+        ?SP_BASEEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+        ?SP_NEXTBASEEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+
+        ?SP_JOBEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+        ?SP_NEXTJOBEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+
+        ?SP_BASELEVEL ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+        ?SP_JOBLEVEL ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+
+        ?SP_SKILLPOINT ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+
+        ?SP_ATTACKRANGE ->
+            <<16#13a:16/little,Value:16/little>>;
+
+        ?SP_ASPD ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+
+        _ ->
+            <<16#be:16/little, Stat:16/little, Value:8/little>>
+    end;
+
 pack(status_change, {Stat, Value, Bonus}) ->
     <<16#141:16/little, Stat:32/little, Value:32/little, Bonus:32/little>>;
 % 043f
@@ -491,33 +530,48 @@ pack(equipment, EquipmentLs) ->
 
 
 
-%% inventorylistequipType = 0x2d0,
-
-%% 16+16+8+8+16+16+8+8+32+16+16+
-%% int16 index;
-%% uint16 ITID;
-%% uint8 type;
-%% uint8 IsIdentified;
-%% uint16 location;
-%% uint16 WearState;
-%% uint8 IsDamaged;
-%% uint8 RefiningLevel;
-%% struct EQUIPSLOTINFO slot;
-%% int32 HireExpireDate;
-%% uint16 bindOnEquipType;
-%% uint16 wItemSpriteNumber;
+%% inventorylistequipType = 0xa0d,
+%% EQUIPITEM_INFO
 
 pack(inventory_equip, Inventory) ->
-    [<<16#2d0:16/little,
+    [<<16#a0d:16/little,
        (28 * length(Inventory) + 4):16/little>>,
      [<<(I#world_item.slot):16/little,
         (I#world_item.item):16/little,
         (I#world_item.type):8,
-        1:8, % identified
+        %% 1:8, % identified
+        1:16/little, %% count
         (get_equip_for(I#world_item.item)):16/little, % location
-        0:16/little, % WearState(?)
-        0:8/little, % isdamaged
-        0:8/little, % refining level
+        0:32/little, % WearState(?)
+
+        %% 0:8/little, % isdamaged
+        %% 0:8/little, % refining level
+
+        %% also called EQUIPSLOTINFO
+        0:16/little, % TODO: card 1
+        0:16/little, % TODO: card 2
+        0:16/little, % TODO: card 3
+        0:16/little, % TODO: card 4
+
+        0:32/little, % hireexpiredate
+
+        %% 0:16/little, % bindonequiptype
+        %% 0:16/little>> % wItemSpriteNumber
+
+        1:8,  %% IsIdentified
+        1:8,  %% PlaceETCTab
+        6:8>> %% SpareBits
+          || I <- Inventory]];
+
+%% also called NORMALITEM_INFO
+pack(inventory, Inventory) ->
+    [<<16#991:16/little,
+       (26 * length(Inventory) + 4):16/little>>,
+     [<<(I#world_item.slot):16/little,
+        (I#world_item.item):16/little,
+        (I#world_item.type):8,
+        1:16/little, %% count
+        0:32/little, % WearState(?)
 
         0:16/little, % TODO: card 1
         0:16/little, % TODO: card 2
@@ -525,24 +579,13 @@ pack(inventory_equip, Inventory) ->
         0:16/little, % TODO: card 4
 
         0:32/little, % hireexpiredate
-        0:16/little, % bindonequiptype
-        0:16/little>> % wItemSpriteNumber
-          || I <- Inventory]];
 
-pack(inventory, Inventory) ->
-    [<<16#2e8:16/little,
-       (22 * length(Inventory) + 4):16/little>>,
-     [<<(I#world_item.slot):16/little,
-        (I#world_item.item):16/little,
-        (I#world_item.type):8,
-        1:8, % TODO: identified
-        (I#world_item.amount):16/little,
-        0:16/little, % TODO: WearState(?)
-        0:16/little, % TODO: card 1
-        0:16/little, % TODO: card 2
-        0:16/little, % TODO: card 3
-        0:16/little, % TODO: card 4
-        0:32/little>> % expiration
+        %% 0:16/little, % bindonequiptype
+        %% 0:16/little>> % wItemSpriteNumber
+
+        1:8,  %% IsIdentified
+        1:8,  %% PlaceETCTab
+        6:8>> %% SpareBits
           || I <- Inventory]];
 pack(give_item,
      {Index,

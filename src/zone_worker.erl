@@ -50,6 +50,25 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             send(State, {account_id, AccountID}),
             send(State, {accept, {zone_master:tick(),
                                   {Char#char.x, Char#char.y, 0}}}),
+
+            send(State, {status_change_basic, {?SP_BASELEVEL, 10}}),
+            send(State, {status_change_basic, {?SP_BASEEXP, 50}}),
+            send(State, {status_change_basic, {?SP_NEXTBASEEXP, 110}}),
+            send(State, {status_change_basic, {?SP_JOBEXP, 10}}),
+            send(State, {status_change_basic, {?SP_NEXTJOBEXP, 11}}),
+            send(State, {status_change_basic, {?SP_SKILLPOINT, 20}}),
+
+            send(State, {status, Char}),
+
+            send(State, {status_change_basic, {?SP_STR, 10}}),
+            send(State, {status_change_basic, {?SP_AGI, 10}}),
+            send(State, {status_change_basic, {?SP_VIT, 10}}),
+            send(State, {status_change_basic, {?SP_INT, 10}}),
+            send(State, {status_change_basic, {?SP_DEX, 10}}),
+            send(State, {status_change_basic, {?SP_LUK, 10}}),
+            send(State, {status_change_basic, {?SP_ATTACKRANGE, 10}}),
+            send(State, {status_change_basic, {?SP_ASPD, 10}}),
+
             Items = case db:get_player_items(Char#char.id) of
                         [] ->
                             [];
@@ -72,7 +91,7 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
             %%          , {136, 1, 9, 1, 0, "TF_SONIC_BLOW", 1}],
             Skills = [],
             send(State, {skill_list, Skills}),
-            say("Welcome to Aliter.", State),
+            say("Welcome to Aliter!!", State),
             NewState = State#zone_state{map = Map,
                                         map_server = MapServer,
                                         account = C#char_state.account,
@@ -82,7 +101,7 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                                         packet_ver = C#char_state.packet_ver,
                                         char_worker = Worker},
             %% client needs some time before receiving objects on ground
-            timer:sleep(1000),
+            %% timer:sleep(1000),
             lists:foreach(
               fun(Item) ->
                       send(State, {item_on_ground, {Item#world_item.obj_id,
@@ -848,7 +867,7 @@ show_actors(#zone_state{map_server = MapServer,
                         account = A
                        } = State) ->
     send(State, {status, C}), %% Send stats to client
-    send(State, {status, C}),
+    %% send(State, {status, C}),
     send(State, {param_change, {?SP_MAX_HP, MaxHp}}),
     send(State, {param_change, {?SP_CUR_HP, Hp}}),
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),

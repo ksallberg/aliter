@@ -27,6 +27,23 @@
 -define(SP_MAX_SP,            8).
 -define(SP_ZENY,              20).
 
+-define(SP_STR,               13).
+-define(SP_AGI,               14).
+-define(SP_VIT,               15).
+-define(SP_INT,               16).
+-define(SP_DEX,               17).
+-define(SP_LUK,               18).
+-define(SP_ATTACKRANGE,       1000).
+-define(SP_ASPD,              53).
+
+-define(SP_BASEEXP,           1).
+-define(SP_NEXTBASEEXP,       22).
+-define(SP_JOBEXP,            2).
+-define(SP_NEXTJOBEXP,        23).
+-define(SP_SKILLPOINT,        12).
+-define(SP_BASELEVEL,         11).
+-define(SP_JOBLEVEL,          55).
+
 -define(BDT_NORMAL,           0).
 -define(BDT_ENDURE,           4).
 -define(BDT_SPLASH,           5).
