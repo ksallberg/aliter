@@ -82,7 +82,12 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                             ItemsX
                     end,
             ?liof("ITem: ~p~n", [Items]),
-            send(State, {inventory, Items}),
+            case PacketVer of
+                20180418 ->
+                    send(State, {inventory, Items});
+                _ ->
+                    send(State, {inventory_equip, Items})
+            end,
             WorldItems = db:get_world_items(Char#char.map),
             case Char#char.guild_id of
                 0 ->
