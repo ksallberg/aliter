@@ -74,17 +74,33 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                 _ ->
                     skip
             end,
-
             Items = case db:get_player_items(Char#char.id) of
                         [] ->
                             [];
                         [#inventory{items=ItemsX}] ->
                             ItemsX
                     end,
-            ?liof("ITem: ~p~n", [Items]),
+
             case PacketVer of
                 20180418 ->
-                    send(State, {inventory, Items});
+                    {EquipItems, NonEquipItems} =
+                        lists:partition(fun aliter:is_equip/1, Items),
+
+                    ?liof("eq ITem: ~p~n", [EquipItems]),
+                    ?liof("non eq ITem: ~p~n", [NonEquipItems]),
+
+                    case NonEquipItems of
+                        [] ->
+                            skip;
+                        _ ->
+                            send(State, {inventory, NonEquipItems})
+                    end,
+                    case EquipItems of
+                        [] ->
+                            skip;
+                        _ ->
+                            send(State, {inventory_equip, EquipItems})
+                    end;
                 _ ->
                     send(State, {inventory_equip, Items})
             end,
@@ -879,7 +895,14 @@ show_actors(#zone_state{map_server = MapServer,
                         account = A
                        } = State) ->
     send(State, {status, C}), %% Send stats to client
-    %% send(State, {status, C}),
+    %% hack for browserRo: TODO, check if really needed to send 2 times
+    PacketVer = aliter:get_config(packet_version, ?PACKETVER),
+    case PacketVer of
+        20180418 ->
+            skip;
+        _ ->
+            send(State, {status, C})
+    end,
     send(State, {param_change, {?SP_MAX_HP, MaxHp}}),
     send(State, {param_change, {?SP_CUR_HP, Hp}}),
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),

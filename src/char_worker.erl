@@ -116,13 +116,15 @@ handle_cast({choose, Num},
 handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
              Luk, Num, HairColour, HairStyle}, State) ->
     handle_create({create, Name, Str, Agi, Vit, Int, Dex,
-                   Luk, Num, HairColour, HairStyle, undefined}, State),
+                   Luk, Num, HairColour, HairStyle,
+                   undefined, undefined}, State),
     {noreply, State};
 handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
-             Luk, Num, HairColour, HairStyle, StartingJobClass},
+             Luk, Num, HairColour, HairStyle, StartingJobClass, Sex},
            State) ->
     handle_create({create, Name, Str, Agi, Vit, Int, Dex,
-                   Luk, Num, HairColour, HairStyle, StartingJobClass}, State),
+                   Luk, Num, HairColour, HairStyle,
+                   StartingJobClass, Sex}, State),
     {noreply, State};
 handle_cast({delete, CharacterID, EMail},
             State = #char_state{
@@ -238,7 +240,7 @@ terminate(_Reason, _State) ->
     ok.
 
 handle_create({create, Name, Str, Agi, Vit, Int, Dex,
-               Luk, Num, HairColour, HairStyle, StartingJobClass},
+               Luk, Num, HairColour, HairStyle, StartingJobClass, _Sex},
               #char_state{account = Account,
                           packet_handler = PacketHandler,
                           tcp = Socket}) ->

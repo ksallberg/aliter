@@ -30,7 +30,8 @@ unpack(<<16#a39:16/little,
          HairColor:16/little,
          HairStyle:16/little,
          StartingJobClass:16/little,
-         _Unknown:16/little>>) ->
+         _Unknown:16/little,
+         Sex:8/little>>) ->
     { create,
       string:strip(binary_to_list(Name), both, 0),
       1, %% str
@@ -42,7 +43,8 @@ unpack(<<16#a39:16/little,
       Slot, %% num
       HairColor,
       HairStyle,
-      StartingJobClass
+      StartingJobClass,
+      Sex
     };
 
 unpack(<<16#68:16/little,

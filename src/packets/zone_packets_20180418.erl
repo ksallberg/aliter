@@ -11,6 +11,7 @@
         , packet_size/1 ]).
 
 -define(WALKSPEED, 150).
+-define(MAX_ITEM_OPTIONS, 5).
 
 packet_size(X) ->
     packets:packet_size(X).
@@ -541,58 +542,65 @@ pack(equipment, EquipmentLs) ->
 
 pack(inventory_equip, Inventory) ->
     [<<16#a0d:16/little,
-       (28 * length(Inventory) + 4):16/little>>,
-     [<<(I#world_item.slot):16/little,
-        (I#world_item.item):16/little,
-        (I#world_item.type):8,
-        %% 1:8, % identified
-        1:16/little, %% count
-        (get_equip_for(I#world_item.item)):16/little, % location
-        0:32/little, % WearState(?)
-
-        %% 0:8/little, % isdamaged
-        %% 0:8/little, % refining level
-
-        %% also called EQUIPSLOTINFO
-        0:16/little, % TODO: card 1
-        0:16/little, % TODO: card 2
-        0:16/little, % TODO: card 3
-        0:16/little, % TODO: card 4
-
-        0:32/little, % hireexpiredate
-
-        %% 0:16/little, % bindonequiptype
-        %% 0:16/little>> % wItemSpriteNumber
-
-        1:8,  %% IsIdentified
-        1:8,  %% PlaceETCTab
-        6:8>> %% SpareBits
-          || I <- Inventory]];
+       (57 * length(Inventory) + 4):16/little>>,
+     [[<<(I#world_item.slot):16/little,
+         (I#world_item.item):16/little,
+         (I#world_item.type):8,
+         (get_equip_for(I#world_item.item)):32/little, % location
+         0:32/little, % WearState(?)
+         0:8/little, % refining level
+         %% also called EQUIPSLOTINFO
+         0:16/little, % TODO: card 1
+         0:16/little, % TODO: card 2
+         0:16/little, % TODO: card 3
+         0:16/little, % TODO: card 4
+         0:32/little, % hireexpiredate
+         0:16/little, % bindonequiptype
+         0:16/little, % wItemSpriteNumber
+         0:8>>, %% option_count
+       %% struct ItemOptions {
+       %%   int16 index;
+       %%   int16 value;
+       %%   uint8 param;
+       %% } __attribute__((packed));
+       <<0:16/little,
+         0:16/little,
+         0:8>>,
+       <<0:16/little,
+         0:16/little,
+         0:8>>,
+       <<0:16/little,
+         0:16/little,
+         0:8>>,
+       <<0:16/little,
+         0:16/little,
+         0:8>>,
+       <<0:16/little,
+         0:16/little,
+         0:8>>,
+       %% IsIdentified, IsDamaged, PlaceETCTab,SpareBits
+       %% In C, this is a Bit Field struct:
+       <<1:8>>]
+      || I <- Inventory]];
 
 %% also called NORMALITEM_INFO
 pack(inventory, Inventory) ->
     [<<16#991:16/little,
-       (26 * length(Inventory) + 4):16/little>>,
+       (24 * length(Inventory) + 4):16/little>>,
      [<<(I#world_item.slot):16/little,
         (I#world_item.item):16/little,
         (I#world_item.type):8,
         1:16/little, %% count
         0:32/little, % WearState(?)
-
         0:16/little, % TODO: card 1
         0:16/little, % TODO: card 2
         0:16/little, % TODO: card 3
         0:16/little, % TODO: card 4
-
         0:32/little, % hireexpiredate
-
-        %% 0:16/little, % bindonequiptype
-        %% 0:16/little>> % wItemSpriteNumber
-
-        1:8,  %% IsIdentified
-        1:8,  %% PlaceETCTab
-        0:8>> %% SpareBits
+        1:8>> %% IsIdentified, PlaceETCTab, SpareBits,
+              %% In C, this is a Bit Field struct
           || I <- Inventory]];
+
 pack(give_item,
      {Index,
       Amount,
@@ -793,5 +801,6 @@ get_equip_for(ItemID) ->
         nil ->
             0;
         #item_data{equip_locations=EquipLocation} ->
+            io:format("EquipLocation: ~p~n", [EquipLocation]),
             EquipLocation
     end.
