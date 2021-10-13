@@ -92,13 +92,11 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                         _ ->
                             send(State, {inventory, NonEquipItems})
                     end,
-                    case EquipItems of
+                    case EquipItems ++ Char#char.equips of
                         [] ->
                             skip;
-                        _ ->
-                            EquippedItems = Char#char.equips,
-                            send(State, {equipment,
-                                         EquipItems ++ EquippedItems})
+                        Equips ->
+                            send(State, {equipment, Equips})
                     end;
                 _ ->
                     send(State, {inventory_equip, Items})
