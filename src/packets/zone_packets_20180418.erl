@@ -33,7 +33,7 @@ unpack(<<16#0436:16/little,
     {connect, AccountID, CharacterID, LoginIDa, Gender};
 
 %% sitting, standing:
-unpack(<<16#08aa:16/little,
+unpack(<<16#437:16/little,
          Target:32/little,
          Action:8>>) ->
     {action_request, Target, Action};
@@ -593,29 +593,28 @@ pack(sprite,
       CharID:32/little,
       Type:8/little,
       Value:32/little>>;
-pack(monster, {SpriteID, X, Y, AID, _AID}) ->
+pack(monster, {SpriteID, X, Y, MonsterID}) ->
     <<X2, Y2, D>> = encode_position(X, Y, 0),
     iolist_to_binary([<<16#9fe:16/little, %% PacketType
-                        2:16/little, %% PacketLength
+                        103:16/little, %% PacketLength
                         5:8/little, %% objecttype
-                        AID:32/little, %% AID
-                        SpriteID:32/little, %% GID
+                        MonsterID:32/little, %% AID
+                        MonsterID:32/little, %% GID
                         0:16/little, %% speed
                         0:16/little, %% bodyState
                         0:16/little, %% healthState
                         0:32/little, %% effectState
-                        0:16/little, %% job
+                        SpriteID:16/little, %% job
                         0:16/little, %% head
                         0:32/little, %% weapon
                         0:16/little, %% accessory
-                        %% 0:16/little, %% shield
                         0:16/little, %% accessory2
                         0:16/little, %% accessory3
                         0:16/little, %% headpalette
                         0:16/little, %% bodypalette
                         0:16/little, %% headDir
                         0:16/little, %% robe
-                        0:32/little, %% GUID <-
+                        0:32/little, %% GUID <- guild id
                         0:16/little, %% GEmblemVer
                         0:16/little, %% honor
                         0:32/little, %% virtue
@@ -628,8 +627,8 @@ pack(monster, {SpriteID, X, Y, AID, _AID}) ->
                         0:16/little, %% font
                         100:32/little, %% maxHP
                         90:32/little, %% HP
-                        1:32/little, %% isBoss
-                        0:16/little>>, %% body
+                        0:8/little, %% isBoss
+                        13:16/little>>, %% body
                       pad_to("bobby", 24)]);
 pack(attack, {Caller, Callee, Time, SrcSpeed, DstSpeed, %% ZC_NOTIFY_ACT2
               Damage, IsSPDamage, Div, Damage2, Type}) ->

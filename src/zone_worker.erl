@@ -86,9 +86,6 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                     {EquipItems, NonEquipItems} =
                         lists:partition(fun aliter:is_equip/1, Items),
 
-                    ?liof("eq ITem: ~p~n", [EquipItems]),
-                    ?liof("non eq ITem: ~p~n", [NonEquipItems]),
-
                     case NonEquipItems of
                         [] ->
                             skip;
@@ -520,7 +517,15 @@ handle_cast({request_name, ActorID},
                         "Unknown"
                 end
         end,
-    send(State, Name),
+    case Name of
+        %% Weird bug(?) in client of packetver 20180418?
+        %% Sometimes the client asks for some non existing
+        %% ActorID
+        "Unknown" ->
+            skip;
+        _ ->
+            send(State, Name)
+    end,
     {noreply, State};
 handle_cast(player_count, State) ->
     Num = gen_server:call(zone_master, player_count),
@@ -670,7 +675,7 @@ handle_cast({monster, SpriteID, X0, Y0},
                main=0},
     Srv = zone_map:server_for(Map),
     gen_server:cast(Srv, {register_mob, NPC}),
-    send(State, {monster, {SpriteID, X, Y, MonsterID, MonsterID}}),
+    send(State, {monster, {SpriteID, X, Y, MonsterID}}),
     Msg = {send_to_other_players_in_sight, {X, Y},
            AID,
            monster,
