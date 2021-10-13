@@ -99,7 +99,9 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                         [] ->
                             skip;
                         _ ->
-                            send(State, {inventory_equip, EquipItems})
+                            EquippedItems = Char#char.equips,
+                            send(State, {equipment,
+                                         EquipItems ++ EquippedItems})
                     end;
                 _ ->
                     send(State, {inventory_equip, Items})
@@ -356,8 +358,10 @@ handle_cast({wear_equip, Index, Position},
                       hire_expire_date = 0,
                       bind_on_equip_type = 0,
                       sprite_number = 0},
-    send(State, {equipment, [NewEquip]}),
     NewChar = db:save_equips_ext(Char, NewEquip),
+    db:remove_player_item(CharId, Index),
+    [#inventory{items=ItemsAfterRemove}] = db:get_player_items(CharId),
+    send(State, {equipment, [NewEquip|ItemsAfterRemove]}),
     NewChar1 = case Position of
                    256 ->
                        ItemData = db:get_item_data(ItemID),
@@ -888,8 +892,10 @@ walk_interval(N) ->
     timer:apply_interval(Interval, gen_server, cast, [self(), step]).
 
 show_actors(#zone_state{map_server = MapServer,
-                        char = #char{hp=Hp, max_hp=MaxHp,
-                                     sp=Sp, max_sp=MaxSp,
+                        char = #char{hp=Hp,
+                                     max_hp=MaxHp,
+                                     sp=Sp,
+                                     max_sp=MaxSp,
                                      equips=Equips
                                     } = C,
                         account = A
@@ -907,7 +913,12 @@ show_actors(#zone_state{map_server = MapServer,
     send(State, {param_change, {?SP_CUR_HP, Hp}}),
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
     send(State, {param_change, {?SP_CUR_SP, Sp}}),
-    send(State, {equipment, Equips}),
+    case PacketVer of
+        20180418 ->
+            skip;
+        _ ->
+            send(State, {equipment, Equips})
+    end,
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),
     gen_server:cast(MapServer,

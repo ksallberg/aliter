@@ -98,9 +98,9 @@ unpack(<<16#02c4:16/little,
          SkillID:16/little,
          Target:32/little>>) ->
     {use_skill, SkillLvl, SkillID, Target};
-unpack(<<16#0a9:16/little,
+unpack(<<16#998:16/little,
          Index:16/little,
-         Position:16/little>>) ->
+         Position:32/little>>) ->
     {wear_equip, Index, Position};
 unpack(<<16#0ab:16/little,
          Index:16/little>>) ->
@@ -496,92 +496,13 @@ pack(hotkeys, _Hotkeys) ->
      list_to_binary(lists:duplicate(189, 0))];
 pack(party_invite_state, State) ->
     <<16#2c9:16/little, State:8>>;
-pack(equipment, EquipmentLs) ->
-    MapF = fun(#equip{index = Index,
-                      id = ID,
-                      type = Type,
-                      identified = Identified,
-                      location = Location,
-                      wearstate = WearState,
-                      is_damaged = IsDamaged,
-                      refining_level = RefiningLevel,
-                      card1 = Card1,
-                      card2 = Card2,
-                      card3 = Card3,
-                      card4 = Card4,
-                      hire_expire_date = HireExpireDate,
-                      bind_on_equip_type = BindOnEquipType,
-                      sprite_number = SpriteNumber}) ->
-                   <<Index:16/little,
-                     ID:16/little,
-                     Type:8,
-                     Identified:8,
-                     Location:16/little,
-                     WearState:16/little,
-                     IsDamaged:8/little,
-                     RefiningLevel:8/little,
-                     Card1:16/little,
-                     Card2:16/little,
-                     Card3:16/little,
-                     Card4:16/little,
-                     HireExpireDate:32/little,
-                     BindOnEquipType:16/little,
-                     SpriteNumber:16/little>>
-           end,
-    L  = (16 + 16 + 8 + 8 + 16 + 16 + 8 + 8
-          + 16 + 16 + 16 + 16 + 32 + 16 + 16) div 8,
-    Res = [<<16#2d0:16/little,
-             (L * length(EquipmentLs) + 4):16/little>>,
-           lists:map(MapF, EquipmentLs)],
-    Res;
-
-
 
 %% inventorylistequipType = 0xa0d,
 %% EQUIPITEM_INFO
-
-pack(inventory_equip, Inventory) ->
+pack(equipment, EquipmentLs) ->
     [<<16#a0d:16/little,
-       (57 * length(Inventory) + 4):16/little>>,
-     [[<<(I#world_item.slot):16/little,
-         (I#world_item.item):16/little,
-         (I#world_item.type):8,
-         (get_equip_for(I#world_item.item)):32/little, % location
-         0:32/little, % WearState(?)
-         0:8/little, % refining level
-         %% also called EQUIPSLOTINFO
-         0:16/little, % TODO: card 1
-         0:16/little, % TODO: card 2
-         0:16/little, % TODO: card 3
-         0:16/little, % TODO: card 4
-         0:32/little, % hireexpiredate
-         0:16/little, % bindonequiptype
-         0:16/little, % wItemSpriteNumber
-         0:8>>, %% option_count
-       %% struct ItemOptions {
-       %%   int16 index;
-       %%   int16 value;
-       %%   uint8 param;
-       %% } __attribute__((packed));
-       <<0:16/little,
-         0:16/little,
-         0:8>>,
-       <<0:16/little,
-         0:16/little,
-         0:8>>,
-       <<0:16/little,
-         0:16/little,
-         0:8>>,
-       <<0:16/little,
-         0:16/little,
-         0:8>>,
-       <<0:16/little,
-         0:16/little,
-         0:8>>,
-       %% IsIdentified, IsDamaged, PlaceETCTab,SpareBits
-       %% In C, this is a Bit Field struct:
-       <<1:8>>]
-      || I <- Inventory]];
+       (57 * length(EquipmentLs) + 4):16/little>>,
+     lists:map(fun encode_equipment/1, EquipmentLs)];
 
 %% also called NORMALITEM_INFO
 pack(inventory, Inventory) ->
@@ -804,3 +725,98 @@ get_equip_for(ItemID) ->
             io:format("EquipLocation: ~p~n", [EquipLocation]),
             EquipLocation
     end.
+
+encode_equipment(#equip{index = Index,
+                        id = ID,
+                        type = Type,
+                        %% identified = Identified,
+                        location = Location,
+                        wearstate = WearState,
+                        %% is_damaged = IsDamaged,
+                        refining_level = RefiningLevel,
+                        card1 = Card1,
+                        card2 = Card2,
+                        card3 = Card3,
+                        card4 = Card4,
+                        hire_expire_date = HireExpireDate,
+                        bind_on_equip_type = BindOnEquipType,
+                        sprite_number = SpriteNumber}) ->
+    [<<Index:16/little,
+       ID:16/little,
+       Type:8,
+       Location:32/little, % location
+       WearState:32/little, % WearState(?)
+       RefiningLevel:8/little, % refining level
+       %% also called EQUIPSLOTINFO
+       Card1:16/little, % TODO: card 1
+       Card2:16/little, % TODO: card 2
+       Card3:16/little, % TODO: card 3
+       Card4:16/little, % TODO: card 4
+       HireExpireDate:32/little, % hireexpiredate
+       BindOnEquipType:16/little, % bindonequiptype
+       SpriteNumber:16/little, % wItemSpriteNumber
+       0:8>>, %% option_count
+     %% struct ItemOptions {
+     %%   int16 index;
+     %%   int16 value;
+     %%   uint8 param;
+     %% } __attribute__((packed));
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     %% IsIdentified, IsDamaged, PlaceETCTab,SpareBits
+     %% In C, this is a Bit Field struct:
+     <<1:8>>];
+encode_equipment(#world_item{slot=Index,
+                             item=ItemID,
+                             type=Type}) ->
+    [<<Index:16/little,
+       ItemID:16/little,
+       Type:8,
+       (get_equip_for(ItemID)):32/little, % location
+       0:32/little, % WearState(?)
+       0:8/little, % refining level
+       %% also called EQUIPSLOTINFO
+       0:16/little, % TODO: card 1
+       0:16/little, % TODO: card 2
+       0:16/little, % TODO: card 3
+       0:16/little, % TODO: card 4
+       0:32/little, % hireexpiredate
+       0:16/little, % bindonequiptype
+       0:16/little, % wItemSpriteNumber
+       0:8>>, %% option_count
+     %% struct ItemOptions {
+     %%   int16 index;
+     %%   int16 value;
+     %%   uint8 param;
+     %% } __attribute__((packed));
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     %% IsIdentified, IsDamaged, PlaceETCTab,SpareBits
+     %% In C, this is a Bit Field struct:
+     <<1:8>>].
