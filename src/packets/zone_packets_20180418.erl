@@ -93,7 +93,7 @@ unpack(<<16#0165:16/little,
     {create_guild, CharId, GName};
 unpack(<<16#0118:16/little>>) ->
     cease_attack;
-unpack(<<16#02c4:16/little,
+unpack(<<16#438:16/little,
          SkillLvl:16/little,
          SkillID:16/little,
          Target:32/little>>) ->
@@ -114,6 +114,9 @@ unpack(<<16#815:16/little,
     {pick_up, ObjectID};
 unpack(<<16#8c9:16/little>>) ->
     pCashShopSchedule;
+%% from guild box
+unpack(<<16#369:16/little, CharID:32/little>>) ->
+    {request_name, CharID};
 unpack(Unknown) ->
     lager:log(warning, self(), "hmm zone packets Got unknown data ~p",
               [Unknown]),
@@ -664,6 +667,22 @@ pack(notify_skill, {SkillID, CasterID, TargetID, Tick,
       SrcDelay:32/little,
       TargetDelay:32/little,
       Dmg:32/little,
+      Level:16/little,
+      Div:16/little,
+      Type:8/little>>;
+pack(notify_skill_ground,
+     {SkillID, CasterID, TargetID, Tick,
+      SrcDelay, TargetDelay, X, Y, Dmg, Level, Div, Type}) ->
+    <<16#115:16/little,
+      SkillID:16/little,
+      CasterID:32/little,
+      TargetID:32/little,
+      Tick:32/little,
+      SrcDelay:32/little,
+      TargetDelay:32/little,
+      X:16/little,
+      Y:16/little,
+      Dmg:16/little,
       Level:16/little,
       Div:16/little,
       Type:8/little>>;

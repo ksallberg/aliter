@@ -74,33 +74,7 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                 _ ->
                     skip
             end,
-            Items = case db:get_player_items(Char#char.id) of
-                        [] ->
-                            [];
-                        [#inventory{items=ItemsX}] ->
-                            ItemsX
-                    end,
-
-            case PacketVer of
-                20180418 ->
-                    {EquipItems, NonEquipItems} =
-                        lists:partition(fun aliter:is_equip/1, Items),
-
-                    case NonEquipItems of
-                        [] ->
-                            skip;
-                        _ ->
-                            send(State, {inventory, NonEquipItems})
-                    end,
-                    case EquipItems ++ Char#char.equips of
-                        [] ->
-                            skip;
-                        Equips ->
-                            send(State, {equipment, Equips})
-                    end;
-                _ ->
-                    send(State, {inventory_equip, Items})
-            end,
+            send_inventory(State, Char),
             WorldItems = db:get_world_items(Char#char.map),
             case Char#char.guild_id of
                 0 ->
@@ -110,11 +84,12 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                     Guild = db:get_guild(GuildID),
                     send(State, {update_gd_id, Guild})
             end,
-            %% Skills = [ {50,  0, 9, 1, 0, "TF_STEAL", 1}
-            %%          , {28,  1, 9, 1, 0, "TF_HEAL", 1}
-            %%          , {394, 1, 9, 1, 0, "TF_ARROW_VULCAN", 1}
-            %%          , {136, 1, 9, 1, 0, "TF_SONIC_BLOW", 1}],
-            Skills = [],
+            Skills = [ {50,  0, 9, 1, 0, "TF_STEAL", 1}
+                     , {28,  1, 9, 1, 0, "TF_HEAL", 1}
+                     , {394, 1, 9, 1, 0, "TF_ARROW_VULCAN", 1}
+                     , {136, 1, 9, 1, 0, "TF_SONIC_BLOW", 1}
+                     , {83,  1, 9, 1, 0, "WZ_METEOR", 1}
+                     , {85,  1, 9, 1, 0, "WZ_VERMILION", 1}],
             send(State, {skill_list, Skills}),
             say("Welcome to Aliter.", State),
             NewState = State#zone_state{map = Map,
@@ -126,7 +101,12 @@ handle_cast({connect, AccountID, CharacterID, SessionIDa, _Gender}, State) ->
                                         packet_ver = C#char_state.packet_ver,
                                         char_worker = Worker},
             %% client needs some time before receiving objects on ground
-            %% timer:sleep(1000),
+            case PacketVer of
+                20180418 ->
+                    skip;
+                _ ->
+                    timer:sleep(1000)
+            end,
             lists:foreach(
               fun(Item) ->
                       send(State, {item_on_ground, {Item#world_item.obj_id,
@@ -256,12 +236,67 @@ handle_cast({re_attack, Target, 7},
             {noreply, State#zone_state{attack_timer=undefined}}
     end;
 
+handle_cast({use_skill, SkillLvl, SkillID, TargetID},
+            State = #zone_state{map_server=MapServer,
+                                account=#account{id=AID},
+                                char=#char{x=X, y=Y}})
+  when SkillID == 83 orelse
+       SkillID == 85 ->
+    Dmg = case SkillID of
+              83  -> 25000;
+              85  -> 5000
+          end,
+    ActorRes = gen_server:call(MapServer, {get_actor, TargetID}),
+    {PlayerOrMob, _} = ActorRes,
+    Worker = get_actor_worker(ActorRes),
+    {ok, NewHp} = gen_server:call(Worker, {dec_hp, Dmg}),
+    SrcDelay = 10,
+    TargetDelay = 10,
+    Div = 10,
+
+    %% types:
+    %% BDT_NORMAL      = 0,  // Normal attack
+    %% BDT_SITDOWN     = 2,  // Sit down
+    %% BDT_STANDUP     = 3,  // Stand up
+    %% BDT_ENDURE      = 4,  // Damage (endure)
+    %% BDT_SPLASH      = 5,  // Splash
+    %% BDT_SKILL       = 6,  // Skill
+    %% BDT_MULTIHIT    = 8,  // Multi-hit damage
+    %% BDT_MULTIENDURE = 9,  // Multi-hit damage (endure)
+    %% BDT_CRIT        = 10, // Critical hit
+    %% BDT_PDODGE      = 11, // Lucky dodge
+
+    Type = 8,
+    Msg = {SkillID, AID, TargetID, zone_master:tick(),
+           SrcDelay, TargetDelay, X, Y, Dmg, SkillLvl, Div, Type},
+    Msg2 = {TargetID, ?VANISH_DIED},
+    send(State, {notify_skill_ground, Msg}),
+    gen_server:cast(MapServer,
+                    {send_to_players_in_sight, {X, Y},
+                     notify_skill_ground, Msg}),
+    case NewHp of
+        0 when PlayerOrMob == player ->
+            send(State, {vanish, Msg2}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2});
+        0 when PlayerOrMob == mob ->
+            {_, Mob} = ActorRes,
+            gen_server:cast(MapServer, {remove_mob, Mob}),
+            gen_server:cast(Worker, exit),
+            send(State, {vanish, Msg2}),
+            gen_server:cast(MapServer,
+                            {send_to_players_in_sight, {X, Y}, vanish, Msg2});
+        _ ->
+            ok
+    end,
+    {noreply, State};
 %% Sonic blow = 136, Arrow vulcan == 394
 handle_cast({use_skill, SkillLvl, SkillID, TargetID},
             State = #zone_state{map_server=MapServer,
                                 account=#account{id=AID},
                                 char=#char{x=X, y=Y}})
-  when SkillID == 136 orelse SkillID == 394 ->
+  when SkillID == 136 orelse
+       SkillID == 394 ->
     Dmg = case SkillID of
               136 -> 1000;
               394 -> 50000
@@ -270,10 +305,23 @@ handle_cast({use_skill, SkillLvl, SkillID, TargetID},
     {PlayerOrMob, _} = ActorRes,
     Worker = get_actor_worker(ActorRes),
     {ok, NewHp} = gen_server:call(Worker, {dec_hp, Dmg}),
-    SrcDelay = 0,
-    TargetDelay = 0,
+    SrcDelay = 10,
+    TargetDelay = 10,
     Div = 10,
-    Type = 1,
+
+    %% types:
+    %% BDT_NORMAL      = 0,  // Normal attack
+    %% BDT_SITDOWN     = 2,  // Sit down
+    %% BDT_STANDUP     = 3,  // Stand up
+    %% BDT_ENDURE      = 4,  // Damage (endure)
+    %% BDT_SPLASH      = 5,  // Splash
+    %% BDT_SKILL       = 6,  // Skill
+    %% BDT_MULTIHIT    = 8,  // Multi-hit damage
+    %% BDT_MULTIENDURE = 9,  // Multi-hit damage (endure)
+    %% BDT_CRIT        = 10, // Critical hit
+    %% BDT_PDODGE      = 11, // Lucky dodge
+
+    Type = 8,
     Msg = {SkillID, AID, TargetID, zone_master:tick(),
            SrcDelay, TargetDelay, Dmg, SkillLvl, Div, Type},
     Msg2 = {TargetID, ?VANISH_DIED},
@@ -743,6 +791,17 @@ handle_cast(request_guild_status,
             send(State, {guild_status, none})
     end,
     {noreply, State};
+
+%% Request for guild window information (CZ_REQ_GUILD_MENU).
+%% 014f <type>.L
+%% type:
+%%     0 = basic info
+%%     1 = member manager
+%%     2 = positions
+%%     3 = skills
+%%     4 = expulsion list
+%%     5 = unknown (GM_ALLGUILDLIST)
+%%     6 = notice
 handle_cast({request_guild_info, 0},
             State = #zone_state{
                        char = #char{guild_id = GuildID}
@@ -758,13 +817,22 @@ handle_cast({request_guild_info, 0},
     {noreply, State};
 handle_cast({request_guild_info, 1},
             State = #zone_state{
-                       char = #char{guild_id = GuildID}
+                       char = #char{guild_id = GuildID, id=CharID}
                       }) when GuildID /= 0 ->
+    ?liof("guild id: ~p ~p ~n", [GuildID, CharID]),
     %% Getmembers will be [] or list with character records
     GetMembers = db:get_guild_members(GuildID),
     send(State, {guild_members, GetMembers}),
     {noreply, State};
 handle_cast({request_guild_info, 2}, State) ->
+    {noreply, State};
+handle_cast({request_guild_info, 3}, State) ->
+    {noreply, State};
+handle_cast({request_guild_info, 4}, State) ->
+    {noreply, State};
+handle_cast({request_guild_info, 5}, State) ->
+    {noreply, State};
+handle_cast({request_guild_info, 6}, State) ->
     {noreply, State};
 handle_cast({less_effect, _IsLess}, State) ->
     {noreply, State};
@@ -898,8 +966,7 @@ show_actors(#zone_state{map_server = MapServer,
                         char = #char{hp=Hp,
                                      max_hp=MaxHp,
                                      sp=Sp,
-                                     max_sp=MaxSp,
-                                     equips=Equips
+                                     max_sp=MaxSp
                                     } = C,
                         account = A
                        } = State) ->
@@ -916,12 +983,7 @@ show_actors(#zone_state{map_server = MapServer,
     send(State, {param_change, {?SP_CUR_HP, Hp}}),
     send(State, {param_change, {?SP_MAX_SP, MaxSp}}),
     send(State, {param_change, {?SP_CUR_SP, Sp}}),
-    case PacketVer of
-        20180418 ->
-            skip;
-        _ ->
-            send(State, {equipment, Equips})
-    end,
+    send_inventory(State, C),
     gen_server:cast(MapServer,
                     {send_to_other_players, C#char.id, change_look, C}),
     gen_server:cast(MapServer,
@@ -1019,3 +1081,32 @@ get_actor_worker({player, Worker}) ->
     Worker;
 get_actor_worker({mob, #npc{monster_srv=Worker}}) ->
     Worker.
+
+send_inventory(State, #char{equips=CharEquips, id=CharId}) ->
+    PacketVer = aliter:get_config(packet_version, ?PACKETVER),
+    Items = case db:get_player_items(CharId) of
+                [] ->
+                    [];
+                [#inventory{items=ItemsX}] ->
+                    ItemsX
+            end,
+    case PacketVer of
+        20180418 ->
+            {EquipItems, NonEquipItems} =
+                lists:partition(fun aliter:is_equip/1, Items),
+
+            case NonEquipItems of
+                [] ->
+                    skip;
+                _ ->
+                    send(State, {inventory, NonEquipItems})
+            end,
+            case EquipItems ++ CharEquips of
+                [] ->
+                    skip;
+                Equips ->
+                    send(State, {equipment, Equips})
+            end;
+        _ ->
+            send(State, {inventory_equip, Items})
+    end.

@@ -246,7 +246,7 @@
    {say, "Such a wonderful place! Superb Bows and skillful Archers!"},
    close]}.
 
-{"Complete", 1373, <<"aldebaran">>,
+{"Complete", 89, <<"aldebaran">>,
   [{50, 50, south}],
   [{say, "[Complete dialogue]"},
    {say, "Press next to continue"},
