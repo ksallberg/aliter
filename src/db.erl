@@ -474,11 +474,11 @@ get_player_item(CharacterID, Slot) ->
         [] ->
             nil;
         [#inventory{items=Items}] ->
-            case length(Items) < Slot of
-                true ->
-                    nil;
+            case lists:keyfind(Slot, #world_item.slot, Items) of
                 false ->
-                    lists:nth(Slot, Items)
+                    nil;
+                ItemFound ->
+                    ItemFound
             end
     end.
 

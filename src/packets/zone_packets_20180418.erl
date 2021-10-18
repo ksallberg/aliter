@@ -105,11 +105,11 @@ unpack(<<16#998:16/little,
 unpack(<<16#0ab:16/little,
          Index:16/little>>) ->
     {unequip, Index};
-unpack(<<16#885:16/little,
+unpack(<<16#363:16/little,
          Index:16/little,
          Amount:16/little>>) ->
     {drop, Index, Amount};
-unpack(<<16#815:16/little,
+unpack(<<16#362:16/little,
          ObjectID:32/little>>) ->
     {pick_up, ObjectID};
 unpack(<<16#8c9:16/little>>) ->
