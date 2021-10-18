@@ -821,7 +821,7 @@ handle_cast({request_guild_info, 0},
     {noreply, State};
 handle_cast({request_guild_info, 1},
             State = #zone_state{
-                       char = #char{guild_id = GuildID, id=CharID}
+                       char = #char{guild_id = GuildID, id=_CharID}
                       }) when GuildID /= 0 ->
     %% Getmembers will be [] or list with character records
     GetMembers = db:get_guild_members(GuildID),
