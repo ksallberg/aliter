@@ -367,9 +367,10 @@ handle_cast(cease_attack, #zone_state{attack_timer=undefined} = State) ->
 handle_cast(cease_attack, #zone_state{attack_timer=TimerRef} = State) ->
     erlang:cancel_timer(TimerRef),
     {noreply, State#zone_state{attack_timer=undefined}};
-handle_cast({unequip, Index}, #zone_state{char=#char{id=CharID}=Ch}=State) ->
+handle_cast({unequip, Index},
+            #zone_state{char=#char{equips=Equips, id=CharID}=Ch}=State) ->
     %% find out what is at the index, then find out the position from there
-    #world_item{item=ItemID} = db:get_player_item(CharID, Index),
+    #equip{id=ItemID} = lists:keyfind(Index, #equip.index, Equips),
     ItemData = db:get_item_data(ItemID),
     case ItemData of
         nil ->
@@ -378,6 +379,11 @@ handle_cast({unequip, Index}, #zone_state{char=#char{id=CharID}=Ch}=State) ->
             ok
     end,
     NewChar = db:delete_equips(Ch, EquipLocation),
+    %% new from 20180418, place the item back in the inventory
+    %% TODO: would be better if #world_item and #equip was
+    %%       merged into just #item, so that it is easier to tranfser
+    %%       between inventory and equip without re-creating it
+    give_item(State, CharID, ItemID, 1),
     send(State, {takeoff, {Index, EquipLocation}}),
     NewChar1 = NewChar#char{view_head_top=0},
     {noreply, State#zone_state{char=NewChar1}};

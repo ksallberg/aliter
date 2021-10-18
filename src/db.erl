@@ -34,7 +34,7 @@
         , get_player_item/2
         , remove_player_item/2 ]).
 
--export([ % get_equips/2,
+-export([ %% get_equips/2,
           save_equips_ext/2
         , delete_equips/2
         ]).
