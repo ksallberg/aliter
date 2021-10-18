@@ -26,6 +26,14 @@ Otherwise it will fallback to the value defined in `ro.hrl`.
 
 See the makefile for how to specify which `aliter config file` to load.
 
+## aliter config file
+
+A format where you can specify some basic config without needing to recompile
+the project.
+
+aliter will look for the `ALITER_CONFIG` environment variable to see if one
+is specified, otherwise it will fall back to values defined in `ro.hrl`.
+
 ## Dependencies
 
 ### Erlang/OTP
@@ -152,6 +160,12 @@ Example of nested 'if-statement':
          "regardless of what you chose."},
    close]}.
 ```
+
+# Testing
+
+A basic [lux](https://github.com/hawk/lux) based test exists,
+use through `make test`. It will spin up a server, and a fake
+client, and make sure parts of the initial communication happens correctly.
 
 # System design
 
