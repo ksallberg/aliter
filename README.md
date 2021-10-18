@@ -43,6 +43,8 @@ see Makefile on how it is done.
 The following [roBrowser](https://www.robrowser.com) config can be used
 to connect to aliter, if aliter is configured to use packet version 20111116.
 
+`ALITER_CONFIG=aliter_robrowser.config make start`
+
 Put this putting it in the applications dir of roBrowser:
 
 ```javascript
