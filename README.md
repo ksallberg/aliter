@@ -22,9 +22,7 @@ together with [roBrowser](https://github.com/vthibault/roBrowser).
 as 20111116. Only tested with windows based renewal client.
 
 Packetver can be configured in a `aliter config file`.
-Otherwise it will fallback to the value defined in `ro.hrl`.
-
-See the makefile for how to specify which `aliter config file` to load.
+Otherwise it will fallback to the value defined in `ro.hrl`. (See below)
 
 ## aliter config file
 
@@ -33,6 +31,9 @@ the project.
 
 aliter will look for the `ALITER_CONFIG` environment variable to see if one
 is specified, otherwise it will fall back to values defined in `ro.hrl`.
+
+example:
+`ALITER_CONFIG=aliter_robrowser.config make start`
 
 ## Dependencies
 
@@ -44,8 +45,8 @@ Also help the Makefile by exporting ERL_TOP to you erlang installation.
 
 ## How to use
 
-`make start`, if you want to use a custom `aliter config file`,
-see Makefile on how it is done.
+`make start`. If you want to use a custom `aliter config file`,
+see `aliter config file` section above on how it is done.
 
 ## roBrowser Client
 The following [roBrowser](https://www.robrowser.com) config can be used
@@ -53,7 +54,7 @@ to connect to aliter, if aliter is configured to use packet version 20111116.
 
 `ALITER_CONFIG=aliter_robrowser.config make start`
 
-Put this putting it in the applications dir of roBrowser:
+Put this in the `applications` dir of roBrowser:
 
 ```javascript
 var ROConfig = {
