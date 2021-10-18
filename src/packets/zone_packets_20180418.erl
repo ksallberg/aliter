@@ -740,7 +740,6 @@ get_equip_for(ItemID) ->
         nil ->
             0;
         #item_data{equip_locations=EquipLocation} ->
-            io:format("EquipLocation: ~p~n", [EquipLocation]),
             EquipLocation
     end.
 

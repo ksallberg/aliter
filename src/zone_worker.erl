@@ -823,7 +823,6 @@ handle_cast({request_guild_info, 1},
             State = #zone_state{
                        char = #char{guild_id = GuildID, id=CharID}
                       }) when GuildID /= 0 ->
-    ?liof("guild id: ~p ~p ~n", [GuildID, CharID]),
     %% Getmembers will be [] or list with character records
     GetMembers = db:get_guild_members(GuildID),
     send(State, {guild_members, GetMembers}),
