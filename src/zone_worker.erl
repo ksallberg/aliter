@@ -606,11 +606,9 @@ handle_cast({speak, Message},
         (hd(Said) == 92) and (length(Said) > 1) -> % GM command
             [Command | Args] = zone_commands:parse(tl(Said)),
             Worker = self(),
-            spawn(
-              fun() ->
-                      zone_commands:execute(Worker, Command, Args, State)
-              end
-             );
+            spawn(fun() ->
+                          zone_commands:execute(Worker, Command, Args, State)
+                  end);
         true ->
             gen_server:cast(MapServer, {send_to_other_players_in_sight, {X, Y},
                                         CharacterID, actor_message,
