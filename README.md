@@ -1,44 +1,49 @@
 # Project Aliter
 
-(NOTE: This is a hard fork of [https://github.com/aliter/aliter/](https://github.com/aliter/aliter))
+(NOTE: This is a hard fork of
+[https://github.com/aliter/aliter/](https://github.com/aliter/aliter))
 
-This is an Erlang/OTP based ragnarok online server.
+A lot has been changed in this version, compared to the repo it forks.
+The server compiles with recent Erlang/OTP versions,
+and has support for some operations in more recent ragnarok packet versions.
+
+This is an Erlang/OTP based ragnarok online toy server, not completely
+implementing the protocol.
+
+For a real working version that compiles on Linux and macOS see
+[Hercules](https://github.com/HerculesWS/Hercules).
 
 ## Packetver
 
-* Note on packetver: Currently only 20111116 is supported, and only partially.
-  It works with roBrowser.
+* 20111116 partially supported. Specifically it works
+together with [roBrowser](https://github.com/vthibault/roBrowser).
 
-* The plan is to partially implement 20180418 for a windows based client.
+* 20180418 partially supported. Similar functionality
+as 20111116. Only tested with windows based renewal client.
+
+Packetver can be configured in a `aliter config file`.
+Otherwise it will fallback to the value defined in `ro.hrl`.
+
+See the makefile for how to specify which `aliter config file` to load.
 
 ## Dependencies
 
-TL;DR: Erlang/OTP (database used to be redis but is
-       now mnesia which is embedded in OTP).
-
 ### Erlang/OTP
-This branch of Aliter has been tested only with Erlang/OTP 20.2.2.
-The main motivation of branching off from the main Aliter branch
-was that it did not build using modern Erlang/OTP versions.
 
-Requirements: Erlang/OTP 20+, rebar3.
+Erlang/OTP 20+, rebar3.
 Also help the Makefile by exporting ERL_TOP to you erlang installation.
 (if not already done) (test echo $ERL_TOP)
 
-#### Lager config
-The main branch of Aliter uses a custom loggin module. I replaced this
-with lager, the config of lager is placed in priv/app.config, and loaded
-to erl command line in the Makefile.
-
 ## How to use
-`make build; make start`
 
-## PACKETVER
-The packetver is configured in include/ro.hrl, currently I use 20111116.
+`make start`, if you want to use a custom `aliter config file`,
+see Makefile on how it is done.
 
-## Client
-I have only tested this with the [roBrowser](https://www.robrowser.com)
-chrome app. The config I use (by putting it in the applications dir) is:
+## roBrowser Client
+The following [roBrowser](https://www.robrowser.com) config can be used
+to connect to aliter, if aliter is configured to use packet version 20111116.
+
+Put this putting it in the applications dir of roBrowser:
 
 ```javascript
 var ROConfig = {
@@ -160,7 +165,6 @@ login_srv, char_srv and all zone_srv's are mostly used for book keeping.
 
 ## Supervisor tree:
 ![alt tag](https://i.imgur.com/gVsfYY8.png)
-
 
 # Remember for myself:
 `export ERL_TOP=./home/krisallb/Documents/otp_src_23.2`
