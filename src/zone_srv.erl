@@ -27,8 +27,9 @@ start_link(Port, MapPairs) ->
                                  list_name = ListName}, []).
 
 init(#state{list_name = ListName, port = Port} = State) ->
+    PacketVer = aliter:get_config(packet_version, ?PACKETVER),
     ZonePackets = zone_packets:mod_for("zone_packets",
-                                       integer_to_list(?PACKETVER)),
+                                       integer_to_list(PacketVer)),
     {ok, _} = ranch:start_listener(ListName, ranch_tcp,
                                    [{port, Port}], ragnarok_proto,
                                    [ZonePackets, self()]),

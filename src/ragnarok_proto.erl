@@ -2,14 +2,14 @@
 
 -behaviour(ranch_protocol).
 
+-include("ro.hrl").
+
 -export([ start_link/4
         , init/4
         , send_packet/3
         , send_packets/3
         , send_bin/2
         , close_socket/2 ]).
-
--define(PACKET_HANDLER, login_packets).
 
 start_link(Ref, Socket, Transport, Opts) ->
     Pid = spawn_link(?MODULE, init, [Ref, Socket, Transport, Opts]),
@@ -18,8 +18,16 @@ start_link(Ref, Socket, Transport, Opts) ->
 init(Ref, Socket, Transport, [PacketHandler]) ->
     {ok, Worker} = case PacketHandler of
                        login_packets ->
+                           PacketVer = aliter:get_config(packet_version,
+                                                         ?PACKETVER),
+                           FinalPacketHandler = case PacketVer of
+                                                    20180418 ->
+                                                        login_packets_20180418;
+                                                    20111116 ->
+                                                        login_packets
+                                                end,
                            supervisor:start_child(login_worker_sup,
-                                                  [Socket, PacketHandler]);
+                                                  [Socket, FinalPacketHandler]);
                        _CharPackets ->
                            supervisor:start_child(char_worker_sup,
                                                   [Socket, PacketHandler])

@@ -103,7 +103,8 @@ successful_login(A, State) ->
     gen_server:cast(
       login_server,
       {add_session, {A#account.id, NewState, LoginIDa, LoginIDb}}),
-    Servers = [{?CHAR_IP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
+    CharIP = aliter:get_config(char_ip, ?CHAR_IP),
+    Servers = [{CharIP, ?CHAR_PORT, ?CHAR_SERVER_NAME,
                 0, _Maint = 0, _New = 0}],
     M = {accept, {LoginIDa, LoginIDb, A#account.id, A#account.gender, Servers}},
     Socket = State#login_state.tcp,

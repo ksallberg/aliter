@@ -142,7 +142,8 @@ warp_to(Worker, Map, X, Y,
                           end,
             zone_worker:show_actors(NewStateFun(State)),
             gen_server:cast(Worker, {switch_zones, NewStateFun}),
-            zone_worker:send(State, {warp_zone, {Map, X, Y, ?ZONE_IP, Port}});
+            ZoneIP = aliter:get_config(zone_ip, ?ZONE_IP),
+            zone_worker:send(State, {warp_zone, {Map, X, Y, ZoneIP, Port}});
         none ->
             zone_worker:say("Invalid map provided.", State),
             ok

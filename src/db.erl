@@ -34,7 +34,7 @@
         , get_player_item/2
         , remove_player_item/2 ]).
 
--export([ % get_equips/2,
+-export([ %% get_equips/2,
           save_equips_ext/2
         , delete_equips/2
         ]).
@@ -83,7 +83,56 @@ init() ->
                          {disc_copies, NodeList}]),
     mnesia:create_table(item_data,
                         [{attributes, record_info(fields, item_data)},
-                         {disc_copies, NodeList}]).
+                         {disc_copies, NodeList}]),
+    %% wait until db is able to be queried
+    mnesia:wait_for_tables([item_data, mob_data], infinity),
+    %% try to find Damascus, if it doesn't exist, item_db needs to be populated
+    case get_item_data(1226) of
+        nil ->
+            io:format("Item DB is not initialized, initializing...\n", []),
+            populate_item_data();
+        #item_data{} ->
+            skip
+    end,
+    %% try to find LoD, if it doesn't exist, mob_db needs to be populated
+    case get_mob_data(1373) of
+        nil ->
+            populate_mob_data();
+        #mob_data{} ->
+            skip
+    end.
+
+populate_item_data() ->
+    {ok, Data} = file:consult("data/item_db.cfg"),
+    %% A little (safe) hack. Transform each line to fit the #item_data{}
+    AsRecords = [list_to_tuple([item_data| tuple_to_list(ItemData)])
+        || ItemData <- Data],
+    save_item(AsRecords).
+
+populate_mob_data() ->
+    {ok, Data} = file:consult("data/mob_db.cfg"),
+    %% A little (safe) hack. Transform each line to fit the #mob_data{}
+    AsRecords = [list_to_tuple([mob_data| tuple_to_list(MobData)])
+        || MobData <- Data],
+    save_mob(AsRecords).
+
+save_item([]) ->
+    ok;
+save_item([#item_data{} = Item|Items]) ->
+    Fun = fun() ->
+                  mnesia:write(Item)
+          end,
+    mnesia:transaction(Fun),
+    save_item(Items).
+
+save_mob([]) ->
+    ok;
+save_mob([#mob_data{} = Mob|Mobs]) ->
+    Fun = fun() ->
+                  mnesia:write(Mob)
+          end,
+    mnesia:transaction(Fun),
+    save_mob(Mobs).
 
 save_account(#account{} = Account) ->
     A = fun() ->
@@ -425,11 +474,11 @@ get_player_item(CharacterID, Slot) ->
         [] ->
             nil;
         [#inventory{items=Items}] ->
-            case length(Items) < Slot of
-                true ->
-                    nil;
+            case lists:keyfind(Slot, #world_item.slot, Items) of
                 false ->
-                    lists:nth(Slot, Items)
+                    nil;
+                ItemFound ->
+                    ItemFound
             end
     end.
 

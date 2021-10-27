@@ -1,0 +1,73 @@
+[doc Various connection related sanity tests for aliter]
+
+[shell aliter]
+    !make -C ../ test_start
+    ???[info] Starting char server
+    ???[info] Starting master supervisor
+    ???[info] Starting master zone server.
+
+# First we make sure that a non existing user is refused to log in
+
+[shell client]
+    !./client.es
+
+[shell aliter]
+    ???[info] Received login request {packetver,20111116} {login,"no_user"} {region,0}
+
+[shell client]
+    ???Login Refused: true
+    ???Register a new account
+
+[shell aliter]
+    ???[info] Received login request {packetver,20111116}
+    ???[info] Created account {login,
+
+[shell client]
+    ???CharIP: 5121
+    ???Attempt connection to char server
+
+[shell aliter]
+    ???[info] Character connect request.
+
+[shell client]
+    ???Account ID from char server matches! true
+    ???CharConnectResponse2: {9,9,9}
+    ???MaxSlots: 9 AvailableSlots: 9 PremiumSlots: 9
+    ???Creating character!
+
+[shell aliter]
+    ???[info] Created character. {account,
+
+[shell client]
+    ???Char names matching: true
+    ???Time to choose character!
+
+[shell aliter]
+    ???[info] Player selected character. {account,
+
+[shell client]
+    ???Char Choose Response, zone port: 6121
+    ???Time to connect to zone server!
+
+[shell aliter]
+    ???[info] Verifying session. {account,
+
+[shell client]
+    ???Zone, account id matching: true
+    ???Zone accept: true
+    ???Zone inventory: true
+    ???Zone skill list: true
+    ???Zone message: true Welcome to Aliter.
+
+    ???Client shutting down
+    ?SH-PROMPT:
+    !exit
+    [endshell 0]
+
+# teardown
+[shell aliter]
+    !q().
+    ???ok
+    ?SH-PROMPT:
+    !exit
+    [endshell 0]

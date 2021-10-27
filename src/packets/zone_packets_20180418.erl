@@ -11,41 +11,54 @@
         , packet_size/1 ]).
 
 -define(WALKSPEED, 150).
+-define(MAX_ITEM_OPTIONS, 5).
 
 packet_size(X) ->
     packets:packet_size(X).
 
-unpack(<<16#083c:16/little,
+%% unpack(<<16#083c:16/little,
+%%          AccountID:32/little,
+%%          CharacterID:32/little,
+%%          LoginIDa:32/little,
+%%          _ClientTick:32,
+%%          Gender:8>>) ->
+%%     {connect, AccountID, CharacterID, LoginIDa, Gender};
+
+unpack(<<16#0436:16/little,
          AccountID:32/little,
          CharacterID:32/little,
          LoginIDa:32/little,
-         _ClientTick:32,
+         _ClientTime:32/little,
          Gender:8>>) ->
     {connect, AccountID, CharacterID, LoginIDa, Gender};
+
 %% sitting, standing:
-unpack(<<16#08aa:16/little,
+unpack(<<16#437:16/little,
          Target:32/little,
          Action:8>>) ->
     {action_request, Target, Action};
 %% CZ_NOTIFY_ACTORINIT
 unpack(<<16#7d:16/little>>) ->
     map_loaded;
+
+unpack(<<16#361:16/little, Head:16/little, Body:8>>) ->
+    {change_direction, Head, Body};
 unpack(<<16#85:16/little, _:16, Head:16/little, _:24, Body:8>>) ->
     {change_direction, Head, Body};
 unpack(<<16#016e:16/little, GID:32/little,
          Header:60/binary, Body:120/binary>>) ->
     {guild_msg_upd, GID, Header, Body};
-unpack(<<16#0817:16/little, Tick:32/little>>) ->
+unpack(<<16#0360:16/little, Tick:32/little>>) ->
     {tick, Tick};
 unpack(<<16#0090:16/little, NPCID:32/little, _:8>>) ->
     {npc_activate, NPCID};
 %% CZ_REQNAME
-unpack(<<16#88a:16/little, ReqName:32/little>>) ->
+unpack(<<16#368:16/little, ReqName:32/little>>) ->
     {request_name, ReqName};
 unpack(<<16#99:16/little, Length:16/little, Message/binary>>)
   when byte_size(Message) == (Length - 4) ->
     {broadcast, string:strip(binary_to_list(Message), right, 0)};
-unpack(<<100,3, Position:3/little-binary-unit:8>>) ->
+unpack(<<16#35F:16/little, Position:3/little-binary-unit:8>>) ->
     {walk, decode_position(Position)};
 unpack(<<16#b2:16/little, Type:8>>) ->
     {char_select, Type};
@@ -80,36 +93,43 @@ unpack(<<16#0165:16/little,
     {create_guild, CharId, GName};
 unpack(<<16#0118:16/little>>) ->
     cease_attack;
-unpack(<<16#02c4:16/little,
+unpack(<<16#438:16/little,
          SkillLvl:16/little,
          SkillID:16/little,
          Target:32/little>>) ->
     {use_skill, SkillLvl, SkillID, Target};
-unpack(<<16#0a9:16/little,
+unpack(<<16#998:16/little,
          Index:16/little,
-         Position:16/little>>) ->
+         Position:32/little>>) ->
     {wear_equip, Index, Position};
 unpack(<<16#0ab:16/little,
          Index:16/little>>) ->
     {unequip, Index};
-unpack(<<16#885:16/little,
+unpack(<<16#363:16/little,
          Index:16/little,
          Amount:16/little>>) ->
     {drop, Index, Amount};
-unpack(<<16#815:16/little,
+unpack(<<16#362:16/little,
          ObjectID:32/little>>) ->
     {pick_up, ObjectID};
+unpack(<<16#8c9:16/little>>) ->
+    pCashShopSchedule;
+%% from guild box
+unpack(<<16#369:16/little, CharID:32/little>>) ->
+    {request_name, CharID};
 unpack(Unknown) ->
     lager:log(warning, self(), "hmm zone packets Got unknown data ~p",
               [Unknown]),
     unknown.
 
 pack(accept, {Tick, {X, Y, D}}) ->
-    <<16#73:16/little,
+    <<16#2eb:16/little,
       Tick:32/little,
       (encode_position(X, Y, D)):3/binary,
-      5,   % X size(?), static
-      5>>; % Y size(?), static
+      5:8, %% X size, static
+      5:8, %% Y size, static
+      0:16/little %% font
+    >>;
 pack(show_npc, N) -> % TODO: This isn't actually specific to NPCs
     {X, Y} = N#npc.coordinates,
     D = case N#npc.direction of
@@ -186,6 +206,7 @@ pack(broadcast, Message) ->
      <<0>>];
 pack(change_direction, {ActorID, HeadDir, BodyDir}) ->
     <<16#9c:16/little, ActorID:32/little, HeadDir:16/little, BodyDir:8>>;
+
 pack(param_change, {Type, Value}) ->
     <<16#b0:16/little, Type:16/little, Value:32/little>>;
 pack(param_change_long, {Type, Value}) ->
@@ -211,35 +232,33 @@ pack(dialog_menu, {ActorID, Choices}) ->
     ];
 pack(status, C) ->
     <<16#bd:16/little,
-      (C#char.status_points):16/little,
-      (C#char.str):8/little,
-      0:8/little,
-      (C#char.agi):8/little,
-      0:8/little,
+      (C#char.status_points):16/little, %% sd->status.status_point
+      (C#char.str):8/little, %% sd->status.str
+      0:8/little, %% need_status_point SP_STR
+      (C#char.agi):8/little, %% sd->status.agi
+      0:8/little, %% need_status_point SP_AGI
       (C#char.vit):8/little,
-      0:8/little,
+      0:8/little, %% need_status_point SP_VIT
       (C#char.int):8/little,
-      0:8/little,
+      0:8/little, %% need_status_point SP_INT
       (C#char.dex):8/little,
-      0:8/little,
+      0:8/little, %% need_status_point SP_DEX
       (C#char.luk):8/little,
-      0:8/little,
-      7:16/little,
-      0:16/little,
-      6:16/little,
-      5:16/little,
-      0:16/little,
-      5:16/little,
-      0:16/little,
-      5:16/little,
-      6:16/little,
-      6:16/little,
-      1:16/little,
-      2:16/little,
-      0:8, % Nothing
-      0:8, % Nothing
-      0:8, % Nothing, v-
-      0:8>>; % TODO
+      0:8/little, %% need_status_point SP_LUK
+      7:16/little, %% pc_leftside_atk
+      0:16/little, %% pc_rightside_atk
+      6:16/little, %% pc_rightside_matk
+      5:16/little, %% pc_leftside_matk
+      0:16/little, %% pc_leftside_def
+      5:16/little, %% pc_rightside_def
+      0:16/little, %% mdef1
+      0:16/little, %% mdef2
+      5:16/little, %% sd->battle_status.hit
+      6:16/little, %% sd->battle_status.flee
+      6:16/little, %% sd->battle_status.flee2/10
+      1:16/little, %% sd->battle_status.cri/10
+      2:16/little, %% sd->battle_status.amotion (aspd)
+      0:16/little>>; %% aspd2
 pack(emotion, {ActorID, EmoticonID}) ->
     <<16#c0:16/little, ActorID:32/little, EmoticonID:8>>;
 pack(player_count, Count) ->
@@ -258,6 +277,36 @@ pack(skill_list, Skills) ->
         ] || {ID, Type, Level, SP, Range, Name, Up} <- Skills]];
 pack(attack_range, Range) ->
     <<16#13a:16/little, Range:16/little>>;
+pack(status_change_basic, {Stat, Value}) ->
+    case Stat of
+        ?SP_BASEEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+        ?SP_NEXTBASEEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+
+        ?SP_JOBEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+        ?SP_NEXTJOBEXP ->
+            <<16#acb:16/little, Stat:16/little, Value:64/little>>;
+
+        ?SP_BASELEVEL ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+        ?SP_JOBLEVEL ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+
+        ?SP_SKILLPOINT ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+
+        ?SP_ATTACKRANGE ->
+            <<16#13a:16/little,Value:16/little>>;
+
+        ?SP_ASPD ->
+            <<16#b0:16/little, Stat:16/little, Value:32/little>>;
+
+        _ ->
+            <<16#be:16/little, Stat:16/little, Value:8/little>>
+    end;
+
 pack(status_change, {Stat, Value, Bonus}) ->
     <<16#141:16/little, Stat:32/little, Value:32/little, Bonus:32/little>>;
 % 043f
@@ -450,100 +499,32 @@ pack(hotkeys, _Hotkeys) ->
      list_to_binary(lists:duplicate(189, 0))];
 pack(party_invite_state, State) ->
     <<16#2c9:16/little, State:8>>;
+
+%% inventorylistequipType = 0xa0d,
+%% EQUIPITEM_INFO
 pack(equipment, EquipmentLs) ->
-    MapF = fun(#equip{index = Index,
-                      id = ID,
-                      type = Type,
-                      identified = Identified,
-                      location = Location,
-                      wearstate = WearState,
-                      is_damaged = IsDamaged,
-                      refining_level = RefiningLevel,
-                      card1 = Card1,
-                      card2 = Card2,
-                      card3 = Card3,
-                      card4 = Card4,
-                      hire_expire_date = HireExpireDate,
-                      bind_on_equip_type = BindOnEquipType,
-                      sprite_number = SpriteNumber}) ->
-                   <<Index:16/little,
-                     ID:16/little,
-                     Type:8,
-                     Identified:8,
-                     Location:16/little,
-                     WearState:16/little,
-                     IsDamaged:8/little,
-                     RefiningLevel:8/little,
-                     Card1:16/little,
-                     Card2:16/little,
-                     Card3:16/little,
-                     Card4:16/little,
-                     HireExpireDate:32/little,
-                     BindOnEquipType:16/little,
-                     SpriteNumber:16/little>>
-           end,
-    L  = (16 + 16 + 8 + 8 + 16 + 16 + 8 + 8
-          + 16 + 16 + 16 + 16 + 32 + 16 + 16) div 8,
-    Res = [<<16#2d0:16/little,
-             (L * length(EquipmentLs) + 4):16/little>>,
-           lists:map(MapF, EquipmentLs)],
-    Res;
+    [<<16#a0d:16/little,
+       (57 * length(EquipmentLs) + 4):16/little>>,
+     lists:map(fun encode_equipment/1, EquipmentLs)];
 
-
-
-%% inventorylistequipType = 0x2d0,
-
-%% 16+16+8+8+16+16+8+8+32+16+16+
-%% int16 index;
-%% uint16 ITID;
-%% uint8 type;
-%% uint8 IsIdentified;
-%% uint16 location;
-%% uint16 WearState;
-%% uint8 IsDamaged;
-%% uint8 RefiningLevel;
-%% struct EQUIPSLOTINFO slot;
-%% int32 HireExpireDate;
-%% uint16 bindOnEquipType;
-%% uint16 wItemSpriteNumber;
-
-pack(inventory_equip, Inventory) ->
-    [<<16#2d0:16/little,
-       (28 * length(Inventory) + 4):16/little>>,
-     [<<(I#world_item.slot):16/little,
-        (I#world_item.item):16/little,
-        (I#world_item.type):8,
-        1:8, % identified
-        (get_equip_for(I#world_item.item)):16/little, % location
-        0:16/little, % WearState(?)
-        0:8/little, % isdamaged
-        0:8/little, % refining level
-
-        0:16/little, % TODO: card 1
-        0:16/little, % TODO: card 2
-        0:16/little, % TODO: card 3
-        0:16/little, % TODO: card 4
-
-        0:32/little, % hireexpiredate
-        0:16/little, % bindonequiptype
-        0:16/little>> % wItemSpriteNumber
-          || I <- Inventory]];
-
+%% also called NORMALITEM_INFO
 pack(inventory, Inventory) ->
-    [<<16#2e8:16/little,
-       (22 * length(Inventory) + 4):16/little>>,
+    [<<16#991:16/little,
+       (24 * length(Inventory) + 4):16/little>>,
      [<<(I#world_item.slot):16/little,
         (I#world_item.item):16/little,
         (I#world_item.type):8,
-        1:8, % TODO: identified
-        (I#world_item.amount):16/little,
-        0:16/little, % TODO: WearState(?)
+        1:16/little, %% count
+        0:32/little, % WearState(?)
         0:16/little, % TODO: card 1
         0:16/little, % TODO: card 2
         0:16/little, % TODO: card 3
         0:16/little, % TODO: card 4
-        0:32/little>> % expiration
+        0:32/little, % hireexpiredate
+        1:8>> %% IsIdentified, PlaceETCTab, SpareBits,
+              %% In C, this is a Bit Field struct
           || I <- Inventory]];
+
 pack(give_item,
      {Index,
       Amount,
@@ -615,30 +596,43 @@ pack(sprite,
       CharID:32/little,
       Type:8/little,
       Value:32/little>>;
-pack(monster, {SpriteID, X, Y, GID}) ->
+pack(monster, {SpriteID, X, Y, MonsterID}) ->
     <<X2, Y2, D>> = encode_position(X, Y, 0),
-    <<16#07c:16/little, %% PacketType
-      5:8/little, %% objecttype
-      GID:32/little, %% GID
-      0:16/little, %% speed
-      0:16/little, %% bodyState
-      0:16/little, %% healthState
-      0:16/little, %% effectState
-      0:16/little, %% head
-      0:16/little, %% weapon
-      0:16/little, %% accessory
-      SpriteID:16/little, %% job
-      0:16/little, %% shield
-      0:16/little, %% accessory2
-      0:16/little, %% accessory3
-      0:16/little, %% headpalette
-      0:16/little, %% bodypalette
-      0:16/little, %% headDir
-      0:8/little, %% isPKModeON
-      0:8/little, %% sex
-      X2:8, Y2:8, D:8,
-      0:8/little, %% xSize
-      0:8/little>>; %% ySize
+    iolist_to_binary([<<16#9fe:16/little, %% PacketType
+                        103:16/little, %% PacketLength
+                        5:8/little, %% objecttype
+                        MonsterID:32/little, %% AID
+                        MonsterID:32/little, %% GID
+                        0:16/little, %% speed
+                        0:16/little, %% bodyState
+                        0:16/little, %% healthState
+                        0:32/little, %% effectState
+                        SpriteID:16/little, %% job
+                        0:16/little, %% head
+                        0:32/little, %% weapon
+                        0:16/little, %% accessory
+                        0:16/little, %% accessory2
+                        0:16/little, %% accessory3
+                        0:16/little, %% headpalette
+                        0:16/little, %% bodypalette
+                        0:16/little, %% headDir
+                        0:16/little, %% robe
+                        0:32/little, %% GUID <- guild id
+                        0:16/little, %% GEmblemVer
+                        0:16/little, %% honor
+                        0:32/little, %% virtue
+                        0:8/little, %% isPKModeON
+                        0:8/little, %% sex
+                        X2:8, Y2:8, D:8,
+                        0:8/little, %% xSize
+                        0:8/little, %% ySize
+                        0:16/little, %% clevel
+                        0:16/little, %% font
+                        100:32/little, %% maxHP
+                        90:32/little, %% HP
+                        0:8/little, %% isBoss
+                        13:16/little>>, %% body
+                      pad_to("bobby", 24)]);
 pack(attack, {Caller, Callee, Time, SrcSpeed, DstSpeed, %% ZC_NOTIFY_ACT2
               Damage, IsSPDamage, Div, Damage2, Type}) ->
     <<16#08c8:16/little,
@@ -673,6 +667,22 @@ pack(notify_skill, {SkillID, CasterID, TargetID, Tick,
       SrcDelay:32/little,
       TargetDelay:32/little,
       Dmg:32/little,
+      Level:16/little,
+      Div:16/little,
+      Type:8/little>>;
+pack(notify_skill_ground,
+     {SkillID, CasterID, TargetID, Tick,
+      SrcDelay, TargetDelay, X, Y, Dmg, Level, Div, Type}) ->
+    <<16#115:16/little,
+      SkillID:16/little,
+      CasterID:32/little,
+      TargetID:32/little,
+      Tick:32/little,
+      SrcDelay:32/little,
+      TargetDelay:32/little,
+      X:16/little,
+      Y:16/little,
+      Dmg:16/little,
       Level:16/little,
       Div:16/little,
       Type:8/little>>;
@@ -732,3 +742,98 @@ get_equip_for(ItemID) ->
         #item_data{equip_locations=EquipLocation} ->
             EquipLocation
     end.
+
+encode_equipment(#equip{index = Index,
+                        id = ID,
+                        type = Type,
+                        %% identified = Identified,
+                        location = Location,
+                        wearstate = WearState,
+                        %% is_damaged = IsDamaged,
+                        refining_level = RefiningLevel,
+                        card1 = Card1,
+                        card2 = Card2,
+                        card3 = Card3,
+                        card4 = Card4,
+                        hire_expire_date = HireExpireDate,
+                        bind_on_equip_type = BindOnEquipType,
+                        sprite_number = SpriteNumber}) ->
+    [<<Index:16/little,
+       ID:16/little,
+       Type:8,
+       Location:32/little, % location
+       WearState:32/little, % WearState(?)
+       RefiningLevel:8/little, % refining level
+       %% also called EQUIPSLOTINFO
+       Card1:16/little, % TODO: card 1
+       Card2:16/little, % TODO: card 2
+       Card3:16/little, % TODO: card 3
+       Card4:16/little, % TODO: card 4
+       HireExpireDate:32/little, % hireexpiredate
+       BindOnEquipType:16/little, % bindonequiptype
+       SpriteNumber:16/little, % wItemSpriteNumber
+       0:8>>, %% option_count
+     %% struct ItemOptions {
+     %%   int16 index;
+     %%   int16 value;
+     %%   uint8 param;
+     %% } __attribute__((packed));
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     %% IsIdentified, IsDamaged, PlaceETCTab,SpareBits
+     %% In C, this is a Bit Field struct:
+     <<1:8>>];
+encode_equipment(#world_item{slot=Index,
+                             item=ItemID,
+                             type=Type}) ->
+    [<<Index:16/little,
+       ItemID:16/little,
+       Type:8,
+       (get_equip_for(ItemID)):32/little, % location
+       0:32/little, % WearState(?)
+       0:8/little, % refining level
+       %% also called EQUIPSLOTINFO
+       0:16/little, % TODO: card 1
+       0:16/little, % TODO: card 2
+       0:16/little, % TODO: card 3
+       0:16/little, % TODO: card 4
+       0:32/little, % hireexpiredate
+       0:16/little, % bindonequiptype
+       0:16/little, % wItemSpriteNumber
+       0:8>>, %% option_count
+     %% struct ItemOptions {
+     %%   int16 index;
+     %%   int16 value;
+     %%   uint8 param;
+     %% } __attribute__((packed));
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     <<0:16/little,
+       0:16/little,
+       0:8>>,
+     %% IsIdentified, IsDamaged, PlaceETCTab,SpareBits
+     %% In C, this is a Bit Field struct:
+     <<1:8>>].

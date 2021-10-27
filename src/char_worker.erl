@@ -46,9 +46,37 @@ handle_cast({connect, AccountID, LoginIDa, LoginIDb, _Gender},
                                            LoginState#login_state.id_b
                                           }}),
             Chars = db:get_account_chars(AccountID),
-            M = {characters, {Chars, ?MAX_SLOTS, ?AVAILABLE_SLOTS,
-                              ?PREMIUM_SLOTS}},
+            PacketVer = aliter:get_config(packet_version, ?PACKETVER),
+            {MaxSlots, AvailableSlots, PremiumSlots} =
+                case PacketVer of
+                    20180418 ->
+                        {12, 12, 12};
+                    _ ->
+                        {9, 9, 9}
+                end,
+
+            case PacketVer of
+                20180418 ->
+                    SlotInfoM = {slot_info,
+                                 {MaxSlots, AvailableSlots, PremiumSlots}},
+                    ragnarok_proto:send_packet(SlotInfoM, TCP, PacketHandler);
+                _ ->
+                    skip
+            end,
+
+            M = {characters,
+                 {Chars, MaxSlots, AvailableSlots, PremiumSlots}},
+
             ragnarok_proto:send_packet(M, TCP, PacketHandler),
+
+            case PacketVer of
+                20180418 ->
+                    Pin = {pin_code, AccountID},
+                    ragnarok_proto:send_packet(Pin, TCP, PacketHandler);
+                _ ->
+                    skip
+            end,
+
             NewState =
                 State#char_state{account = LoginState#login_state.account,
                                  id_a = LoginState#login_state.id_a,
@@ -78,38 +106,25 @@ handle_cast({choose, Num},
                       [{account, AccountID}, {character, C#char.id}]),
             {zone, ZonePort, _ZoneServer} =
                 gen_server:call(zone_master, {who_serves, C#char.map}),
-            M = {zone_connect, {C, ?ZONE_IP, ZonePort}},
+            ZoneIP = aliter:get_config(zone_ip, ?ZONE_IP),
+            M = {zone_connect, {C, ZoneIP, ZonePort}},
             ragnarok_proto:send_packet(M, Socket, PacketHandler),
             {noreply, State#char_state{char = C}}
     end;
+%% A bit of copy paste programming: following clause lacks
+%% starting class, next clause has it.
 handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
-             Luk, Num, HairColour, HairStyle},
-            State = #char_state{account = Account,
-                                packet_handler = PacketHandler,
-                                tcp = Socket}) ->
-    Exists = db:get_char_id(Name),
-    case Exists of
-        nil ->
-            Char = db:save_char(#char{num = Num,
-                                      name = Name,
-                                      zeny = 500, % TODO: Config flag
-                                      str = Str,
-                                      agi = Agi,
-                                      vit = Vit,
-                                      int = Int,
-                                      dex = Dex,
-                                      luk = Luk,
-                                      hair_colour = HairColour,
-                                      hair_style = HairStyle,
-                                      account_id = Account#account.id}),
-            lager:log(info, self(), "Created character. ~p~p",
-                      [{account, Account}, {char, Char}]),
-            ragnarok_proto:send_packet({character_created, Char}, Socket,
-                                       PacketHandler);
-        _ ->
-            ragnarok_proto:send_packet({creation_failed, 0}, Socket,
-                                       PacketHandler)
-    end,
+             Luk, Num, HairColour, HairStyle}, State) ->
+    handle_create({create, Name, Str, Agi, Vit, Int, Dex,
+                   Luk, Num, HairColour, HairStyle,
+                   undefined, undefined}, State),
+    {noreply, State};
+handle_cast({create, Name, Str, Agi, Vit, Int, Dex,
+             Luk, Num, HairColour, HairStyle, StartingJobClass, Sex},
+           State) ->
+    handle_create({create, Name, Str, Agi, Vit, Int, Dex,
+                   Luk, Num, HairColour, HairStyle,
+                   StartingJobClass, Sex}, State),
     {noreply, State};
 handle_cast({delete, CharacterID, EMail},
             State = #char_state{
@@ -120,7 +135,7 @@ handle_cast({delete, CharacterID, EMail},
     Address =
         case EMail of
             "" -> nil;
-            _ -> EMail
+            _  -> EMail
         end,
     case Address of
         AccountEMail ->
@@ -223,3 +238,39 @@ format_status(_Opt, _) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+handle_create({create, Name, Str, Agi, Vit, Int, Dex,
+               Luk, Num, HairColour, HairStyle, StartingJobClass, _Sex},
+              #char_state{account = Account,
+                          packet_handler = PacketHandler,
+                          tcp = Socket}) ->
+    Exists = db:get_char_id(Name),
+    case Exists of
+        nil ->
+            CharToSave0 = #char{num = Num,
+                                name = Name,
+                                zeny = 500, % TODO: Config flag
+                                str = Str,
+                                agi = Agi,
+                                vit = Vit,
+                                int = Int,
+                                dex = Dex,
+                                luk = Luk,
+                                hair_colour = HairColour,
+                                hair_style = HairStyle,
+                                account_id = Account#account.id},
+            CharToSave = case StartingJobClass of
+                             undefined ->
+                                 CharToSave0;
+                             _ ->
+                                 CharToSave0#char{job=StartingJobClass}
+                         end,
+            Char = db:save_char(CharToSave),
+            lager:log(info, self(), "Created character. ~p~p",
+                      [{account, Account}, {char, Char}]),
+            ragnarok_proto:send_packet({character_created, Char}, Socket,
+                                       PacketHandler);
+        _ ->
+            ragnarok_proto:send_packet({creation_failed, 0}, Socket,
+                                       PacketHandler)
+    end.
