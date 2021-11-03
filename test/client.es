@@ -266,11 +266,34 @@ match_zone_inventory(<<16#2d0:16/little,
 match_zone_inventory(_) ->
     false.
 
+%% length of a skill is: 37 bytes
 match_zone_skill_list(<<16#10f:16/little,
-                        _Length:16/little,
+                        Length:16/little,
                         Rest/binary>>) ->
-    {true, Rest};
+    io:format("MATCH SKILLS BYTES: ~p~n", [Length]),
+    case match_skills((Length-4) div 37, Rest) of
+        false ->
+            false;
+        {true, NewRest} = Ret->
+            Ret
+    end;
 match_zone_skill_list(_) ->
+    false.
+
+match_skills(0, Rest) ->
+    {true, Rest};
+match_skills(Amount,
+             <<_ID:16/little,
+               _Type:16/little,
+               _Unknown:16/little,
+               _Level:16/little,
+               _Range:16/little,
+               _SP:16/little,
+               _Name:24/little-binary-unit:8,
+               _Up:8,
+               Rest/binary>>) ->
+    match_skills(Amount-1, Rest);
+match_skills(_, _) ->
     false.
 
 match_zone_message(<<16#8e:16/little,
